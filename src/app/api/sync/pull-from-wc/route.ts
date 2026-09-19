@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isEditor } from "@/lib/auth/roles";
 import { pullProductsFromWooCommerce } from "@/lib/products/pullFromWooCommerce";
 import { WooCommerceError } from "@/lib/woocommerce/client";
 
 /**
  * Pull Arabic WooCommerce products into the local Prisma catalog.
- * Manager / Accountant only.
+ * Manager / Accountant / Admin.
  */
 export async function POST() {
   const session = await auth();
@@ -13,7 +14,7 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.role !== "MANAGER" && session.user.role !== "ACCOUNTANT") {
+  if (!isEditor(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
