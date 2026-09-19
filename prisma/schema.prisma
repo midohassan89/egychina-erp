@@ -1,0 +1,382 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CASHIER
+  ACCOUNTANT
+  MANAGER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  /** Manager/Admin PIN for POS overrides (e.g. "1234"). */
+  pinCode   String?
+  role      Role     @default(CASHIER)
+  /** ACTIVE | SUSPENDED — suspended users cannot log in. */
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts Shift[]
+  inventoryAdjustments InventoryAdjustment[]
+  sales Sale[]
+  auditLogs AuditLog[]
+}
+
+/// Immutable activity log for accountability (who did what).
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([entity])
+}
+
+/// Local ERP product catalog — synced from WooCommerce (Arabic).
+model Product {
+  id            String   @id @default(cuid())
+  wcId          Int      @unique
+  name          String
+  sku           String?
+  barcode       String?
+  price         Float
+  salePrice     Float?
+  stockQuantity Int      @default(0)
+  stockStatus   String   @default("instock")
+  imageUrl      String?
+  isDeleted     Boolean  @default(false)
+  isFavorite    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchaseItems   PurchaseInvoiceItem[]
+  purchaseReturns PurchaseReturnItem[]
+  adjustmentItems AdjustmentItem[]
+  saleLines       SaleLine[]
+
+  @@index([barcode])
+  @@index([sku])
+  @@index([name])
+  @@index([isDeleted])
+  @@index([isFavorite])
+}
+
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices PurchaseInvoice[]
+  payments SupplierPayment[]
+  returns  PurchaseReturn[]
+}
+
+model PurchaseInvoice {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String?
+  date          DateTime @default(now())
+  supplierId    Int
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  totalAmount   Float
+  paidAmount    Float    @default(0)
+  /** PAID | PARTIAL | UNPAID */
+  status        String   @default("UNPAID")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items PurchaseInvoiceItem[]
+
+  @@index([supplierId])
+  @@index([date])
+  @@index([status])
+}
+
+model PurchaseInvoiceItem {
+  id        Int             @id @default(autoincrement())
+  invoiceId Int
+  invoice   PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  /// Local Prisma Product.id (cuid) — not WooCommerce Int id.
+  productId String
+  product   Product         @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitCost  Float
+  lineTotal Float
+
+  @@index([invoiceId])
+  @@index([productId])
+}
+
+model SupplierPayment {
+  id         Int      @id @default(autoincrement())
+  supplierId Int
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  amount     Float
+  date       DateTime @default(now())
+  notes      String?
+  /** null = paid from physical Treasury cash safe */
+  bankAccountId Int?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([date])
+  @@index([bankAccountId])
+}
+
+model PurchaseReturn {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @default(now())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  totalAmount Float
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items PurchaseReturnItem[]
+
+  @@index([supplierId])
+  @@index([date])
+}
+
+model PurchaseReturnItem {
+  id        Int           @id @default(autoincrement())
+  returnId  Int
+  return    PurchaseReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  /// Local Prisma Product.id (cuid) — not WooCommerce Int id.
+  productId String
+  product   Product       @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitCost  Float
+  lineTotal Float
+
+  @@index([returnId])
+  @@index([productId])
+}
+
+/// Master safe / cash drawer — singleton row with id = 1.
+model Treasury {
+  id        Int      @id @default(1)
+  balance   Float    @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model TreasuryTransaction {
+  id          Int      @id @default(autoincrement())
+  /** IN | OUT */
+  type        String
+  amount      Float
+  description String
+  /** e.g. EXPENSE, SUPPLIER_PAY, POS_SHIFT */
+  reference   String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([type])
+  @@index([reference])
+}
+
+model ExpenseCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenses Expense[]
+}
+
+model Expense {
+  id         Int             @id @default(autoincrement())
+  categoryId Int
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  amount     Float
+  date       DateTime        @default(now())
+  notes      String?
+  /** null = paid from physical Treasury cash safe */
+  bankAccountId Int?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([categoryId])
+  @@index([date])
+  @@index([bankAccountId])
+}
+
+/// Digital / bank channel balances (Visa, Wallet, InstaPay, WeChat, …).
+model BankAccount {
+  id        Int      @id @default(autoincrement())
+  name      String
+  /** Stable key for POS routing: visa | wallet | instapay | wechat */
+  code      String   @unique
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions BankTransaction[]
+  expenses     Expense[]
+  supplierPayments SupplierPayment[]
+}
+
+model BankTransaction {
+  id        Int         @id @default(autoincrement())
+  accountId Int
+  account   BankAccount @relation(fields: [accountId], references: [id])
+  /** IN | OUT */
+  type      String
+  amount    Float
+  reference String
+  date      DateTime    @default(now())
+  createdAt DateTime    @default(now())
+
+  @@index([accountId])
+  @@index([date])
+  @@index([type])
+  @@index([reference])
+}
+
+/// Move funds between Treasury cash and bank accounts (or bank ↔ bank).
+model InternalTransfer {
+  id            Int      @id @default(autoincrement())
+  /** TREASURY | BANK */
+  fromType      String
+  fromAccountId Int?
+  /** TREASURY | BANK */
+  toType        String
+  toAccountId   Int?
+  amount        Float
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+  @@index([fromType])
+  @@index([toType])
+}
+
+/// POS cashier shift — cash drawer float + Z-report close into Treasury.
+model Shift {
+  id             Int       @id @default(autoincrement())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  startingCash   Float
+  cashSales      Float     @default(0)
+  visaSales      Float     @default(0)
+  walletSales    Float     @default(0)
+  instapaySales  Float     @default(0)
+  wechatSales    Float     @default(0)
+  /** Total completed tickets (sales + returns) this shift. */
+  tickets        Int       @default(0)
+  actualCash     Float?
+  variance       Float?
+  /** OPEN | CLOSED */
+  status         String    @default("OPEN")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status])
+}
+
+/// Stock reconciliation / wastage / production use.
+model InventoryAdjustment {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @default(now())
+  /** WASTAGE | LOSS | PRODUCTION_USE | MANUAL_COUNT */
+  type      String
+  notes     String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items AdjustmentItem[]
+
+  @@index([date])
+  @@index([type])
+  @@index([userId])
+}
+
+model AdjustmentItem {
+  id             Int                 @id @default(autoincrement())
+  adjustmentId   Int
+  adjustment     InventoryAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  /** Local Prisma Product.id (cuid) */
+  productId      String
+  product        Product             @relation(fields: [productId], references: [id])
+  /** Delta applied to stockQuantity (negative removes stock). */
+  quantityChange Int
+  unitCost       Float
+  createdAt      DateTime            @default(now())
+
+  @@index([adjustmentId])
+  @@index([productId])
+}
+
+/// Completed POS sale / return — source of truth for Reports P&L and bestsellers.
+model Sale {
+  id            String   @id @default(cuid())
+  /** IndexedDB local sale id (for idempotent sync). */
+  localId       String?  @unique
+  shiftId       Int?
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  total         Float
+  paymentMethod String
+  isReturn      Boolean  @default(false)
+  /** completed */
+  status        String   @default("completed")
+  wooOrderId    Int?
+  customerName  String?
+  createdAt     DateTime @default(now())
+
+  lines SaleLine[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userId])
+  @@index([isReturn])
+}
+
+model SaleLine {
+  id          Int     @id @default(autoincrement())
+  saleId      String
+  sale        Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  /** Local Prisma Product.id when known */
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  /** WooCommerce product id from POS cart */
+  wcProductId Int?
+  name        String
+  quantity    Int
+  unitPrice   Float
+  /** Snapshot cost for COGS at time of sale */
+  unitCost    Float   @default(0)
+  lineTotal   Float
+
+  @@index([saleId])
+  @@index([productId])
+  @@index([wcProductId])
+}

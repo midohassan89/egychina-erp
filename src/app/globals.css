@@ -1,0 +1,436 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 248 250 252;
+    --foreground: 15 23 42;
+    --sidebar: 15 23 42;
+    --sidebar-foreground: 226 232 240;
+    --card: 255 255 255;
+    --border: 226 232 240;
+    --muted: 100 116 139;
+    --accent: 34 197 94;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
+
+/* ─── Thermal receipt (80mm) + product labels (50×30mm) ─── */
+
+.thermal-receipt {
+  display: none;
+}
+
+.thermal-label-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  @page receipt {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  @page product-label {
+    size: 50mm 30mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide dashboard chrome, POS UI, and on-screen controls */
+  .dashboard-no-print,
+  .dashboard-print-hide,
+  .pos-no-print {
+    display: none !important;
+  }
+
+  /* Flatten dashboard layout when printing receipts or labels */
+  html.printing-labels body,
+  html.printing-labels .flex.h-screen,
+  html.printing-labels main,
+  body:has(.thermal-receipt) .flex.h-screen,
+  body:has(.thermal-receipt) main {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  html.printing-labels body,
+  html.printing-labels .flex.h-screen,
+  html.printing-labels main {
+    width: 50mm !important;
+    max-width: 50mm !important;
+  }
+
+  /* ── Receipts (POS) ── */
+  html:not(.printing-labels):not(.printing-a4),
+  html:not(.printing-labels):not(.printing-a4) body {
+    width: 80mm !important;
+  }
+
+  .thermal-receipt {
+    display: block !important;
+    page: receipt;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 72mm;
+    max-width: 72mm;
+    margin: 0;
+    padding: 2mm 3mm 8mm;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.35;
+    color: #000;
+    background: #fff;
+  }
+
+  html.printing-labels .thermal-receipt {
+    display: none !important;
+  }
+
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 3mm;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 2mm;
+  }
+
+  .receipt-store-name {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 1.5mm;
+    line-height: 1.4;
+  }
+
+  .receipt-phone,
+  .receipt-phone-en {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .receipt-z-title {
+    margin: 2mm 0 0;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .receipt-meta {
+    margin: 2mm 0;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 2mm;
+  }
+
+  .receipt-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 2mm;
+    margin-bottom: 0.8mm;
+    font-size: 10px;
+  }
+
+  .receipt-order-id {
+    font-weight: 700;
+    font-family: ui-monospace, monospace;
+  }
+
+  .receipt-items {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2mm 0;
+    font-size: 10px;
+  }
+
+  .receipt-items th {
+    border-bottom: 1px solid #000;
+    padding: 1mm 0.5mm;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .receipt-items td {
+    padding: 1.2mm 0.5mm;
+    vertical-align: top;
+    border-bottom: 1px dotted #999;
+    text-align: right;
+  }
+
+  .receipt-items .col-name {
+    width: 42%;
+    text-align: right;
+  }
+
+  .receipt-items .col-qty {
+    width: 14%;
+    text-align: center;
+  }
+
+  .receipt-items .col-price,
+  .receipt-items .col-total {
+    width: 22%;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+  }
+
+  .receipt-scale-tag {
+    font-size: 8px;
+    opacity: 0.75;
+  }
+
+  .receipt-totals {
+    border-top: 1px dashed #000;
+    margin-top: 2mm;
+    padding-top: 2mm;
+  }
+
+  .receipt-total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1mm;
+    font-size: 11px;
+  }
+
+  .receipt-total-final {
+    font-size: 14px;
+    font-weight: 800;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 1.5mm 0;
+    margin: 1.5mm 0;
+  }
+
+  .receipt-barcode {
+    display: flex;
+    justify-content: center;
+    margin: 4mm 0 2mm;
+    direction: ltr;
+  }
+
+  .receipt-barcode svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .receipt-footer {
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+    margin: 2mm 0 0;
+  }
+
+  .receipt-footer-sub {
+    text-align: center;
+    font-size: 9px;
+    margin: 0.5mm 0 0;
+  }
+
+  /* ── Product barcode labels (Xprinter) ── */
+  .thermal-label-sheet {
+    display: none !important;
+  }
+
+  html.printing-labels .thermal-label-sheet {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  html.printing-labels .thermal-label {
+    page: product-label;
+    box-sizing: border-box;
+    width: 50mm;
+    height: 30mm;
+    max-width: 50mm;
+    max-height: 30mm;
+    margin: 0;
+    padding: 1.2mm 1.5mm;
+    overflow: hidden;
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    color: #000;
+    background: #fff;
+  }
+
+  html.printing-labels .thermal-label:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  html.printing-labels .label-store {
+    margin: 0;
+    font-size: 8px;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  html.printing-labels .label-name {
+    margin: 0.4mm 0 0;
+    max-height: 7mm;
+    overflow: hidden;
+    font-size: 7.5px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  html.printing-labels .label-price {
+    margin: 0.4mm 0 0;
+    font-size: 10px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+  }
+
+  html.printing-labels .label-barcode {
+    margin-top: 0.4mm;
+    direction: ltr;
+    line-height: 0;
+  }
+
+  html.printing-labels .label-barcode svg {
+    max-width: 46mm;
+    height: auto;
+  }
+
+  /* ── A4 supplier statement / reports ── */
+  @page a4-statement {
+    size: A4;
+    margin: 12mm 14mm;
+  }
+
+  html.printing-a4 {
+    width: auto !important;
+  }
+
+  html.printing-a4 body {
+    width: auto !important;
+    max-width: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  html.printing-a4 .flex.h-screen,
+  html.printing-a4 main {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  html.printing-a4 .thermal-receipt,
+  html.printing-a4 .thermal-label-sheet {
+    display: none !important;
+  }
+
+  html.printing-a4 .supplier-statement-print {
+    page: a4-statement;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  html.printing-a4 .supplier-statement-header {
+    text-align: center;
+    margin-bottom: 8mm;
+    padding-bottom: 4mm;
+    border-bottom: 1.5pt solid #000;
+  }
+
+  html.printing-a4 .supplier-statement-header h1 {
+    font-size: 16pt;
+    margin: 0 0 2mm;
+  }
+
+  html.printing-a4 .supplier-statement-table-wrap {
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  html.printing-a4 .supplier-statement-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  html.printing-a4 .supplier-statement-table th,
+  html.printing-a4 .supplier-statement-table td {
+    border: 0.6pt solid #333 !important;
+    padding: 2mm 2.5mm !important;
+    vertical-align: top;
+  }
+
+  html.printing-a4 .supplier-statement-table thead th {
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html.printing-a4 .supplier-statement-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* POS touch keyboard — larger hit targets */
+.pos-touch-kb .hg-button {
+  height: 48px !important;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+}
+
+.pos-touch-kb .hg-enter-key {
+  background: #16a34a !important;
+  color: #fff !important;
+}
+
+.pos-numpad-kb .hg-button {
+  height: 64px !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.pos-numpad-kb .hg-row {
+  justify-content: center;
+}
