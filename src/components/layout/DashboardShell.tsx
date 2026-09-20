@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +16,8 @@ import {
   History,
   Users,
   UserCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { signOut } from "next-auth/react";
@@ -56,16 +59,66 @@ export function DashboardShell({
   const allowed = new Set(navKeysForRole(role));
   const nav = NAV_ITEMS.filter((item) => allowed.has(item.key));
 
+  /**
+   * Mobile/tablet: start collapsed (icons only).
+   * Desktop (lg+): start expanded. User can still toggle on any size.
+   */
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setExpanded(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const showLabels = expanded;
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
-      <aside className="dashboard-no-print flex w-64 flex-col bg-slate-900 text-slate-200">
-        <div className="border-b border-slate-700 px-5 py-5">
-          <p className="text-sm font-semibold text-white">Souq El Obour ERP</p>
-          <p className="mt-1 text-xs text-slate-400">
-            {username} · {role}
-          </p>
+      <aside
+        className={clsx(
+          "dashboard-no-print flex shrink-0 flex-col bg-slate-900 text-slate-200",
+          "transition-all duration-300 ease-in-out",
+          showLabels ? "w-64" : "w-16",
+        )}
+      >
+        <div
+          className={clsx(
+            "flex items-start gap-2 border-b border-slate-700 py-4",
+            showLabels ? "px-4" : "justify-center px-2",
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white"
+            aria-label={showLabels ? "Collapse sidebar" : "Expand sidebar"}
+            title={showLabels ? "Collapse" : "Expand"}
+          >
+            {showLabels ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5" />
+            )}
+          </button>
+          <div
+            className={clsx(
+              "min-w-0 overflow-hidden transition-all duration-300",
+              showLabels ? "max-w-[11rem] opacity-100" : "max-w-0 opacity-0",
+            )}
+          >
+            <p className="truncate text-sm font-semibold whitespace-nowrap text-white">
+              Souq El Obour ERP
+            </p>
+            <p className="mt-1 truncate text-xs whitespace-nowrap text-slate-400">
+              {username} · {role}
+            </p>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
+
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-3">
           {nav.map(({ key, href, label, icon: Icon }) => {
             const active =
               href === "/dashboard"
@@ -75,17 +128,26 @@ export function DashboardShell({
               <Link
                 key={href}
                 href={href}
+                title={label}
                 className={clsx(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                  "flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors",
+                  showLabels ? "gap-3 px-3" : "justify-center px-2",
                   active
                     ? "bg-brand-600 text-white"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white",
                 )}
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 leading-tight">
+                <span
+                  className={clsx(
+                    "min-w-0 overflow-hidden leading-tight whitespace-nowrap transition-all duration-300",
+                    showLabels
+                      ? "max-w-[12rem] opacity-100"
+                      : "max-w-0 opacity-0",
+                  )}
+                >
                   {label}
-                  {key === "users" && (
+                  {key === "users" && showLabels && (
                     <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
                       المستخدمين والصلاحيات
                     </span>
@@ -95,26 +157,54 @@ export function DashboardShell({
             );
           })}
         </nav>
-        <div className="space-y-3 border-t border-slate-700 p-3">
+
+        <div className="space-y-1 border-t border-slate-700 p-2">
           {canUsePos(role) && (
             <Link
               href="/pos"
-              className="block rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white"
+              title="Open POS terminal"
+              className={clsx(
+                "flex items-center rounded-lg py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white",
+                showLabels ? "gap-2 px-3" : "justify-center px-2",
+              )}
             >
-              Open POS terminal
+              <ShoppingBag className="h-4 w-4 shrink-0" />
+              <span
+                className={clsx(
+                  "overflow-hidden whitespace-nowrap transition-all duration-300",
+                  showLabels ? "max-w-[10rem] opacity-100" : "max-w-0 opacity-0",
+                )}
+              >
+                Open POS terminal
+              </span>
             </Link>
           )}
           <button
             type="button"
+            title="Sign out"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-slate-800"
+            className={clsx(
+              "flex w-full items-center rounded-lg py-2 text-sm text-red-300 hover:bg-slate-800",
+              showLabels ? "gap-2 px-3" : "justify-center px-2",
+            )}
           >
-            <LogOut className="h-4 w-4" />
-            Sign out
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span
+              className={clsx(
+                "overflow-hidden whitespace-nowrap transition-all duration-300",
+                showLabels ? "max-w-[10rem] opacity-100" : "max-w-0 opacity-0",
+              )}
+            >
+              Sign out
+            </span>
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6 print:p-0">{children}</main>
+
+      {/* flex-1 main shrinks/grows as sidebar width animates — no fixed margin needed */}
+      <main className="min-w-0 flex-1 overflow-y-auto p-4 transition-all duration-300 sm:p-6 print:p-0">
+        {children}
+      </main>
     </div>
   );
 }
