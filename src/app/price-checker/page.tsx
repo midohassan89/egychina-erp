@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScanBarcode } from "lucide-react";
-import { formatEGP } from "@/lib/pos/money";
 
 type LookupResult =
   | {
@@ -20,9 +18,23 @@ type LookupResult =
 
 const RESET_MS = 6000;
 
+/** Safe EGP formatter — never throws if Intl/locale is incomplete. */
+function formatPriceSafe(amount: number): string {
+  const n = Number.isFinite(amount) ? amount : 0;
+  try {
+    return new Intl.NumberFormat("en-EG", {
+      style: "currency",
+      currency: "EGP",
+      minimumFractionDigits: 2,
+    }).format(n);
+  } catch {
+    return `${n.toFixed(2)} EGP`;
+  }
+}
+
 export default function PriceCheckerKioskPage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const resetTimerRef = useRef<number | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mounted, setMounted] = useState(false);
   const [buffer, setBuffer] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "result" | "miss">(
@@ -30,20 +42,25 @@ export default function PriceCheckerKioskPage() {
   );
   const [result, setResult] = useState<LookupResult | null>(null);
 
-  const focusInput = useCallback(() => {
-    const el = inputRef.current;
-    if (!el || typeof document === "undefined") return;
-    try {
-      el.focus({ preventScroll: true });
-    } catch {
-      el.focus();
+  const clearResetTimer = useCallback(() => {
+    if (resetTimerRef.current != null) {
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
     }
   }, []);
 
-  const clearResetTimer = useCallback(() => {
-    if (resetTimerRef.current != null) {
-      window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = null;
+  const focusInput = useCallback(() => {
+    // Must only run after mount (called from effects / handlers).
+    const el = inputRef.current;
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      try {
+        el.focus();
+      } catch {
+        // ignore
+      }
     }
   }, []);
 
@@ -52,12 +69,13 @@ export default function PriceCheckerKioskPage() {
     setStatus("idle");
     setResult(null);
     setBuffer("");
-    window.requestAnimationFrame(() => focusInput());
+    // Defer focus to next tick — only after mount.
+    setTimeout(() => focusInput(), 0);
   }, [clearResetTimer, focusInput]);
 
   const scheduleReset = useCallback(() => {
     clearResetTimer();
-    resetTimerRef.current = window.setTimeout(() => {
+    resetTimerRef.current = setTimeout(() => {
       returnToIdle();
     }, RESET_MS);
   }, [clearResetTimer, returnToIdle]);
@@ -72,7 +90,10 @@ export default function PriceCheckerKioskPage() {
       setBuffer("");
 
       try {
-        const token = new URLSearchParams(window.location.search).get("token");
+        const token =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search).get("token")
+            : null;
         const qs = new URLSearchParams({ barcode: code });
         if (token) qs.set("token", token);
 
@@ -117,67 +138,93 @@ export default function PriceCheckerKioskPage() {
         setStatus("miss");
         scheduleReset();
       } finally {
-        focusInput();
+        setTimeout(() => focusInput(), 0);
       }
     },
     [clearResetTimer, focusInput, scheduleReset],
   );
 
-  // Mount gate — only touch the DOM after the client has hydrated.
+  // 1) Mark mounted only on the client after hydration.
   useEffect(() => {
     console.log("Price checker mounted");
     setMounted(true);
-  }, []);
+    return () => {
+      clearResetTimer();
+    };
+  }, [clearResetTimer]);
 
-  // Auto-focus + re-focus on blur (after mount only).
+  // 2) Focus / re-focus ONLY after mounted.
   useEffect(() => {
     if (!mounted) return;
 
     focusInput();
-    const id = window.setInterval(() => {
-      if (document.activeElement !== inputRef.current) {
+    const id = setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.activeElement !== inputRef.current
+      ) {
         focusInput();
       }
     }, 1500);
 
-    return () => window.clearInterval(id);
+    return () => clearInterval(id);
   }, [mounted, focusInput]);
 
-  useEffect(() => {
-    return () => clearResetTimer();
-  }, [clearResetTimer]);
+  // Prevent hydration mismatch: identical null-ish shell until client mount.
+  if (!mounted) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          backgroundColor: "#0b1220",
+          color: "#a7f3d0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.5rem",
+          fontWeight: 700,
+        }}
+      >
+        جاري التحميل…
+      </div>
+    );
+  }
 
   return (
     <div
-      className="relative flex h-full min-h-screen w-full flex-col overflow-hidden text-white"
+      dir="rtl"
+      onClick={focusInput}
       style={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        minHeight: "100vh",
+        overflow: "hidden",
         backgroundColor: "#0b1220",
         color: "#ffffff",
-        minHeight: "100dvh",
+        userSelect: "none",
       }}
-      onClick={() => {
-        if (mounted) focusInput();
-      }}
-      dir="rtl"
     >
-      {/* Atmosphere — keep below content via z-index */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0"
         style={{
+          pointerEvents: "none",
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
           background:
             "radial-gradient(ellipse 80% 55% at 50% 0%, rgba(16,185,129,0.35), transparent 55%), linear-gradient(180deg, #0f172a 0%, #020617 100%)",
         }}
       />
 
-      {/* Scanner capture — off-screen but focusable (not opacity-0 + pointer-events-none) */}
       <input
         ref={inputRef}
         value={buffer}
         onChange={(e) => setBuffer(e.target.value)}
         onBlur={() => {
-          if (!mounted) return;
-          window.setTimeout(focusInput, 30);
+          setTimeout(focusInput, 30);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -188,10 +235,8 @@ export default function PriceCheckerKioskPage() {
           }
         }}
         autoComplete="off"
-        autoCorrect="off"
         spellCheck={false}
         aria-label="Barcode scanner input"
-        className="absolute"
         style={{
           position: "absolute",
           left: 0,
@@ -207,19 +252,34 @@ export default function PriceCheckerKioskPage() {
       />
 
       <header
-        className="relative z-20 flex shrink-0 items-center justify-between px-6 py-5 sm:px-10"
-        style={{ color: "#ffffff" }}
+        style={{
+          position: "relative",
+          zIndex: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "1.25rem 1.5rem",
+          color: "#ffffff",
+        }}
       >
         <div>
           <p
-            className="text-sm font-semibold tracking-wide"
-            style={{ color: "#34d399" }}
+            style={{
+              margin: 0,
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              color: "#34d399",
+            }}
           >
             سوق العبور
           </p>
           <h1
-            className="text-lg font-bold sm:text-xl"
-            style={{ color: "#ffffff" }}
+            style={{
+              margin: "0.15rem 0 0",
+              fontSize: "1.15rem",
+              fontWeight: 700,
+              color: "#ffffff",
+            }}
           >
             استعلام السعر · Price Checker
           </h1>
@@ -231,8 +291,16 @@ export default function PriceCheckerKioskPage() {
               e.stopPropagation();
               returnToIdle();
             }}
-            className="rounded-xl px-4 py-2 text-sm font-bold"
-            style={{ backgroundColor: "rgba(255,255,255,0.15)", color: "#fff" }}
+            style={{
+              borderRadius: "0.75rem",
+              padding: "0.5rem 1rem",
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              backgroundColor: "rgba(255,255,255,0.15)",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+            }}
           >
             مسح الشاشة
           </button>
@@ -240,107 +308,142 @@ export default function PriceCheckerKioskPage() {
       </header>
 
       <main
-        className="relative z-20 flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-16 sm:px-10"
-        style={{ color: "#ffffff" }}
+        style={{
+          position: "relative",
+          zIndex: 20,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1.5rem",
+          color: "#ffffff",
+          textAlign: "center",
+        }}
       >
-        {!mounted && (
-          <p className="text-2xl font-bold" style={{ color: "#a7f3d0" }}>
-            جاري التحميل…
-          </p>
-        )}
-
-        {mounted && status === "idle" && (
-          <div className="flex max-w-3xl flex-col items-center text-center">
+        {status === "idle" && (
+          <div style={{ maxWidth: "48rem" }}>
             <div
-              className="kiosk-scan-pulse mb-10 flex h-36 w-36 items-center justify-center rounded-3xl sm:h-44 sm:w-44"
               style={{
+                margin: "0 auto 2.5rem",
+                width: "9rem",
+                height: "9rem",
+                borderRadius: "1.5rem",
                 border: "1px solid rgba(52,211,153,0.4)",
                 backgroundColor: "rgba(16,185,129,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "3.5rem",
               }}
             >
-              <ScanBarcode
-                className="h-20 w-20 sm:h-24 sm:w-24"
-                style={{ color: "#34d399" }}
-                strokeWidth={1.75}
-              />
+              ⎚
             </div>
             <p
-              className="text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl"
-              style={{ color: "#ffffff" }}
+              style={{
+                margin: 0,
+                fontSize: "clamp(2rem, 6vw, 3.75rem)",
+                fontWeight: 800,
+                lineHeight: 1.2,
+                color: "#ffffff",
+              }}
             >
               مرر الباركود لمعرفة السعر
             </p>
             <p
-              className="mt-5 text-lg sm:text-xl"
-              style={{ color: "#cbd5e1" }}
+              style={{
+                marginTop: "1.25rem",
+                fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                color: "#cbd5e1",
+              }}
             >
               Scan the barcode to see the price
             </p>
           </div>
         )}
 
-        {mounted && status === "loading" && (
-          <p
-            className="text-3xl font-bold sm:text-4xl"
-            style={{ color: "#6ee7b7" }}
-          >
+        {status === "loading" && (
+          <p style={{ fontSize: "2rem", fontWeight: 700, color: "#6ee7b7" }}>
             جاري البحث…
           </p>
         )}
 
-        {mounted && status === "miss" && result && !result.found && (
-          <div className="flex max-w-3xl flex-col items-center text-center">
+        {status === "miss" && result && !result.found && (
+          <div style={{ maxWidth: "48rem" }}>
             <p
-              className="text-5xl font-extrabold sm:text-6xl"
-              style={{ color: "#f87171" }}
+              style={{
+                margin: 0,
+                fontSize: "clamp(2.5rem, 7vw, 3.75rem)",
+                fontWeight: 800,
+                color: "#f87171",
+              }}
             >
               المنتج غير موجود
             </p>
             <p
-              className="mt-4 font-mono text-2xl"
-              style={{ color: "#fecaca" }}
+              style={{
+                marginTop: "1rem",
+                fontFamily: "monospace",
+                fontSize: "1.5rem",
+                color: "#fecaca",
+              }}
             >
               {result.barcode}
             </p>
-            <p className="mt-8" style={{ color: "#94a3b8" }}>
+            <p style={{ marginTop: "2rem", color: "#94a3b8" }}>
               يعاد العرض تلقائياً خلال ثوانٍ…
             </p>
           </div>
         )}
 
-        {mounted && status === "result" && result && result.found && (
-          <div className="flex w-full max-w-5xl flex-col items-center gap-8 text-center">
+        {status === "result" && result && result.found && (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "64rem",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "2rem",
+            }}
+          >
             {result.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={result.imageUrl}
                 alt=""
-                className="h-48 w-48 rounded-3xl object-cover shadow-2xl sm:h-56 sm:w-56"
+                style={{
+                  width: "14rem",
+                  height: "14rem",
+                  borderRadius: "1.5rem",
+                  objectFit: "cover",
+                }}
               />
-            ) : (
-              <div
-                className="flex h-40 w-40 items-center justify-center rounded-3xl"
-                style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-              >
-                <ScanBarcode
-                  className="h-16 w-16"
-                  style={{ color: "#64748b" }}
-                />
-              </div>
-            )}
+            ) : null}
             <h2
-              className="max-w-4xl text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl lg:text-7xl"
-              style={{ color: "#ffffff" }}
+              style={{
+                margin: 0,
+                maxWidth: "56rem",
+                fontSize: "clamp(2rem, 6vw, 4rem)",
+                fontWeight: 800,
+                lineHeight: 1.2,
+                color: "#ffffff",
+              }}
             >
               {result.name}
             </h2>
             <p
-              className="text-6xl font-extrabold tabular-nums tracking-tight sm:text-7xl md:text-8xl lg:text-9xl"
-              style={{ color: "#34d399" }}
+              style={{
+                margin: 0,
+                fontSize: "clamp(3rem, 10vw, 6rem)",
+                fontWeight: 800,
+                fontVariantNumeric: "tabular-nums",
+                color: "#34d399",
+              }}
             >
-              {formatEGP(result.price)}
+              {formatPriceSafe(result.price)}
             </p>
-            <p className="text-sm" style={{ color: "#94a3b8" }}>
+            <p style={{ margin: 0, fontSize: "0.875rem", color: "#94a3b8" }}>
               يعود للشاشة الرئيسية خلال ٦ ثوانٍ
             </p>
           </div>
