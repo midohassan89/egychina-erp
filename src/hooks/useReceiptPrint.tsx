@@ -17,12 +17,15 @@ export function useReceiptPrint() {
   const pendingPrintRef = useRef(false);
   const afterPrintCallbackRef = useRef<(() => void) | null>(null);
 
-  const printReceipt = useCallback((sale: LocalSale) => {
-    afterPrintCallbackRef.current = null;
-    pendingPrintRef.current = true;
-    document.documentElement.classList.remove("printing-labels");
-    setJob({ kind: "sale", sale });
-  }, []);
+  const printReceipt = useCallback(
+    (sale: LocalSale, onAfterPrint?: () => void) => {
+      afterPrintCallbackRef.current = onAfterPrint ?? null;
+      pendingPrintRef.current = true;
+      document.documentElement.classList.remove("printing-labels");
+      setJob({ kind: "sale", sale });
+    },
+    [],
+  );
 
   /**
    * Print Z-Report then optionally run a callback after the print dialog closes.

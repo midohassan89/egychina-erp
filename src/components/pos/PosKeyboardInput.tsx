@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  forwardRef,
   useEffect,
   useId,
   useRef,
@@ -40,19 +41,26 @@ function scrollFocusedInputIntoView(fallback: HTMLElement) {
  * Controlled input that binds to the global POS virtual keyboard on focus.
  * Handlers are kept in refs so value updates do not re-bind / fight the keyboard.
  */
-export function PosKeyboardInput({
-  value,
-  onChange,
-  mode = "text",
-  onEnter,
-  disableVirtualKeyboard,
-  inputName,
-  onFocus,
-  ...rest
-}: PosKeyboardInputProps) {
+export const PosKeyboardInput = forwardRef<
+  HTMLInputElement,
+  PosKeyboardInputProps
+>(function PosKeyboardInput(
+  {
+    value,
+    onChange,
+    mode = "text",
+    onEnter,
+    disableVirtualKeyboard,
+    inputName,
+    onFocus,
+    ...rest
+  },
+  ref,
+) {
   const kb = usePosKeyboardOptional();
   const reactId = useId();
   const name = inputName ?? `pos-kb-${reactId}`;
+  const localRef = useRef<HTMLInputElement | null>(null);
 
   const onChangeRef = useRef(onChange);
   const onEnterRef = useRef(onEnter);
@@ -71,6 +79,12 @@ export function PosKeyboardInput({
     syncFieldValue(name, value);
   }, [value, name, keyboardOpen, activeInputName, syncFieldValue]);
 
+  function assignRef(node: HTMLInputElement | null) {
+    localRef.current = node;
+    if (typeof ref === "function") ref(node);
+    else if (ref) ref.current = node;
+  }
+
   function handleFocus(e: FocusEvent<HTMLInputElement>) {
     onFocus?.(e);
     if (disableVirtualKeyboard || !kb) return;
@@ -88,6 +102,7 @@ export function PosKeyboardInput({
   return (
     <input
       {...rest}
+      ref={assignRef}
       data-pos-kb-name={name}
       value={value}
       inputMode={rest.inputMode ?? "none"}
@@ -102,4 +117,4 @@ export function PosKeyboardInput({
       }}
     />
   );
-}
+});

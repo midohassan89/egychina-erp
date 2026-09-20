@@ -18,7 +18,10 @@ import {
   PinAuthorizationModal,
   type PinAuthAction,
 } from "@/components/pos/PinAuthorizationModal";
-import { ProductGrid } from "@/components/pos/ProductGrid";
+import {
+  ProductGrid,
+  type ProductGridHandle,
+} from "@/components/pos/ProductGrid";
 import { ShiftStartScreen } from "@/components/pos/ShiftStartScreen";
 import { ZReportModal } from "@/components/pos/ZReportModal";
 import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboardContext";
@@ -72,8 +75,15 @@ function POSPageInner() {
     null,
   );
   const cartListRef = useRef<HTMLDivElement | null>(null);
+  const productGridRef = useRef<ProductGridHandle | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const scrollTimerRef = useRef<number | null>(null);
+
+  const focusBarcodeSearch = useCallback(() => {
+    window.setTimeout(() => {
+      productGridRef.current?.focusSearch();
+    }, 50);
+  }, []);
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
@@ -381,7 +391,10 @@ function POSPageInner() {
             onDecrement={cart.decrement}
             onRemove={handleRemoveLine}
             onUpdateLine={cart.updateLine}
-            onClear={cart.clear}
+            onClear={() => {
+              cart.clear();
+              focusBarcodeSearch();
+            }}
             onCheckout={() => setCheckoutOpen(true)}
             isCheckingOut={checkout.isSubmitting}
           />
@@ -390,6 +403,7 @@ function POSPageInner() {
             style={insetStyle}
           >
             <ProductGrid
+              ref={productGridRef}
               products={catalog}
               categories={[]}
               isLoading={isLoading || shiftApi.isLoading}
@@ -466,7 +480,9 @@ function POSPageInner() {
               } else {
                 setScanMessage(`Sale complete${changeNote}${syncNote}`);
               }
-              printReceipt(sale);
+              // Focus for next customer after print dialog closes (and immediately as fallback).
+              focusBarcodeSearch();
+              printReceipt(sale, focusBarcodeSearch);
             }
           }}
         />
