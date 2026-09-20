@@ -18,6 +18,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Public customer kiosk — no login required
+  if (
+    pathname.startsWith("/price-checker") ||
+    pathname.startsWith("/api/price-checker")
+  ) {
+    return NextResponse.next();
+  }
+
   if (!isLoggedIn && pathname !== "/login") {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);

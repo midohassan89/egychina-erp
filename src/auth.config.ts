@@ -18,6 +18,12 @@ export const authConfig = {
       const { pathname } = request.nextUrl;
       if (pathname.startsWith("/api/auth")) return true;
       if (pathname === "/login") return true;
+      if (
+        pathname.startsWith("/price-checker") ||
+        pathname.startsWith("/api/price-checker")
+      ) {
+        return true;
+      }
       return !!auth?.user;
     },
     jwt({ token, user }) {
