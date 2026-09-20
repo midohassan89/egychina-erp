@@ -46,7 +46,7 @@ export default function POSPage() {
 
 function POSPageInner() {
   const { data: session } = useSession();
-  const { keyboardOpen, insetStyle } = usePosKeyboard();
+  const { insetStyle } = usePosKeyboard();
   const { products, productCount, isLoading, isOnline } = useCatalogSync();
   const [returnMode, setReturnMode] = useState(false);
   const [managerAuth, setManagerAuth] = useState<{
@@ -303,14 +303,7 @@ function POSPageInner() {
         />
       )}
 
-      <div
-        className={
-          keyboardOpen
-            ? "pos-no-print flex h-full min-h-0 flex-col overflow-y-auto bg-slate-200 select-none"
-            : "pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none"
-        }
-        style={insetStyle}
-      >
+      <div className="pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none">
         <header
           className={
             returnMode
@@ -392,20 +385,25 @@ function POSPageInner() {
             onCheckout={() => setCheckoutOpen(true)}
             isCheckingOut={checkout.isSubmitting}
           />
-          <ProductGrid
-            products={catalog}
-            categories={[]}
-            isLoading={isLoading || shiftApi.isLoading}
-            onAdd={(product) => {
-              const existingItem = cart.lines.find(
-                (item) =>
-                  item.product.id === product.id && !item.isScalePriced,
-              );
-              cart.addProduct(product);
-              flashCartItem(product.id, !existingItem);
-            }}
-            onBarcodeEnter={handleBarcodeEnter}
-          />
+          <div
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+            style={insetStyle}
+          >
+            <ProductGrid
+              products={catalog}
+              categories={[]}
+              isLoading={isLoading || shiftApi.isLoading}
+              onAdd={(product) => {
+                const existingItem = cart.lines.find(
+                  (item) =>
+                    item.product.id === product.id && !item.isScalePriced,
+                );
+                cart.addProduct(product);
+                flashCartItem(product.id, !existingItem);
+              }}
+              onBarcodeEnter={handleBarcodeEnter}
+            />
+          </div>
         </div>
 
         <CheckoutDialog

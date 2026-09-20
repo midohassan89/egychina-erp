@@ -46,9 +46,8 @@ function isInputElement(target: EventTarget | null): boolean {
 }
 
 /**
- * Global POS virtual keyboard — fixed bottom, z-index 9999.
- * Binds to whichever PosKeyboardInput currently owns activeInputName.
- * Click / tap outside the keyboard (and not on an input) dismisses it.
+ * POS virtual keyboard — fixed to the products column (right),
+ * so the cart on the left stays fully visible and interactive.
  */
 export function PosTouchKeyboardHost() {
   const {
@@ -120,17 +119,17 @@ export function PosTouchKeyboardHost() {
   return (
     <div
       ref={containerRef}
-      className="pos-no-print fixed inset-x-0 bottom-0 z-[9999] border-t border-slate-300 bg-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.18)]"
+      className="pos-no-print fixed bottom-0 left-0 right-0 z-[9999] border-t border-slate-300 bg-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.18)] md:left-[26rem] lg:left-[30rem]"
       onMouseDown={(e) => e.preventDefault()}
     >
       <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
           {isNumpad ? "Numpad" : isArabic ? "لوحة عربية" : "English keyboard"}
         </p>
 
         <div className="flex items-center gap-2">
           {!isNumpad && (
-            <div className="inline-flex overflow-hidden rounded-lg border border-slate-400 bg-white text-sm font-bold">
+            <div className="inline-flex overflow-hidden rounded-lg border border-slate-400 bg-white text-sm font-extrabold">
               <button
                 type="button"
                 onClick={() => setTextLanguage("en")}
@@ -161,16 +160,17 @@ export function PosTouchKeyboardHost() {
           <button
             type="button"
             onClick={close}
-            className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-900"
+            className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-bold text-white hover:bg-slate-900"
           >
             أخفاء
           </button>
         </div>
       </div>
 
+      {/* Always LTR so Arabic rows match a physical keyboard (ض on the left). */}
       <div
         className={clsx("px-2 pb-3", isNumpad && "mx-auto max-w-md")}
-        dir={isArabic ? "rtl" : "ltr"}
+        dir="ltr"
       >
         <Keyboard
           key={`kb-${keyboardLayout}-${activeInputName}`}
