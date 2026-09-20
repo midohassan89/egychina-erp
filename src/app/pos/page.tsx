@@ -23,6 +23,7 @@ import {
   type ProductGridHandle,
 } from "@/components/pos/ProductGrid";
 import { ProductNotFoundModal } from "@/components/pos/ProductNotFoundModal";
+import { PriceCheckModal } from "@/components/pos/PriceCheckModal";
 import { ShiftStartScreen } from "@/components/pos/ShiftStartScreen";
 import { ZReportModal } from "@/components/pos/ZReportModal";
 import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboardContext";
@@ -75,6 +76,7 @@ function POSPageInner() {
   const [scanError, setScanError] = useState<string | null>(null);
   /** Blocking not-found interrupt — must dismiss before next scan. */
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+  const [priceCheckOpen, setPriceCheckOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<number | null>(
     null,
   );
@@ -91,6 +93,35 @@ function POSPageInner() {
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
+
+  const openPriceCheck = useCallback(() => {
+    if (shiftLocked || isClosingShift || notFoundBarcode) return;
+    setPriceCheckOpen(true);
+  }, [shiftLocked, isClosingShift, notFoundBarcode]);
+
+  const closePriceCheck = useCallback(() => {
+    setPriceCheckOpen(false);
+    focusBarcodeSearch();
+  }, [focusBarcodeSearch]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "F4") return;
+      if (notFoundBarcode || checkoutOpen || zReportOpen || pendingPin) return;
+      e.preventDefault();
+      if (shiftLocked || isClosingShift) return;
+      setPriceCheckOpen((open) => (open ? open : true));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    notFoundBarcode,
+    checkoutOpen,
+    zReportOpen,
+    pendingPin,
+    shiftLocked,
+    isClosingShift,
+  ]);
 
   const disableReturnMode = useCallback(() => {
     setReturnMode(false);
@@ -194,7 +225,7 @@ function POSPageInner() {
 
   const handleBarcodeEnter = useCallback(
     (rawInput: string): boolean => {
-      if (shiftLocked || notFoundBarcode) return false;
+      if (shiftLocked || notFoundBarcode || priceCheckOpen) return false;
 
       const result = resolveScannedBarcode(rawInput, catalog);
 
@@ -248,6 +279,7 @@ function POSPageInner() {
       returnMode,
       flashCartItem,
       notFoundBarcode,
+      priceCheckOpen,
       closeKeyboard,
     ],
   );
@@ -422,7 +454,8 @@ function POSPageInner() {
               products={catalog}
               categories={[]}
               isLoading={isLoading || shiftApi.isLoading}
-              scanLocked={!!notFoundBarcode}
+              scanLocked={!!notFoundBarcode || priceCheckOpen}
+              onOpenPriceCheck={openPriceCheck}
               onAdd={(product) => {
                 const existingItem = cart.lines.find(
                   (item) =>
@@ -538,6 +571,12 @@ function POSPageInner() {
             onDismiss={dismissNotFound}
           />
         )}
+
+        <PriceCheckModal
+          open={priceCheckOpen}
+          products={catalog}
+          onClose={closePriceCheck}
+        />
 
         <ZReportModal
           open={zReportOpen}
