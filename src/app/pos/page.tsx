@@ -22,11 +22,13 @@ import {
   ProductGrid,
   type ProductGridHandle,
 } from "@/components/pos/ProductGrid";
+import { ProductNotFoundModal } from "@/components/pos/ProductNotFoundModal";
 import { ShiftStartScreen } from "@/components/pos/ShiftStartScreen";
 import { ZReportModal } from "@/components/pos/ZReportModal";
 import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboardContext";
 import { PosTouchKeyboardHost } from "@/components/pos/PosTouchKeyboard";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
+import { playErrorBeep } from "@/lib/pos/errorBeep";
 import type {
   CachedCustomer,
   CachedProduct,
@@ -49,7 +51,7 @@ export default function POSPage() {
 
 function POSPageInner() {
   const { data: session } = useSession();
-  const { insetStyle } = usePosKeyboard();
+  const { insetStyle, close: closeKeyboard } = usePosKeyboard();
   const { products, productCount, isLoading, isOnline } = useCatalogSync();
   const [returnMode, setReturnMode] = useState(false);
   const [managerAuth, setManagerAuth] = useState<{
@@ -71,6 +73,8 @@ function POSPageInner() {
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  /** Blocking not-found interrupt — must dismiss before next scan. */
+  const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<number | null>(
     null,
   );
@@ -190,12 +194,16 @@ function POSPageInner() {
 
   const handleBarcodeEnter = useCallback(
     (rawInput: string): boolean => {
-      if (shiftLocked) return false;
+      if (shiftLocked || notFoundBarcode) return false;
 
       const result = resolveScannedBarcode(rawInput, catalog);
 
       if ("error" in result) {
-        setScanError(result.error);
+        const code = rawInput.trim().replace(/\D/g, "") || rawInput.trim();
+        playErrorBeep();
+        closeKeyboard();
+        setNotFoundBarcode(code);
+        setScanError(null);
         setScanMessage(null);
         return false;
       }
@@ -239,8 +247,15 @@ function POSPageInner() {
       shiftLocked,
       returnMode,
       flashCartItem,
+      notFoundBarcode,
+      closeKeyboard,
     ],
   );
+
+  const dismissNotFound = useCallback(() => {
+    setNotFoundBarcode(null);
+    focusBarcodeSearch();
+  }, [focusBarcodeSearch]);
 
   const finalizeClose = useCallback(
     async (actualCash: number) => {
@@ -407,6 +422,7 @@ function POSPageInner() {
               products={catalog}
               categories={[]}
               isLoading={isLoading || shiftApi.isLoading}
+              scanLocked={!!notFoundBarcode}
               onAdd={(product) => {
                 const existingItem = cart.lines.find(
                   (item) =>
@@ -515,6 +531,13 @@ function POSPageInner() {
             }
           }}
         />
+
+        {notFoundBarcode && (
+          <ProductNotFoundModal
+            barcode={notFoundBarcode}
+            onDismiss={dismissNotFound}
+          />
+        )}
 
         <ZReportModal
           open={zReportOpen}

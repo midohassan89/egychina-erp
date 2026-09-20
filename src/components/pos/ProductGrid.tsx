@@ -25,13 +25,15 @@ interface ProductGridProps {
   isLoading: boolean;
   onAdd: (product: CachedProduct) => void;
   onBarcodeEnter: (rawInput: string) => boolean;
+  /** When true, ignore scans until the not-found modal is dismissed. */
+  scanLocked?: boolean;
 }
 
 type PosTab = "all" | "favorites";
 
 export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
   function ProductGrid(
-    { products, isLoading, onAdd, onBarcodeEnter },
+    { products, isLoading, onAdd, onBarcodeEnter, scanLocked = false },
     ref,
   ) {
     const [activeTab, setActiveTab] = useState<PosTab>("all");
@@ -71,15 +73,20 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
     }, [products, nameFilter, activeTab]);
 
     function submitBarcode(raw: string) {
+      if (scanLocked) return;
       const value = raw.trim();
       if (!value) return;
-      onBarcodeEnter(value);
-      // Always clear so the next scan is ready (found or not found).
+      const ok = onBarcodeEnter(value);
       setQuery("");
-      window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      });
+      // On not-found, parent shows a blocking modal — do NOT refocus yet.
+      if (ok) {
+        window.requestAnimationFrame(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        });
+      } else {
+        searchInputRef.current?.blur();
+      }
     }
 
     function handleSubmit(event: FormEvent) {
@@ -99,10 +106,17 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
               value={query}
               onChange={setQuery}
               onEnter={() => submitBarcode(queryRef.current)}
-              onFocus={(e) => e.target.select()}
+              onFocus={(e) => {
+                if (scanLocked) {
+                  e.target.blur();
+                  return;
+                }
+                e.target.select();
+              }}
+              disabled={scanLocked}
               placeholder="Search name or scan barcode…"
               autoComplete="off"
-              className="w-full rounded-xl border border-slate-300 py-3 pl-11 pr-4 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-300 py-3 pl-11 pr-4 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </form>
 
