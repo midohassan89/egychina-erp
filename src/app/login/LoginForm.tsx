@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
+import { Eye, EyeOff } from "lucide-react";
 import { homeForRole } from "@/lib/auth/roles";
 
 export default function LoginForm() {
@@ -10,6 +11,7 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -98,16 +100,31 @@ export default function LoginForm() {
             <span className="mb-1 block text-sm font-medium text-slate-700">
               Password
             </span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoading}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
-            />
+            <div className="relative">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                className="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-11 text-base focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                disabled={isLoading}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </label>
 
           {error && (
@@ -124,12 +141,6 @@ export default function LoginForm() {
             {isLoading ? "Logging in..." : "Sign in"}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Default admin: <code className="text-slate-600">admin</code> /{" "}
-          <code className="text-slate-600">admin123</code> · PIN{" "}
-          <code className="text-slate-600">1234</code>
-        </p>
       </div>
     </div>
   );
