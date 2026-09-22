@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveProductUnitCost } from "@/lib/inventory/resolveUnitCost";
+import {
+  resolveLastPurchaseUnitCost,
+  resolveProductUnitCost,
+} from "@/lib/inventory/resolveUnitCost";
 
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
@@ -17,7 +20,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const productId = new URL(request.url).searchParams.get("productId")?.trim();
+  const { searchParams } = new URL(request.url);
+  const productId = searchParams.get("productId")?.trim();
   if (!productId) {
     return NextResponse.json({ error: "productId required" }, { status: 400 });
   }
@@ -37,7 +41,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
 
-  const unitCost = await resolveProductUnitCost(prisma, productId);
+  const unitCost =
+    searchParams.get("purchaseOnly") === "1"
+      ? await resolveLastPurchaseUnitCost(prisma, productId)
+      : await resolveProductUnitCost(prisma, productId);
 
   return NextResponse.json({
     productId: product.id,

@@ -3,6 +3,22 @@ import { roundMoney } from "@/lib/pos/money";
 
 type TxClient = Prisma.TransactionClient | PrismaClient;
 
+/** Last purchase unit cost only; returns 0 when none exists. */
+export async function resolveLastPurchaseUnitCost(
+  db: TxClient,
+  productId: string,
+): Promise<number> {
+  const lastPurchase = await db.purchaseInvoiceItem.findFirst({
+    where: { productId },
+    orderBy: { id: "desc" },
+    select: { unitCost: true },
+  });
+  if (lastPurchase && Number.isFinite(lastPurchase.unitCost)) {
+    return roundMoney(lastPurchase.unitCost);
+  }
+  return 0;
+}
+
 /**
  * Resolve unit cost for financial impact:
  * latest purchase invoice line cost, else selling price as fallback.
