@@ -133,7 +133,7 @@ export function useCheckout() {
 
       await saveSale(sale);
 
-      // Update Prisma shift + persist Sale for Reports.
+      // Update Prisma shift + persist Sale for Reports + stock deduction.
       if (shiftId) {
         try {
           const checkoutRes = await fetch("/api/checkout", {
@@ -159,7 +159,21 @@ export function useCheckout() {
           });
           if (!checkoutRes.ok) {
             const body = (await checkoutRes.json()) as { error?: string };
-            console.warn("[checkout] shift/sale persist failed", body.error);
+            const message = body.error ?? "Checkout failed";
+            console.warn("[checkout] shift/sale persist failed", message);
+            // Stock / validation errors must stop the ticket
+            if (checkoutRes.status === 400 || checkoutRes.status === 409) {
+              const failed: LocalSale = {
+                ...sale,
+                syncStatus: "failed",
+                syncError: message,
+              };
+              await saveSale(failed);
+              setLastSale(failed);
+              setError(message);
+              setIsSubmitting(false);
+              return failed;
+            }
           }
         } catch (err) {
           console.warn("[checkout] shift/sale persist error", err);

@@ -323,6 +323,10 @@ function ProductsManagement() {
   }
 
   async function saveStockQty(product: AdminProductRow, raw: string) {
+    if (product.linkedProductId) {
+      toast("Virtual bundles have no own stock — edit the base unit", "error");
+      return;
+    }
     const qty = parseInt(raw, 10);
     if (!Number.isFinite(qty) || qty < 0) {
       toast("Enter a valid stock quantity", "error");
@@ -368,6 +372,8 @@ function ProductsManagement() {
     name: string;
     sku: string;
     barcode: string;
+    linkedProductId: string | null;
+    bundleMultiplier: number | null;
   }) {
     if (!editProduct) return;
     setIsEditSaving(true);
@@ -379,6 +385,8 @@ function ProductsManagement() {
           name: values.name,
           sku: values.sku || null,
           barcode: values.barcode || null,
+          linkedProductId: values.linkedProductId,
+          bundleMultiplier: values.bundleMultiplier,
         }),
       });
       const data = (await res.json()) as {
@@ -883,7 +891,14 @@ function ProductRow({
         )}
       </td>
       <td className="px-4 py-3">
-        {view === "active" ? (
+        {product.linkedProductId ? (
+          <span
+            className="inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200"
+            title={`Virtual pack ×${product.bundleMultiplier ?? "?"}`}
+          >
+            Bundle ×{product.bundleMultiplier ?? "?"}
+          </span>
+        ) : view === "active" ? (
           <input
             type="number"
             min={0}

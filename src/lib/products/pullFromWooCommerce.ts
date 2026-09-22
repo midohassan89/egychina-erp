@@ -61,6 +61,12 @@ export async function pullProductsFromWooCommerce(): Promise<{
     const stockStatus =
       wc.stock_status === "outofstock" ? "outofstock" : "instock";
 
+    const existing = await prisma.product.findUnique({
+      where: { wcId: wc.id },
+      select: { linkedProductId: true },
+    });
+    const isVirtualBundle = Boolean(existing?.linkedProductId);
+
     await prisma.product.upsert({
       where: { wcId: wc.id },
       create: {
@@ -81,8 +87,8 @@ export async function pullProductsFromWooCommerce(): Promise<{
         barcode,
         price,
         salePrice,
-        stockQuantity,
-        stockStatus,
+        // Preserve virtual-bundle inventory (stock lives on linked base unit)
+        ...(isVirtualBundle ? {} : { stockQuantity, stockStatus }),
         imageUrl,
         // Do not clear soft-delete on pull
       },

@@ -14,6 +14,9 @@ export function prismaProductToCached(product: Product): CachedProduct {
     product.salePrice != null && product.salePrice > 0
       ? String(product.salePrice)
       : "";
+  const isBundle =
+    Boolean(product.linkedProductId) &&
+    Number(product.bundleMultiplier) > 0;
   const stockStatus =
     product.stockStatus === "outofstock" ? "outofstock" : "instock";
 
@@ -28,7 +31,8 @@ export function prismaProductToCached(product: Product): CachedProduct {
     on_sale: Boolean(sale),
     stock_quantity: product.stockQuantity,
     stock_status: stockStatus,
-    manage_stock: true,
+    // Virtual bundles do not manage their own stock
+    manage_stock: !isBundle,
     categories: [],
     images: product.imageUrl
       ? [
@@ -49,5 +53,8 @@ export function prismaProductToCached(product: Product): CachedProduct {
       : [],
     cachedAt: now,
     isFavorite: product.isFavorite,
+    prismaId: product.id,
+    linkedProductId: product.linkedProductId,
+    bundleMultiplier: product.bundleMultiplier,
   };
 }

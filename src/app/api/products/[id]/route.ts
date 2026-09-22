@@ -61,6 +61,8 @@ export async function PATCH(
       salePrice?: number | null;
       stockStatus?: StockStatus;
       stockQuantity?: number;
+      linkedProductId?: string | null;
+      bundleMultiplier?: number | null;
       isDeleted?: boolean;
       isFavorite?: boolean;
     };
@@ -100,6 +102,8 @@ export async function PATCH(
       salePrice: body.salePrice,
       stockStatus: body.stockStatus,
       stockQuantity: body.stockQuantity,
+      linkedProductId: body.linkedProductId,
+      bundleMultiplier: body.bundleMultiplier,
     });
 
     await logAuditAction(session.user.id, "UPDATE", "PRODUCT", id, {
@@ -112,6 +116,8 @@ export async function PATCH(
         salePrice: body.salePrice,
         stockStatus: body.stockStatus,
         stockQuantity: body.stockQuantity,
+        linkedProductId: body.linkedProductId,
+        bundleMultiplier: body.bundleMultiplier,
       },
     });
 

@@ -11,5 +11,7 @@ export interface AdminProductRow {
   imageUrl: string | null;
   isDeleted: boolean;
   isFavorite: boolean;
+  linkedProductId: string | null;
+  bundleMultiplier: number | null;
   updatedAt: string;
 }

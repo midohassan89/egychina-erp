@@ -5,12 +5,17 @@ import { mapShiftToCashierShift } from "@/lib/shifts/mapShift";
 import { shiftSalesFieldForPayment } from "@/lib/shifts/salesFields";
 import { roundMoney } from "@/lib/pos/money";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
+import {
+  applySaleStockChanges,
+  SaleStockError,
+} from "@/lib/pos/applySaleStock";
 import type { PaymentMethod } from "@/types/woocommerce";
 
 /**
  * POST /api/checkout
  * 1. Update open shift payment bucket + tickets
  * 2. Persist Sale + SaleLine for Reports (P&L / bestsellers)
+ * 3. Deduct local stock (bundles → linked base unit × multiplier)
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -78,6 +83,44 @@ export async function POST(request: Request) {
     );
   }
 
+  const saleLines = (body.lines ?? []).map((line) => ({
+    wcProductId: line.productId ?? null,
+    name: line.name ?? "Item",
+    quantity: Math.abs(Number(line.qty) || 0),
+    unitPrice: Number(line.unitPrice) || 0,
+    lineTotal: Number(line.lineTotal) || 0,
+  }));
+
+  // Stock for sales only — returns use /api/pos/restock (bundle-aware).
+  let stockResult: {
+    updated: { productId: string; wcId: number; stockQuantity: number }[];
+    wooSynced: number;
+    wooError: string | null;
+  } | null = null;
+
+  if (!isReturn && saleLines.length > 0) {
+    try {
+      stockResult = await applySaleStockChanges({
+        lines: saleLines.map((l) => ({
+          wcProductId: l.wcProductId,
+          quantity: l.quantity,
+        })),
+      });
+    } catch (error) {
+      if (error instanceof SaleStockError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: error.statusCode },
+        );
+      }
+      console.error("[api/checkout] stock", error);
+      return NextResponse.json(
+        { error: "Stock update failed" },
+        { status: 500 },
+      );
+    }
+  }
+
   const updated = await prisma.shift.update({
     where: { id: shift.id },
     data: {
@@ -98,13 +141,7 @@ export async function POST(request: Request) {
       wooOrderId: body.wooOrderId ?? null,
       customerName: body.customerName ?? null,
       createdAt: body.createdAt ?? null,
-      lines: (body.lines ?? []).map((line) => ({
-        wcProductId: line.productId ?? null,
-        name: line.name ?? "Item",
-        quantity: Math.abs(Number(line.qty) || 0),
-        unitPrice: Number(line.unitPrice) || 0,
-        lineTotal: Number(line.lineTotal) || 0,
-      })),
+      lines: saleLines,
     });
     saleId = sale.id;
   } catch (error) {
@@ -117,5 +154,8 @@ export async function POST(request: Request) {
     salesField,
     salesDelta: delta,
     saleId,
+    stockUpdated: stockResult?.updated.length ?? 0,
+    stockWooSynced: stockResult?.wooSynced ?? 0,
+    stockWooError: stockResult?.wooError ?? null,
   });
 }

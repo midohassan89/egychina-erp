@@ -97,6 +97,8 @@ export async function GET(request: Request) {
       imageUrl: p.imageUrl,
       isDeleted: p.isDeleted,
       isFavorite: p.isFavorite,
+      linkedProductId: p.linkedProductId,
+      bundleMultiplier: p.bundleMultiplier,
       updatedAt: p.updatedAt.toISOString(),
     }));
 

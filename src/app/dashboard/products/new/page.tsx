@@ -40,6 +40,12 @@ function NewProductForm() {
   const [stockStatus, setStockStatus] = useState<"instock" | "outofstock">(
     "instock",
   );
+  const [isBundle, setIsBundle] = useState(false);
+  const [linkedProductId, setLinkedProductId] = useState("");
+  const [bundleMultiplier, setBundleMultiplier] = useState("3");
+  const [baseProducts, setBaseProducts] = useState<
+    { id: string; name: string; barcode: string | null; stockQuantity: number }[]
+  >([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -61,6 +67,30 @@ function NewProductForm() {
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
+
+  // Load base (non-bundle) products for the virtual-bundle link dropdown
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/products?page=1&perPage=500");
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          products?: {
+            id: string;
+            name: string;
+            barcode: string | null;
+            stockQuantity: number;
+            linkedProductId: string | null;
+          }[];
+        };
+        setBaseProducts(
+          (body.products ?? []).filter((p) => !p.linkedProductId),
+        );
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
 
   const regular = useMemo(() => parseFloat(price), [price]);
   const sale = useMemo(() => {
@@ -155,6 +185,18 @@ function NewProductForm() {
       return;
     }
 
+    if (isBundle) {
+      if (!linkedProductId) {
+        toast("Select the base single-unit product for this bundle", "error");
+        return;
+      }
+      const mult = Math.floor(Number(bundleMultiplier));
+      if (!Number.isFinite(mult) || mult < 1) {
+        toast("Bundle multiplier must be at least 1 (e.g. 3)", "error");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const form = new FormData();
@@ -162,8 +204,15 @@ function NewProductForm() {
       form.set("price", String(regular));
       if (sale != null && sale > 0) form.set("salePrice", String(sale));
       form.set("barcode", barcode.trim());
-      form.set("stockQuantity", stockQuantity || "0");
-      form.set("stockStatus", stockStatus);
+      if (isBundle) {
+        form.set("linkedProductId", linkedProductId);
+        form.set("bundleMultiplier", String(Math.floor(Number(bundleMultiplier))));
+        form.set("stockQuantity", "0");
+        form.set("stockStatus", "instock");
+      } else {
+        form.set("stockQuantity", stockQuantity || "0");
+        form.set("stockStatus", stockStatus);
+      }
 
       if (imageFile) {
         setCompressing(true);
@@ -347,35 +396,102 @@ function NewProductForm() {
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Stock Quantity
-            </span>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
+          <label className="flex cursor-pointer items-start gap-3">
             <input
-              type="number"
-              min={0}
-              step={1}
-              value={stockQuantity}
-              onChange={(e) => setStockQuantity(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              type="checkbox"
+              checked={isBundle}
+              onChange={(e) => setIsBundle(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Stock Status
+            <span>
+              <span className="block text-sm font-semibold text-slate-800">
+                Is this a Bundle/Pack? (Virtual Product)
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Sell with a pack barcode while inventory is tracked only on the
+                single base unit.
+              </span>
             </span>
-            <select
-              value={stockStatus}
-              onChange={(e) =>
-                setStockStatus(e.target.value as "instock" | "outofstock")
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="instock">In Stock</option>
-              <option value="outofstock">Out of Stock</option>
-            </select>
           </label>
+
+          {isBundle ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-1.5 sm:col-span-2">
+                <span className="text-sm font-medium text-slate-700">
+                  Linked base product (single unit)
+                </span>
+                <select
+                  required
+                  value={linkedProductId}
+                  onChange={(e) => setLinkedProductId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                >
+                  <option value="">Select base product…</option>
+                  {baseProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.barcode ? ` · ${p.barcode}` : ""} · stock{" "}
+                      {p.stockQuantity}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">
+                  Bundle multiplier
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  required
+                  value={bundleMultiplier}
+                  onChange={(e) => setBundleMultiplier(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  placeholder="e.g. 3"
+                />
+                <span className="text-xs text-slate-500">
+                  Selling 1 pack deducts this many units from the base product.
+                </span>
+              </label>
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:col-span-2">
+                Stock / inventory fields are hidden — this virtual pack does not
+                hold its own stock.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">
+                  Stock Quantity
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">
+                  Stock Status
+                </span>
+                <select
+                  value={stockStatus}
+                  onChange={(e) =>
+                    setStockStatus(e.target.value as "instock" | "outofstock")
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                >
+                  <option value="instock">In Stock</option>
+                  <option value="outofstock">Out of Stock</option>
+                </select>
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">

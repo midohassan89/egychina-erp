@@ -22,6 +22,10 @@ export interface CreateProductInput {
   barcode: string;
   stockQuantity?: number;
   stockStatus?: "instock" | "outofstock";
+  /** Virtual bundle: Prisma id of the base single unit. */
+  linkedProductId?: string | null;
+  /** Units of the base product consumed per bundle sold. */
+  bundleMultiplier?: number | null;
   image?: {
     buffer: Buffer;
     filename: string;
@@ -77,6 +81,37 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     throw new CreateProductError("This barcode already exists", 409);
   }
 
+  let linkedProductId: string | null = null;
+  let bundleMultiplier: number | null = null;
+  const linkedRaw =
+    input.linkedProductId != null ? String(input.linkedProductId).trim() : "";
+  const isBundle = Boolean(linkedRaw);
+
+  if (isBundle) {
+    const mult = Math.floor(Number(input.bundleMultiplier));
+    if (!Number.isFinite(mult) || mult < 1) {
+      throw new CreateProductError(
+        "Bundle multiplier must be a positive integer (e.g. 3)",
+        400,
+      );
+    }
+    const base = await prisma.product.findFirst({
+      where: { id: linkedRaw, isDeleted: false },
+      select: { id: true, linkedProductId: true, name: true },
+    });
+    if (!base) {
+      throw new CreateProductError("Linked base product not found", 404);
+    }
+    if (base.linkedProductId) {
+      throw new CreateProductError(
+        "Cannot link a bundle to another virtual bundle — pick a single unit",
+        400,
+      );
+    }
+    linkedProductId = base.id;
+    bundleMultiplier = mult;
+  }
+
   let mediaId: number | undefined;
   let imageUrl: string | null = null;
 
@@ -86,14 +121,22 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     imageUrl = media.source_url ?? null;
   }
 
-  const stockQuantity = Math.max(
-    0,
-    Math.floor(
-      Number.isFinite(input.stockQuantity) ? (input.stockQuantity as number) : 0,
-    ),
-  );
-  const stockStatus =
-    input.stockStatus === "outofstock" ? "outofstock" : "instock";
+  // Virtual bundles never hold their own inventory
+  const stockQuantity = isBundle
+    ? 0
+    : Math.max(
+        0,
+        Math.floor(
+          Number.isFinite(input.stockQuantity)
+            ? (input.stockQuantity as number)
+            : 0,
+        ),
+      );
+  const stockStatus = isBundle
+    ? "instock"
+    : input.stockStatus === "outofstock"
+      ? "outofstock"
+      : "instock";
 
   const wcBody: Record<string, unknown> = {
     name,
@@ -101,8 +144,8 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     status: "publish",
     regular_price: String(input.price),
     sale_price: salePrice != null ? String(salePrice) : "",
-    manage_stock: true,
-    stock_quantity: stockQuantity,
+    manage_stock: !isBundle,
+    stock_quantity: isBundle ? null : stockQuantity,
     stock_status: stockStatus,
     meta_data: [{ key: OP_BARCODE_META_KEY, value: barcode }],
   };
@@ -138,6 +181,8 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
       stockStatus,
       imageUrl: wcProduct.images?.[0]?.src ?? imageUrl,
       isDeleted: false,
+      linkedProductId,
+      bundleMultiplier,
     },
   });
 

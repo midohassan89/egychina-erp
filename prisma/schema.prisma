@@ -62,8 +62,15 @@ model Product {
   imageUrl      String?
   isDeleted     Boolean  @default(false)
   isFavorite    Boolean  @default(false)
+  /** Virtual bundle: base single-unit product this pack sells from. */
+  linkedProductId  String?
+  /** How many base units one sold bundle consumes (e.g. 3). */
+  bundleMultiplier Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  linkedProduct   Product?  @relation("ProductToBundle", fields: [linkedProductId], references: [id])
+  virtualBundles  Product[] @relation("ProductToBundle")
 
   purchaseItems   PurchaseInvoiceItem[]
   purchaseReturns PurchaseReturnItem[]
@@ -75,6 +82,7 @@ model Product {
   @@index([name])
   @@index([isDeleted])
   @@index([isFavorite])
+  @@index([linkedProductId])
 }
 
 model Supplier {

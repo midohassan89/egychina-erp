@@ -36,6 +36,11 @@ export async function POST(request: Request) {
     const stockStatusRaw = String(form.get("stockStatus") ?? "instock");
     const stockStatus =
       stockStatusRaw === "outofstock" ? "outofstock" : "instock";
+    const linkedProductIdRaw = String(form.get("linkedProductId") ?? "").trim();
+    const linkedProductId = linkedProductIdRaw || null;
+    const multRaw = String(form.get("bundleMultiplier") ?? "").trim();
+    const bundleMultiplier =
+      multRaw === "" ? null : parseInt(multRaw, 10);
 
     const file = form.get("image");
     let image:
@@ -61,6 +66,11 @@ export async function POST(request: Request) {
       barcode,
       stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : 0,
       stockStatus,
+      linkedProductId,
+      bundleMultiplier:
+        bundleMultiplier != null && Number.isFinite(bundleMultiplier)
+          ? bundleMultiplier
+          : null,
       image,
     });
 

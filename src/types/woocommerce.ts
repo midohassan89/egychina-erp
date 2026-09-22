@@ -95,6 +95,12 @@ export interface CachedProduct extends WooCommerceProduct {
   cachedAt: string;
   /** Local ERP favorite flag (Prisma) — not a WooCommerce field. */
   isFavorite?: boolean;
+  /** Local Prisma product id (cuid). */
+  prismaId?: string;
+  /** Virtual bundle: Prisma id of the base single-unit product. */
+  linkedProductId?: string | null;
+  /** Base units consumed when one bundle is sold. */
+  bundleMultiplier?: number | null;
 }
 
 export interface CachedCategory extends WooCommerceCategory {

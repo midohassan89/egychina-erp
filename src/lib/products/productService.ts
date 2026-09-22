@@ -13,6 +13,8 @@ export interface ProductUpdateInput {
   salePrice?: number | null;
   stockStatus?: StockStatus;
   stockQuantity?: number;
+  linkedProductId?: string | null;
+  bundleMultiplier?: number | null;
 }
 
 function serializeAdminProduct(p: Product) {
@@ -29,6 +31,8 @@ function serializeAdminProduct(p: Product) {
     imageUrl: p.imageUrl,
     isDeleted: p.isDeleted,
     isFavorite: p.isFavorite,
+    linkedProductId: p.linkedProductId,
+    bundleMultiplier: p.bundleMultiplier,
     updatedAt: p.updatedAt.toISOString(),
   };
 }
@@ -97,6 +101,8 @@ export async function updateProductAndSync(
     salePrice?: number | null;
     stockStatus?: string;
     stockQuantity?: number;
+    linkedProductId?: string | null;
+    bundleMultiplier?: number | null;
   } = {};
 
   if (input.name !== undefined) {
@@ -140,6 +146,62 @@ export async function updateProductAndSync(
     data.stockQuantity = Math.floor(input.stockQuantity);
   }
 
+  // Virtual bundle link (null clears bundle mode)
+  if (input.linkedProductId !== undefined) {
+    const linkedRaw =
+      input.linkedProductId == null
+        ? ""
+        : String(input.linkedProductId).trim();
+    if (!linkedRaw) {
+      data.linkedProductId = null;
+      data.bundleMultiplier = null;
+    } else {
+      if (linkedRaw === id) {
+        throw new ProductServiceError("A product cannot link to itself", 400);
+      }
+      const mult = Math.floor(
+        Number(
+          input.bundleMultiplier !== undefined
+            ? input.bundleMultiplier
+            : existing.bundleMultiplier,
+        ),
+      );
+      if (!Number.isFinite(mult) || mult < 1) {
+        throw new ProductServiceError(
+          "Bundle multiplier must be a positive integer (e.g. 3)",
+          400,
+        );
+      }
+      const base = await prisma.product.findFirst({
+        where: { id: linkedRaw, isDeleted: false },
+        select: { id: true, linkedProductId: true },
+      });
+      if (!base) {
+        throw new ProductServiceError("Linked base product not found", 404);
+      }
+      if (base.linkedProductId) {
+        throw new ProductServiceError(
+          "Cannot link a bundle to another virtual bundle — pick a single unit",
+          400,
+        );
+      }
+      data.linkedProductId = base.id;
+      data.bundleMultiplier = mult;
+      // Bundles do not hold inventory
+      data.stockQuantity = 0;
+      data.stockStatus = "instock";
+    }
+  } else if (input.bundleMultiplier !== undefined && existing.linkedProductId) {
+    const mult = Math.floor(Number(input.bundleMultiplier));
+    if (!Number.isFinite(mult) || mult < 1) {
+      throw new ProductServiceError(
+        "Bundle multiplier must be a positive integer (e.g. 3)",
+        400,
+      );
+    }
+    data.bundleMultiplier = mult;
+  }
+
   if (Object.keys(data).length === 0) {
     throw new ProductServiceError("No changes provided", 400);
   }
@@ -149,13 +211,37 @@ export async function updateProductAndSync(
     data.salePrice !== undefined ? data.salePrice : existing.salePrice;
   assertSaleNotAboveRegular(nextRegular, nextSale);
 
+  const willBeBundle =
+    data.linkedProductId !== undefined
+      ? data.linkedProductId != null
+      : Boolean(existing.linkedProductId);
+
   // Keep WooCommerce payload in sync with normalized sale (0 → clear)
   const wooInput: ProductUpdateInput = { ...input };
   if (data.salePrice !== undefined) {
     wooInput.salePrice = data.salePrice;
   }
+  // Skip pushing stock for virtual bundles; disable WC stock management
+  if (willBeBundle) {
+    delete wooInput.stockQuantity;
+    delete wooInput.stockStatus;
+  }
 
   const wooBody = buildWooPayload(wooInput);
+  if (willBeBundle) {
+    wooBody.manage_stock = false;
+    wooBody.stock_quantity = null;
+  } else if (
+    data.linkedProductId === null &&
+    existing.linkedProductId != null
+  ) {
+    // Cleared bundle mode — re-enable stock management
+    wooBody.manage_stock = true;
+    if (data.stockQuantity !== undefined) {
+      wooBody.stock_quantity = data.stockQuantity;
+    }
+  }
+
   if (Object.keys(wooBody).length > 0) {
     try {
       await wooCommerceFetch(`products/${existing.wcId}`, {
@@ -264,6 +350,7 @@ export class ProductServiceError extends Error {
 
 /**
  * Increase local + WooCommerce stock for returned POS items (by WC product id).
+ * Virtual bundles restore stock on the linked base unit (qty × multiplier).
  */
 export async function restockProductsByWcId(
   items: { wcId: number; qty: number }[],
@@ -286,11 +373,32 @@ export async function restockProductsByWcId(
       );
     }
 
-    const nextQty = existing.stockQuantity + qty;
-    const stockStatus = nextQty > 0 ? "instock" : existing.stockStatus;
+    const isBundle =
+      Boolean(existing.linkedProductId) &&
+      Number(existing.bundleMultiplier) > 0;
+
+    let target = existing;
+    let restoreQty = qty;
+
+    if (isBundle) {
+      const base = await prisma.product.findUnique({
+        where: { id: existing.linkedProductId! },
+      });
+      if (!base) {
+        throw new ProductServiceError(
+          `Bundle "${existing.name}" is missing its base unit product`,
+          404,
+        );
+      }
+      target = base;
+      restoreQty = qty * Math.floor(Number(existing.bundleMultiplier));
+    }
+
+    const nextQty = target.stockQuantity + restoreQty;
+    const stockStatus = nextQty > 0 ? "instock" : target.stockStatus;
 
     try {
-      await wooCommerceFetch(`products/${existing.wcId}`, {
+      await wooCommerceFetch(`products/${target.wcId}`, {
         method: "PUT",
         body: {
           manage_stock: true,
@@ -301,13 +409,13 @@ export async function restockProductsByWcId(
     } catch (error) {
       if (error instanceof WooCommerceError) throw error;
       throw new ProductServiceError(
-        `Failed to restock WooCommerce product ${existing.wcId}`,
+        `Failed to restock WooCommerce product ${target.wcId}`,
         502,
       );
     }
 
     const updated = await prisma.product.update({
-      where: { id: existing.id },
+      where: { id: target.id },
       data: { stockQuantity: nextQty, stockStatus },
     });
 
