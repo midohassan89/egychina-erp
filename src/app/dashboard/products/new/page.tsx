@@ -12,6 +12,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
+import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   checkBarcodeAvailable,
@@ -416,50 +417,13 @@ function NewProductForm() {
           </label>
 
           {isBundle ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1.5 sm:col-span-2">
-                <span className="text-sm font-medium text-slate-700">
-                  Linked base product (single unit)
-                </span>
-                <select
-                  required
-                  value={linkedProductId}
-                  onChange={(e) => setLinkedProductId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                >
-                  <option value="">Select base product…</option>
-                  {baseProducts.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.barcode ? ` · ${p.barcode}` : ""} · stock{" "}
-                      {p.stockQuantity}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-700">
-                  Bundle multiplier
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  required
-                  value={bundleMultiplier}
-                  onChange={(e) => setBundleMultiplier(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                  placeholder="e.g. 3"
-                />
-                <span className="text-xs text-slate-500">
-                  Selling 1 pack deducts this many units from the base product.
-                </span>
-              </label>
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:col-span-2">
-                Stock / inventory fields are hidden — this virtual pack does not
-                hold its own stock.
-              </p>
-            </div>
+            <VirtualBundleLinkFields
+              linkedProductId={linkedProductId}
+              onLinkedProductIdChange={setLinkedProductId}
+              bundleMultiplier={bundleMultiplier}
+              onBundleMultiplierChange={setBundleMultiplier}
+              baseProducts={baseProducts}
+            />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5">

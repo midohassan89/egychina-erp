@@ -3,14 +3,10 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
-
-interface BaseProductOption {
-  id: string;
-  name: string;
-  barcode: string | null;
-  stockQuantity: number;
-  linkedProductId: string | null;
-}
+import {
+  VirtualBundleLinkFields,
+  type BundleBaseProductOption,
+} from "@/components/dashboard/VirtualBundleLinkFields";
 
 interface ProductEditModalProps {
   product: AdminProductRow;
@@ -43,7 +39,9 @@ export function ProductEditModal({
   const [bundleMultiplier, setBundleMultiplier] = useState(
     String(product.bundleMultiplier ?? 3),
   );
-  const [baseProducts, setBaseProducts] = useState<BaseProductOption[]>([]);
+  const [baseProducts, setBaseProducts] = useState<BundleBaseProductOption[]>(
+    [],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +59,11 @@ export function ProductEditModal({
       try {
         const res = await fetch("/api/products?page=1&perPage=500");
         if (!res.ok) return;
-        const body = (await res.json()) as { products?: BaseProductOption[] };
+        const body = (await res.json()) as {
+          products?: (BundleBaseProductOption & {
+            linkedProductId: string | null;
+          })[];
+        };
         setBaseProducts(
           (body.products ?? []).filter(
             (p) => !p.linkedProductId && p.id !== product.id,
@@ -87,7 +89,9 @@ export function ProductEditModal({
       <div className="relative z-10 w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Edit product</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Edit product
+            </h2>
             <p className="text-xs text-slate-400">WC #{product.wcId}</p>
           </div>
           <button
@@ -101,7 +105,7 @@ export function ProductEditModal({
         </div>
 
         <form
-          className="space-y-4 px-5 py-5"
+          className="max-h-[min(80dvh,720px)] space-y-4 overflow-y-auto px-5 py-5"
           onSubmit={(e) => {
             e.preventDefault();
             if (isBundle) {
@@ -153,7 +157,7 @@ export function ProductEditModal({
             />
           </label>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -172,46 +176,13 @@ export function ProductEditModal({
             </label>
 
             {isBundle ? (
-              <div className="space-y-3">
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-medium text-slate-700">
-                    Linked base product
-                  </span>
-                  <select
-                    required
-                    value={linkedProductId}
-                    onChange={(e) => setLinkedProductId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                  >
-                    <option value="">Select base product…</option>
-                    {baseProducts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.barcode ? ` · ${p.barcode}` : ""} · stock{" "}
-                        {p.stockQuantity}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-medium text-slate-700">
-                    Bundle multiplier
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    required
-                    value={bundleMultiplier}
-                    onChange={(e) => setBundleMultiplier(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                  />
-                </label>
-                <p className="text-xs text-amber-800">
-                  Stock fields are not edited here — this pack has no own
-                  inventory.
-                </p>
-              </div>
+              <VirtualBundleLinkFields
+                linkedProductId={linkedProductId}
+                onLinkedProductIdChange={setLinkedProductId}
+                bundleMultiplier={bundleMultiplier}
+                onBundleMultiplierChange={setBundleMultiplier}
+                baseProducts={baseProducts}
+              />
             ) : (
               <p className="text-xs text-slate-500">
                 Current stock:{" "}
