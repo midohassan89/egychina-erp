@@ -7,6 +7,7 @@ import {
   Wallet,
   BarChart3,
   History,
+  ClipboardList,
   Shield,
 } from "lucide-react";
 import { auth } from "@/auth";
@@ -46,6 +47,13 @@ const cards = [
     title: "Treasury",
     description: "Safe balance and cash ledger",
     icon: Wallet,
+    usersOnly: false,
+  },
+  {
+    href: "/dashboard/shifts",
+    title: "Shifts / Z-Reports",
+    description: "سجل الورديات — register closes and Z-Reports",
+    icon: ClipboardList,
     usersOnly: false,
   },
   {

@@ -97,6 +97,18 @@ export function ZReportTicket({ report }: ZReportTicketProps) {
           <span>النقد المتوقع / Expected cash</span>
           <span>{formatEGP(report.expectedCash)}</span>
         </div>
+        {report.actualCash != null && (
+          <div className="receipt-total-row">
+            <span>النقد الفعلي / Actual cash</span>
+            <span>{formatEGP(report.actualCash)}</span>
+          </div>
+        )}
+        {report.variance != null && (
+          <div className="receipt-total-row">
+            <span>الفرق / Discrepancy</span>
+            <span>{formatEGP(report.variance)}</span>
+          </div>
+        )}
       </div>
 
       <p className="receipt-footer">إغلاق الصندوق — Register closed</p>

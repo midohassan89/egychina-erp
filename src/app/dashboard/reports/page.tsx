@@ -276,9 +276,19 @@ export default function ReportsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Daily revenue trend
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-800">
+              Daily revenue trend
+            </h2>
+            <Link
+              href="/dashboard/shifts"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              View All Shifts / Z-Reports
+              <span className="text-slate-400">·</span>
+              سجل الورديات
+            </Link>
+          </div>
           <div className="mt-4 h-72">
             {isLoading ? (
               <p className="text-sm text-slate-400">Loading chart…</p>

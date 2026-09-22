@@ -18,6 +18,7 @@ import {
   UserCircle,
   PanelLeftClose,
   PanelLeftOpen,
+  ClipboardList,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { signOut } from "next-auth/react";
@@ -42,6 +43,7 @@ const NAV_ITEMS: {
   { key: "expenses", href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
   { key: "treasury", href: "/dashboard/treasury", label: "Treasury", icon: Wallet },
   { key: "reports", href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
+  { key: "shifts", href: "/dashboard/shifts", label: "Shifts / Z-Reports", icon: ClipboardList },
   { key: "users", href: "/dashboard/users", label: "Users & Roles", icon: Users },
   { key: "profile", href: "/dashboard/profile", label: "My Profile", icon: UserCircle },
 ];

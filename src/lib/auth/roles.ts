@@ -55,6 +55,7 @@ export type NavAccess =
   | "expenses"
   | "treasury"
   | "reports"
+  | "shifts"
   | "users"
   | "profile";
 
@@ -66,6 +67,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "purchases",
     "expenses",
     "treasury",
+    "shifts",
     "profile",
   ],
   MANAGER: [
@@ -78,6 +80,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "expenses",
     "treasury",
     "reports",
+    "shifts",
     "users",
     "profile",
   ],
@@ -91,6 +94,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "expenses",
     "treasury",
     "reports",
+    "shifts",
     "users",
     "profile",
   ],
@@ -142,6 +146,7 @@ export function dashboardBlockRedirect(
       "/dashboard/purchases",
       "/dashboard/expenses",
       "/dashboard/treasury",
+      "/dashboard/shifts",
       "/dashboard/profile",
     ];
     const ok = allowed.some(
