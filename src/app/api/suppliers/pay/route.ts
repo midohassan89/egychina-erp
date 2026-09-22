@@ -7,6 +7,7 @@ import {
   parsePaymentSource,
 } from "@/lib/treasury/debitPaymentSource";
 import { resolvePurchaseStatus } from "@/lib/purchases/createPurchase";
+import { serializeSupplier } from "@/lib/suppliers/balance";
 
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
@@ -14,9 +15,10 @@ function requireEditor(role: string | undefined) {
 
 /**
  * POST /api/suppliers/pay
- * Record supplier payment, decrease A/P, debit Treasury or selected bank,
- * and allocate the payment FIFO across outstanding purchase invoices
- * (oldest UNPAID/PARTIAL first).
+ * Record supplier payment, decrease A/P, debit Treasury or selected bank.
+ * Allocation order:
+ *  1) Unpaid opening balance (أرصدة افتتاحية)
+ *  2) Outstanding purchase invoices FIFO (oldest UNPAID/PARTIAL first)
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -79,7 +81,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
   }
 
-  // Outstanding invoices — oldest first (FIFO)
+  let availableMoney = amount;
+
+  // Step 1 — Settle opening balance first
+  const unpaidOpeningBalance = roundMoney(
+    Math.max(
+      0,
+      (supplier.openingBalance ?? 0) - (supplier.paidOpeningBalance ?? 0),
+    ),
+  );
+  let amountForOpening = 0;
+  let nextPaidOpeningBalance = roundMoney(supplier.paidOpeningBalance ?? 0);
+
+  if (unpaidOpeningBalance > 0.001 && availableMoney > 0.001) {
+    amountForOpening = roundMoney(
+      Math.min(availableMoney, unpaidOpeningBalance),
+    );
+    availableMoney = roundMoney(availableMoney - amountForOpening);
+    nextPaidOpeningBalance = roundMoney(
+      nextPaidOpeningBalance + amountForOpening,
+    );
+  }
+
+  // Step 2 — Remaining money → purchase invoices FIFO
   const outstanding = await prisma.purchaseInvoice.findMany({
     where: {
       supplierId,
@@ -88,7 +112,6 @@ export async function POST(request: Request) {
     orderBy: [{ date: "asc" }, { id: "asc" }],
   });
 
-  let availableMoney = amount;
   const invoicesToUpdate: {
     id: number;
     paidAmount: number;
@@ -139,9 +162,13 @@ export async function POST(request: Request) {
         include: { bankAccount: true },
       });
 
+      // Step 3 — Update supplier balance + paidOpeningBalance
       const updatedSupplier = await tx.supplier.update({
         where: { id: supplierId },
-        data: { balance: { decrement: amount } },
+        data: {
+          balance: { decrement: amount },
+          paidOpeningBalance: nextPaidOpeningBalance,
+        },
       });
 
       const debit = await debitPaymentSource(tx, {
@@ -183,13 +210,18 @@ export async function POST(request: Request) {
         bankAccountId: result.payment.bankAccountId,
         bankAccountName: result.payment.bankAccount?.name ?? null,
       },
-      supplier: {
-        id: result.supplier.id,
-        name: result.supplier.name,
-        balance: result.supplier.balance,
-        openingBalance: result.supplier.openingBalance,
-      },
+      supplier: serializeSupplier(result.supplier),
       source: result.debit,
+      openingAllocation: {
+        applied: amountForOpening,
+        paidOpeningBalance: nextPaidOpeningBalance,
+        unpaidOpeningBalance: roundMoney(
+          Math.max(
+            0,
+            (result.supplier.openingBalance ?? 0) - nextPaidOpeningBalance,
+          ),
+        ),
+      },
       allocations: invoicesToUpdate.map((inv) => ({
         invoiceId: inv.id,
         applied: inv.applied,

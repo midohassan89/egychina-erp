@@ -11,6 +11,8 @@ interface SupplierRow {
   phone: string | null;
   balance: number;
   openingBalance: number;
+  paidOpeningBalance?: number;
+  unpaidOpeningBalance?: number;
   createdAt: string;
 }
 
@@ -246,6 +248,11 @@ export default function SuppliersPage() {
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-600">
                       {formatEGP(s.openingBalance ?? 0)}
+                      {(s.unpaidOpeningBalance ?? 0) > 0.001 && (
+                        <span className="mt-0.5 block text-[10px] font-medium text-amber-700">
+                          unpaid {formatEGP(s.unpaidOpeningBalance ?? 0)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
                       {formatEGP(s.balance)}
