@@ -118,6 +118,14 @@ export function dashboardBlockRedirect(
     return "/dashboard";
   }
 
+  // Edit purchase invoice — Admin only
+  if (
+    pathname.startsWith("/dashboard/purchases/edit") &&
+    role !== "ADMIN"
+  ) {
+    return "/dashboard/purchases";
+  }
+
   // Users & Roles — Manager and Admin only
   if (
     pathname.startsWith("/dashboard/users") &&

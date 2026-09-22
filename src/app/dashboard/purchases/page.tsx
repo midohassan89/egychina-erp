@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { clsx } from "clsx";
-import { Eye, Plus, X } from "lucide-react";
+import { Eye, Pencil, Plus, X } from "lucide-react";
 import { formatEGP } from "@/lib/pos/money";
 
 interface InvoiceRow {
@@ -60,6 +61,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function PurchasesPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -191,14 +195,26 @@ export default function PurchasesPage() {
                       <StatusBadge status={inv.status} />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void openDetails(inv.id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        View Details
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        {isAdmin && (
+                          <Link
+                            href={`/dashboard/purchases/edit/${inv.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-xs font-semibold text-brand-800 hover:bg-brand-100"
+                            title="تعديل فاتورة مشتريات"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void openDetails(inv.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          View Details
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
