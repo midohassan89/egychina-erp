@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Banknote, Plus, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Banknote, Pencil, Plus, X } from "lucide-react";
 import { formatEGP } from "@/lib/pos/money";
 
 interface SupplierRow {
@@ -9,6 +10,7 @@ interface SupplierRow {
   name: string;
   phone: string | null;
   balance: number;
+  openingBalance: number;
   createdAt: string;
 }
 
@@ -20,14 +22,19 @@ interface BankRow {
 }
 
 export default function SuppliersPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editSupplier, setEditSupplier] = useState<SupplierRow | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [openingBalance, setOpeningBalance] = useState("0");
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -67,21 +74,68 @@ export default function SuppliersPage() {
     void load();
   }, [load]);
 
-  async function handleCreate(e: React.FormEvent) {
+  function openCreate() {
+    setFormError(null);
+    setName("");
+    setPhone("");
+    setOpeningBalance("0");
+    setEditSupplier(null);
+    setCreateOpen(true);
+  }
+
+  function openEdit(s: SupplierRow) {
+    setFormError(null);
+    setName(s.name);
+    setPhone(s.phone ?? "");
+    setOpeningBalance(String(s.openingBalance ?? 0));
+    setCreateOpen(false);
+    setEditSupplier(s);
+  }
+
+  function closeForm() {
+    if (isSaving) return;
+    setCreateOpen(false);
+    setEditSupplier(null);
+    setFormError(null);
+  }
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setIsSaving(true);
     setFormError(null);
     try {
-      const res = await fetch("/api/suppliers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: phone || null }),
-      });
+      const payload: {
+        name: string;
+        phone: string | null;
+        openingBalance?: number;
+      } = {
+        name: name.trim(),
+        phone: phone.trim() || null,
+      };
+
+      if (isAdmin) {
+        const ob = Number(openingBalance);
+        if (!Number.isFinite(ob) || ob < 0) {
+          throw new Error("Opening balance must be ≥ 0");
+        }
+        payload.openingBalance = ob;
+      }
+
+      const res = editSupplier
+        ? await fetch(`/api/suppliers/${editSupplier.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/suppliers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
       const body = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Could not create supplier");
-      setCreateOpen(false);
-      setName("");
-      setPhone("");
+      if (!res.ok) throw new Error(body.error ?? "Could not save supplier");
+      closeForm();
       await load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Save failed");
@@ -122,6 +176,8 @@ export default function SuppliersPage() {
     }
   }
 
+  const formOpen = createOpen || editSupplier != null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -133,10 +189,7 @@ export default function SuppliersPage() {
         </div>
         <button
           type="button"
-          onClick={() => {
-            setFormError(null);
-            setCreateOpen(true);
-          }}
+          onClick={openCreate}
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
@@ -157,6 +210,7 @@ export default function SuppliersPage() {
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Phone</th>
+                <th className="px-4 py-3 text-right">Opening</th>
                 <th className="px-4 py-3 text-right">Balance (A/P)</th>
                 <th className="px-4 py-3">Added</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -165,13 +219,19 @@ export default function SuppliersPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-10 text-center text-slate-400"
+                  >
                     Loading…
                   </td>
                 </tr>
               ) : suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-10 text-center text-slate-400"
+                  >
                     No suppliers yet. Create one to start purchase invoices.
                   </td>
                 </tr>
@@ -184,6 +244,9 @@ export default function SuppliersPage() {
                     <td className="px-4 py-3 text-slate-600">
                       {s.phone || "—"}
                     </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                      {formatEGP(s.openingBalance ?? 0)}
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
                       {formatEGP(s.balance)}
                     </td>
@@ -191,23 +254,30 @@ export default function SuppliersPage() {
                       {new Date(s.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPayError(null);
-                          setPayAmount("");
-                          setPayNotes("");
-                          setPaySupplier(s);
-                          setPaySource("TREASURY");
-                          setPayAmount("");
-                          setPayNotes("");
-                          setPayError(null);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                      >
-                        <Banknote className="h-3.5 w-3.5" />
-                        سداد دفعة
-                      </button>
+                      <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(s)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayError(null);
+                            setPayAmount("");
+                            setPayNotes("");
+                            setPaySupplier(s);
+                            setPaySource("TREASURY");
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                        >
+                          <Banknote className="h-3.5 w-3.5" />
+                          سداد دفعة
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -217,23 +287,23 @@ export default function SuppliersPage() {
         </div>
       </div>
 
-      {createOpen && (
+      {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                New Supplier
+                {editSupplier ? "Edit Supplier" : "New Supplier"}
               </h2>
               <button
                 type="button"
-                onClick={() => setCreateOpen(false)}
+                onClick={closeForm}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form
-              onSubmit={(e) => void handleCreate(e)}
+              onSubmit={(e) => void handleSave(e)}
               className="space-y-4 px-5 py-4"
             >
               <label className="block">
@@ -259,6 +329,36 @@ export default function SuppliersPage() {
                   placeholder="Optional"
                 />
               </label>
+
+              {isAdmin ? (
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                    الرصيد الافتتاحي · Opening Balance
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={openingBalance}
+                    onChange={(e) => setOpeningBalance(e.target.value)}
+                    className="w-full rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5 text-sm font-semibold tabular-nums outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    placeholder="0.00"
+                  />
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Prior debt from the old system (مديونيات سابقة). Admin only.
+                    Total owed = opening + purchases − payments.
+                  </span>
+                </label>
+              ) : editSupplier && editSupplier.openingBalance > 0 ? (
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                  Opening balance:{" "}
+                  <strong className="tabular-nums">
+                    {formatEGP(editSupplier.openingBalance)}
+                  </strong>{" "}
+                  (Admin only to edit)
+                </p>
+              ) : null}
+
               {formError && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
                   {formError}
@@ -267,7 +367,7 @@ export default function SuppliersPage() {
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setCreateOpen(false)}
+                  onClick={closeForm}
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Cancel
@@ -277,7 +377,11 @@ export default function SuppliersPage() {
                   disabled={isSaving}
                   className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
                 >
-                  {isSaving ? "Saving…" : "Create"}
+                  {isSaving
+                    ? "Saving…"
+                    : editSupplier
+                      ? "Save changes"
+                      : "Create"}
                 </button>
               </div>
             </form>
@@ -295,6 +399,9 @@ export default function SuppliersPage() {
                 </h2>
                 <p className="text-sm text-slate-500">
                   {paySupplier.name} · balance {formatEGP(paySupplier.balance)}
+                  {paySupplier.openingBalance > 0
+                    ? ` · opening ${formatEGP(paySupplier.openingBalance)}`
+                    : ""}
                 </p>
               </div>
               <button

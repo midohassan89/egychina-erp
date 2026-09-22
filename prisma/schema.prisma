@@ -86,12 +86,15 @@ model Product {
 }
 
 model Supplier {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String?
-  balance   Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  phone          String?
+  /** Live A/P total owed (includes openingBalance + purchases − payments − returns). */
+  balance        Float    @default(0)
+  /** Prior debt from old system (أرصدة افتتاحية). Admin-managed. */
+  openingBalance Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   invoices PurchaseInvoice[]
   payments SupplierPayment[]

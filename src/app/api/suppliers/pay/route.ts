@@ -187,6 +187,7 @@ export async function POST(request: Request) {
         id: result.supplier.id,
         name: result.supplier.name,
         balance: result.supplier.balance,
+        openingBalance: result.supplier.openingBalance,
       },
       source: result.debit,
       allocations: invoicesToUpdate.map((inv) => ({

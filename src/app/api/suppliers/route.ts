@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isAdmin } from "@/lib/auth/roles";
+import { roundMoney } from "@/lib/pos/money";
+import { serializeSupplier } from "@/lib/suppliers/balance";
 
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
@@ -21,14 +24,7 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    suppliers: suppliers.map((s) => ({
-      id: s.id,
-      name: s.name,
-      phone: s.phone,
-      balance: s.balance,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    })),
+    suppliers: suppliers.map(serializeSupplier),
   });
 }
 
@@ -42,7 +38,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { name?: string; phone?: string | null };
+  let body: {
+    name?: string;
+    phone?: string | null;
+    openingBalance?: number;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -59,19 +59,37 @@ export async function POST(request: Request) {
       ? String(body.phone).trim()
       : null;
 
+  // Opening balance is Admin-only
+  let openingBalance = 0;
+  if (body.openingBalance != null && body.openingBalance !== undefined) {
+    if (!isAdmin(session.user.role)) {
+      return NextResponse.json(
+        { error: "Only Administrators can set opening balance" },
+        { status: 403 },
+      );
+    }
+    const raw = Number(body.openingBalance);
+    if (!Number.isFinite(raw) || raw < 0) {
+      return NextResponse.json(
+        { error: "Opening balance must be ≥ 0" },
+        { status: 400 },
+      );
+    }
+    openingBalance = roundMoney(raw);
+  }
+
+  // Total owed starts as the opening balance (prior debt from old system)
   const supplier = await prisma.supplier.create({
-    data: { name, phone },
+    data: {
+      name,
+      phone,
+      openingBalance,
+      balance: openingBalance,
+    },
   });
 
   return NextResponse.json({
     ok: true,
-    supplier: {
-      id: supplier.id,
-      name: supplier.name,
-      phone: supplier.phone,
-      balance: supplier.balance,
-      createdAt: supplier.createdAt.toISOString(),
-      updatedAt: supplier.updatedAt.toISOString(),
-    },
+    supplier: serializeSupplier(supplier),
   });
 }

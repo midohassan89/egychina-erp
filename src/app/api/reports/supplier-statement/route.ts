@@ -68,6 +68,19 @@ export async function GET(request: Request) {
 
   const allEvents: RawEvent[] = [];
 
+  // Prior debt from the old system (أرصدة افتتاحية)
+  if (roundMoney(supplier.openingBalance) > 0.001) {
+    allEvents.push({
+      kind: "INVOICE",
+      date: supplier.createdAt,
+      sortKey: 0,
+      reference: "Opening Balance",
+      notes: "أرصدة افتتاحية / مديونيات سابقة",
+      debit: roundMoney(supplier.openingBalance),
+      credit: 0,
+    });
+  }
+
   for (const inv of invoices) {
     allEvents.push({
       kind: "INVOICE",
@@ -163,6 +176,7 @@ export async function GET(request: Request) {
       name: supplier.name,
       phone: supplier.phone,
       currentBalance: supplier.balance,
+      openingBalance: supplier.openingBalance,
     },
     period: {
       startDate: start.toISOString(),
