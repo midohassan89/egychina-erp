@@ -14,6 +14,7 @@ import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
 import { formatEGP } from "@/lib/pos/money";
 import { CartPanel, cartItemDomId } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
+import { HeldCartsModal } from "@/components/pos/HeldCartsModal";
 import {
   PinAuthorizationModal,
   type PinAuthAction,
@@ -30,6 +31,12 @@ import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboar
 import { PosTouchKeyboardHost } from "@/components/pos/PosTouchKeyboard";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { playErrorBeep } from "@/lib/pos/errorBeep";
+import {
+  createHeldCart,
+  loadHeldCarts,
+  saveHeldCarts,
+  type HeldCart,
+} from "@/lib/pos/heldCarts";
 import type {
   CachedCustomer,
   CachedProduct,
@@ -77,6 +84,10 @@ function POSPageInner() {
   /** Blocking not-found interrupt — must dismiss before next scan. */
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [priceCheckOpen, setPriceCheckOpen] = useState(false);
+  const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
+  const [heldReady, setHeldReady] = useState(false);
+  const [heldModalOpen, setHeldModalOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<number | null>(
     null,
   );
@@ -90,6 +101,23 @@ function POSPageInner() {
       productGridRef.current?.focusSearch();
     }, 50);
   }, []);
+
+  // Restore suspended carts after refresh.
+  useEffect(() => {
+    setHeldCarts(loadHeldCarts());
+    setHeldReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!heldReady) return;
+    saveHeldCarts(heldCarts);
+  }, [heldCarts, heldReady]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
@@ -289,6 +317,44 @@ function POSPageInner() {
     focusBarcodeSearch();
   }, [focusBarcodeSearch]);
 
+  const holdCurrentCart = useCallback(() => {
+    if (cart.lines.length === 0 || returnMode) return;
+    const snapshot = createHeldCart(cart.lines);
+    setHeldCarts((prev) => [snapshot, ...prev]);
+    cart.clear();
+    setToast(`Invoice held at ${snapshot.label} · تم تعليق الفاتورة`);
+    focusBarcodeSearch();
+  }, [cart.lines, cart.clear, returnMode, focusBarcodeSearch]);
+
+  const resumeHeldCart = useCallback(
+    (id: string) => {
+      const target = heldCarts.find((h) => h.id === id);
+      if (!target) return;
+
+      const currentLines = cart.lines;
+      setHeldCarts((prev) => {
+        let next = prev.filter((h) => h.id !== id);
+        if (currentLines.length > 0) {
+          next = [createHeldCart(currentLines), ...next];
+        }
+        return next;
+      });
+      cart.replaceLines(target.lines);
+      setHeldModalOpen(false);
+      setToast(
+        currentLines.length > 0
+          ? `Resumed ${target.label} · current cart was held`
+          : `Resumed invoice ${target.label}`,
+      );
+      focusBarcodeSearch();
+    },
+    [heldCarts, cart.lines, cart.replaceLines, focusBarcodeSearch],
+  );
+
+  const discardHeldCart = useCallback((id: string) => {
+    setHeldCarts((prev) => prev.filter((h) => h.id !== id));
+  }, []);
+
   const finalizeClose = useCallback(
     async (actualCash: number) => {
       if (closeDoneRef.current) return;
@@ -444,6 +510,9 @@ function POSPageInner() {
             }}
             onCheckout={() => setCheckoutOpen(true)}
             isCheckingOut={checkout.isSubmitting}
+            onHoldCart={holdCurrentCart}
+            onOpenHeldCarts={() => setHeldModalOpen(true)}
+            heldCartCount={heldCarts.length}
           />
           <div
             className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
@@ -572,11 +641,28 @@ function POSPageInner() {
           />
         )}
 
+        <HeldCartsModal
+          open={heldModalOpen}
+          carts={heldCarts}
+          onClose={() => setHeldModalOpen(false)}
+          onResume={resumeHeldCart}
+          onDiscard={discardHeldCart}
+        />
+
         <PriceCheckModal
           open={priceCheckOpen}
           products={catalog}
           onClose={closePriceCheck}
         />
+
+        {toast && (
+          <div
+            className="fixed bottom-6 left-1/2 z-[95] max-w-sm -translate-x-1/2 rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg"
+            role="status"
+          >
+            {toast}
+          </div>
+        )}
 
         <ZReportModal
           open={zReportOpen}

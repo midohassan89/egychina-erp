@@ -259,6 +259,11 @@ export function useCart(returnMode = false) {
 
   const clear = useCallback(() => setLines([]), []);
 
+  /** Replace the entire cart (used when recalling a held invoice). */
+  const replaceLines = useCallback((next: CartLine[]) => {
+    setLines(Array.isArray(next) ? next : []);
+  }, []);
+
   const itemCount = useMemo(
     () =>
       lines.reduce(
@@ -286,5 +291,6 @@ export function useCart(returnMode = false) {
     updateLine,
     removeLine,
     clear,
+    replaceLines,
   };
 }

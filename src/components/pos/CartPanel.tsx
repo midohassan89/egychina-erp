@@ -3,7 +3,7 @@
 import { useState, type RefObject } from "react";
 import Link from "next/link";
 import { clsx } from "clsx";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, Pause, Clock } from "lucide-react";
 import type { CartLine, LineDiscountType } from "@/types/pos";
 import { formatEGP } from "@/lib/pos/money";
 import { CartEditModal } from "@/components/pos/CartEditModal";
@@ -36,6 +36,11 @@ interface CartPanelProps {
   onClear: () => void;
   onCheckout: () => void;
   isCheckingOut?: boolean;
+  /** Hold current cart and clear for the next customer. */
+  onHoldCart?: () => void;
+  /** Open list of suspended invoices. */
+  onOpenHeldCarts?: () => void;
+  heldCartCount?: number;
 }
 
 export function CartPanel({
@@ -52,6 +57,9 @@ export function CartPanel({
   onClear,
   onCheckout,
   isCheckingOut = false,
+  onHoldCart,
+  onOpenHeldCarts,
+  heldCartCount = 0,
 }: CartPanelProps) {
   const [editLine, setEditLine] = useState<CartLine | null>(null);
 
@@ -90,13 +98,38 @@ export function CartPanel({
               : `${itemCount} ${itemCount === 1 ? "item" : "items"} · tap line to edit`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {onOpenHeldCarts && (
+            <button
+              type="button"
+              onClick={onOpenHeldCarts}
+              title="Open held invoices"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+            >
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                الفواتير المعلقة ({heldCartCount})
+              </span>
+            </button>
+          )}
           <Link
             href="/"
             className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-white/70 hover:text-slate-800"
           >
             Exit
           </Link>
+          {onHoldCart && !returnMode && lines.length > 0 && (
+            <button
+              type="button"
+              disabled={isCheckingOut}
+              onClick={onHoldCart}
+              title="Save current cart to hold · تعليق الفاتورة"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Pause className="h-3.5 w-3.5 shrink-0" />
+              تعليق
+            </button>
+          )}
           {lines.length > 0 && (
             <button
               type="button"
