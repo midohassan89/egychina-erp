@@ -6,6 +6,7 @@ import {
   debitPaymentSource,
   parsePaymentSource,
 } from "@/lib/treasury/debitPaymentSource";
+import { resolvePurchaseStatus } from "@/lib/purchases/createPurchase";
 
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
@@ -13,7 +14,9 @@ function requireEditor(role: string | undefined) {
 
 /**
  * POST /api/suppliers/pay
- * Record supplier payment, decrease A/P, debit Treasury or selected bank.
+ * Record supplier payment, decrease A/P, debit Treasury or selected bank,
+ * and allocate the payment FIFO across outstanding purchase invoices
+ * (oldest UNPAID/PARTIAL first).
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -76,6 +79,53 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
   }
 
+  // Outstanding invoices — oldest first (FIFO)
+  const outstanding = await prisma.purchaseInvoice.findMany({
+    where: {
+      supplierId,
+      status: { in: ["UNPAID", "PARTIAL"] },
+    },
+    orderBy: [{ date: "asc" }, { id: "asc" }],
+  });
+
+  let availableMoney = amount;
+  const invoicesToUpdate: {
+    id: number;
+    paidAmount: number;
+    status: "PAID" | "PARTIAL" | "UNPAID";
+    applied: number;
+  }[] = [];
+
+  for (const invoice of outstanding) {
+    if (availableMoney <= 0.001) break;
+
+    const owedOnInvoice = roundMoney(
+      invoice.totalAmount - invoice.paidAmount,
+    );
+    if (owedOnInvoice <= 0.001) continue;
+
+    if (availableMoney + 0.001 >= owedOnInvoice) {
+      const newPaid = roundMoney(invoice.totalAmount);
+      invoicesToUpdate.push({
+        id: invoice.id,
+        paidAmount: newPaid,
+        status: "PAID",
+        applied: owedOnInvoice,
+      });
+      availableMoney = roundMoney(availableMoney - owedOnInvoice);
+    } else {
+      const applied = availableMoney;
+      const newPaid = roundMoney(invoice.paidAmount + applied);
+      invoicesToUpdate.push({
+        id: invoice.id,
+        paidAmount: newPaid,
+        status: resolvePurchaseStatus(invoice.totalAmount, newPaid),
+        applied,
+      });
+      availableMoney = 0;
+    }
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const payment = await tx.supplierPayment.create({
@@ -103,6 +153,18 @@ export async function POST(request: Request) {
         date: payDate,
       });
 
+      await Promise.all(
+        invoicesToUpdate.map((inv) =>
+          tx.purchaseInvoice.update({
+            where: { id: inv.id },
+            data: {
+              paidAmount: inv.paidAmount,
+              status: inv.status,
+            },
+          }),
+        ),
+      );
+
       return {
         payment,
         supplier: updatedSupplier,
@@ -127,6 +189,13 @@ export async function POST(request: Request) {
         balance: result.supplier.balance,
       },
       source: result.debit,
+      allocations: invoicesToUpdate.map((inv) => ({
+        invoiceId: inv.id,
+        applied: inv.applied,
+        paidAmount: inv.paidAmount,
+        status: inv.status,
+      })),
+      unallocated: roundMoney(availableMoney),
     });
   } catch (error) {
     const message =
