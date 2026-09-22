@@ -40,6 +40,78 @@ function newKey() {
   return `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+const DRAFT_STORAGE_KEY = "draft_purchase_order";
+
+interface PurchaseDraftPayload {
+  supplierId: string;
+  invoiceNumber: string;
+  date: string;
+  paidAmount: string;
+  lines: LineDraft[];
+}
+
+function readPurchaseDraft(): PurchaseDraftPayload | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PurchaseDraftPayload>;
+    if (!parsed || typeof parsed !== "object") return null;
+    const lines = Array.isArray(parsed.lines)
+      ? parsed.lines
+          .filter(
+            (line): line is LineDraft =>
+              !!line &&
+              typeof line === "object" &&
+              typeof line.productId === "string" &&
+              line.productId.length > 0,
+          )
+          .map((line) => ({
+            key:
+              typeof line.key === "string" && line.key
+                ? line.key
+                : newKey(),
+            productId: line.productId,
+            productName:
+              typeof line.productName === "string"
+                ? line.productName
+                : "Product",
+            quantity: String(line.quantity ?? "1"),
+            unitCost: String(line.unitCost ?? "0"),
+            lineTotal: String(
+              line.lineTotal ??
+                roundMoney(
+                  (Math.floor(Number(line.quantity)) || 0) *
+                    (Number(line.unitCost) || 0),
+                ),
+            ),
+          }))
+      : [];
+    return {
+      supplierId:
+        typeof parsed.supplierId === "string" ? parsed.supplierId : "",
+      invoiceNumber:
+        typeof parsed.invoiceNumber === "string" ? parsed.invoiceNumber : "",
+      date:
+        typeof parsed.date === "string" && parsed.date
+          ? parsed.date
+          : new Date().toISOString().slice(0, 10),
+      paidAmount:
+        typeof parsed.paidAmount === "string" ? parsed.paidAmount : "0",
+      lines,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearPurchaseDraft() {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // ignore quota / private-mode errors
+  }
+}
+
 function pickBestProduct(
   products: ProductOption[],
   query: string,
@@ -96,12 +168,59 @@ function NewPurchaseInvoicePageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
   const prefilledRef = useRef(false);
+  const allowUnloadRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const focusQtyKeyRef = useRef<string | null>(null);
   const qtyInputRefs = useRef(new Map<string, HTMLInputElement>());
   const costInputRefs = useRef(new Map<string, HTMLInputElement>());
   const totalInputRefs = useRef(new Map<string, HTMLInputElement>());
+
+  // Restore draft on mount (before any auto-save writes)
+  useEffect(() => {
+    const draft = readPurchaseDraft();
+    if (draft) {
+      setSupplierId(draft.supplierId);
+      setInvoiceNumber(draft.invoiceNumber);
+      setDate(draft.date);
+      setPaidAmount(draft.paidAmount);
+      setLines(draft.lines);
+      if (draft.lines.length > 0) {
+        // Prefer restored draft over Reports "Order Now" prefill
+        prefilledRef.current = true;
+      }
+    }
+    setDraftReady(true);
+  }, []);
+
+  // Persist draft whenever form fields change
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      const payload: PurchaseDraftPayload = {
+        supplierId,
+        invoiceNumber,
+        date,
+        paidAmount,
+        lines,
+      };
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore quota / private-mode errors
+    }
+  }, [draftReady, supplierId, invoiceNumber, date, paidAmount, lines]);
+
+  // Warn before refresh/close when there are line items
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (allowUnloadRef.current || lines.length === 0) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [lines.length]);
 
   useEffect(() => {
     void (async () => {
@@ -215,8 +334,9 @@ function NewPurchaseInvoicePageInner() {
     setError(null);
   }, []);
 
-  // Prefill line from Reports "Order Now" (?productId=)
+  // Prefill line from Reports "Order Now" (?productId=) — wait for draft restore
   useEffect(() => {
+    if (!draftReady) return;
     const productId = searchParams.get("productId")?.trim();
     if (!productId || prefilledRef.current) return;
     prefilledRef.current = true;
@@ -253,7 +373,7 @@ function NewPurchaseInvoicePageInner() {
         // ignore prefill errors
       }
     })();
-  }, [searchParams]);
+  }, [draftReady, searchParams]);
 
   function updateQuantity(key: string, quantity: string) {
     setLines((prev) =>
@@ -398,6 +518,9 @@ function NewPurchaseInvoicePageInner() {
       };
 
       if (!res.ok) throw new Error(body.error ?? "Could not save invoice");
+
+      clearPurchaseDraft();
+      allowUnloadRef.current = true;
 
       const note = body.wooError
         ? `Invoice saved & local stock updated (${body.stockUpdated} products). WooCommerce sync warning: ${body.wooError}`
