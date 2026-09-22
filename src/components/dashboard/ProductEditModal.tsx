@@ -51,7 +51,10 @@ export function ProductEditModal({
     setIsBundle(Boolean(product.linkedProductId));
     setLinkedProductId(product.linkedProductId ?? "");
     setBundleMultiplier(String(product.bundleMultiplier ?? 3));
-  }, [open, product]);
+    // Only re-seed when the modal opens for a given product — not on every
+    // parent re-render with a new `product` object reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [open, product.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -158,22 +161,26 @@ export function ProductEditModal({
           </label>
 
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-            <label className="flex cursor-pointer items-start gap-3">
+            <div className="flex items-start gap-3">
               <input
+                id="edit-product-is-bundle"
                 type="checkbox"
                 checked={isBundle}
                 onChange={(e) => setIsBundle(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
               />
-              <span>
+              <label
+                htmlFor="edit-product-is-bundle"
+                className="cursor-pointer select-none"
+              >
                 <span className="block text-sm font-semibold text-slate-800">
                   Is this a Bundle/Pack? (Virtual Product)
                 </span>
                 <span className="mt-0.5 block text-xs text-slate-500">
                   Inventory is tracked only on the linked single unit.
                 </span>
-              </span>
-            </label>
+              </label>
+            </div>
 
             {isBundle ? (
               <VirtualBundleLinkFields

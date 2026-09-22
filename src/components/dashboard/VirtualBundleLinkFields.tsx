@@ -122,7 +122,11 @@ export function VirtualBundleLinkFields({
           {linkedProductId && (
             <button
               type="button"
-              onClick={clearSelection}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                clearSelection();
+              }}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             >
               Clear
@@ -139,7 +143,11 @@ export function VirtualBundleLinkFields({
                   <li key={p.id}>
                     <button
                       type="button"
-                      onClick={() => selectProduct(p)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectProduct(p);
+                      }}
                       className={clsx(
                         "flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-brand-50",
                         p.id === linkedProductId && "bg-brand-50",
@@ -166,7 +174,7 @@ export function VirtualBundleLinkFields({
         )}
       </div>
 
-      <label className="block space-y-1.5 sm:col-span-2">
+      <div className="block space-y-1.5 sm:col-span-2">
         <span className="text-sm font-medium text-slate-700">
           Bundle multiplier
         </span>
@@ -175,7 +183,11 @@ export function VirtualBundleLinkFields({
             <button
               key={n}
               type="button"
-              onClick={() => onBundleMultiplierChange(String(n))}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onBundleMultiplierChange(String(n));
+              }}
               className={clsx(
                 "rounded-full px-3 py-1 text-xs font-semibold tabular-nums ring-1 ring-inset transition",
                 multNum === n
@@ -194,6 +206,7 @@ export function VirtualBundleLinkFields({
           required
           value={bundleMultiplier}
           onChange={(e) => onBundleMultiplierChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
           className="mt-2 w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           placeholder="e.g. 3"
         />
@@ -201,7 +214,7 @@ export function VirtualBundleLinkFields({
           Selling 1 pack deducts this many units from the base product. Use a
           quick pill or type a custom size.
         </span>
-      </label>
+      </div>
 
       <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:col-span-2">
         Stock / inventory fields are hidden — this virtual pack does not hold

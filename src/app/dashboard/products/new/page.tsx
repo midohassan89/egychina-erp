@@ -397,15 +397,19 @@ function NewProductForm() {
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
-          <label className="flex cursor-pointer items-start gap-3">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex items-start gap-3">
             <input
+              id="create-product-is-bundle"
               type="checkbox"
               checked={isBundle}
               onChange={(e) => setIsBundle(e.target.checked)}
               className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
             />
-            <span>
+            <label
+              htmlFor="create-product-is-bundle"
+              className="cursor-pointer select-none"
+            >
               <span className="block text-sm font-semibold text-slate-800">
                 Is this a Bundle/Pack? (Virtual Product)
               </span>
@@ -413,8 +417,8 @@ function NewProductForm() {
                 Sell with a pack barcode while inventory is tracked only on the
                 single base unit.
               </span>
-            </span>
-          </label>
+            </label>
+          </div>
 
           {isBundle ? (
             <VirtualBundleLinkFields
