@@ -101,6 +101,7 @@ function NewPurchaseInvoicePageInner() {
   const focusQtyKeyRef = useRef<string | null>(null);
   const qtyInputRefs = useRef(new Map<string, HTMLInputElement>());
   const costInputRefs = useRef(new Map<string, HTMLInputElement>());
+  const totalInputRefs = useRef(new Map<string, HTMLInputElement>());
 
   useEffect(() => {
     void (async () => {
@@ -304,10 +305,18 @@ function NewPurchaseInvoicePageInner() {
     setLines((prev) => prev.filter((line) => line.key !== key));
     qtyInputRefs.current.delete(key);
     costInputRefs.current.delete(key);
+    totalInputRefs.current.delete(key);
   }
 
   function focusUnitCost(key: string) {
     const el = costInputRefs.current.get(key);
+    if (!el) return;
+    el.focus();
+    el.select();
+  }
+
+  function focusLineTotal(key: string) {
+    const el = totalInputRefs.current.get(key);
     if (!el) return;
     el.focus();
     el.select();
@@ -597,7 +606,7 @@ function NewPurchaseInvoicePageInner() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
-                              searchInputRef.current?.focus();
+                              focusLineTotal(line.key);
                             }
                           }}
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
@@ -605,6 +614,10 @@ function NewPurchaseInvoicePageInner() {
                       </td>
                       <td className="px-2 py-3">
                         <input
+                          ref={(el) => {
+                            if (el) totalInputRefs.current.set(line.key, el);
+                            else totalInputRefs.current.delete(line.key);
+                          }}
                           type="number"
                           min={0}
                           step="0.01"
