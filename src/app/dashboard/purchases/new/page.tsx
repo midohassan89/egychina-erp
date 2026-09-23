@@ -10,7 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 
 interface SupplierOption {
@@ -25,6 +25,8 @@ interface ProductOption {
   sku: string | null;
   barcode: string | null;
   stockQuantity: number;
+  price: number;
+  salePrice: number | null;
 }
 
 interface LineDraft {
@@ -34,6 +36,40 @@ interface LineDraft {
   quantity: string;
   unitCost: string;
   lineTotal: string;
+  regularPrice: string;
+  salePrice: string;
+  /** False until selling prices are loaded from the product record. */
+  priceSeeded: boolean;
+}
+
+type PriceSyncState = "saving" | "saved" | "error";
+
+function formatSaleInput(salePrice: number | null | undefined): string {
+  return salePrice != null && salePrice > 0 ? String(salePrice) : "";
+}
+
+/** Retail margin on the active price (sale price when set, otherwise regular). */
+function profitMarginPercent(
+  unitCost: string,
+  regularPrice: string,
+  salePrice: string,
+): number | null {
+  const cost = Number(unitCost);
+  const regular = Number(regularPrice);
+  const saleRaw = salePrice.trim();
+  const sale = saleRaw === "" ? NaN : Number(saleRaw);
+  const active = Number.isFinite(sale) && sale > 0 ? sale : regular;
+  if (!Number.isFinite(active) || active <= 0 || !Number.isFinite(cost)) {
+    return null;
+  }
+  return ((active - cost) / active) * 100;
+}
+
+function priceSignature(regularPrice: string, salePrice: string): string {
+  const regular = Number(regularPrice);
+  const saleRaw = salePrice.trim();
+  const sale = saleRaw === "" ? "" : String(Number(saleRaw));
+  return `${Number.isFinite(regular) ? regular : ""}|${sale}`;
 }
 
 function newKey() {
@@ -84,6 +120,10 @@ function readPurchaseDraft(): PurchaseDraftPayload | null {
                     (Number(line.unitCost) || 0),
                 ),
             ),
+            regularPrice:
+              typeof line.regularPrice === "string" ? line.regularPrice : "",
+            salePrice: typeof line.salePrice === "string" ? line.salePrice : "",
+            priceSeeded: typeof line.regularPrice === "string",
           }))
       : [];
     return {
@@ -176,6 +216,11 @@ function NewPurchaseInvoicePageInner() {
   const qtyInputRefs = useRef(new Map<string, HTMLInputElement>());
   const costInputRefs = useRef(new Map<string, HTMLInputElement>());
   const totalInputRefs = useRef(new Map<string, HTMLInputElement>());
+  const [priceSync, setPriceSync] = useState<Record<string, PriceSyncState>>({});
+  const [priceSyncError, setPriceSyncError] = useState<Record<string, string>>({});
+  const priceSyncTimers = useRef(new Map<string, number>());
+  const lastSyncedPrices = useRef(new Map<string, string>());
+  const priceSyncGen = useRef(new Map<string, number>());
 
   // Restore draft on mount (before any auto-save writes)
   useEffect(() => {
@@ -317,6 +362,10 @@ function NewPurchaseInvoicePageInner() {
       const key = newKey();
       focusQtyKeyRef.current = key;
       const qty = 1;
+      lastSyncedPrices.current.set(
+        product.id,
+        priceSignature(String(product.price ?? 0), formatSaleInput(product.salePrice)),
+      );
       return [
         ...prev,
         {
@@ -326,6 +375,9 @@ function NewPurchaseInvoicePageInner() {
           quantity: "1",
           unitCost: String(lastCost),
           lineTotal: String(roundMoney(qty * lastCost)),
+          regularPrice: String(product.price ?? 0),
+          salePrice: formatSaleInput(product.salePrice),
+          priceSeeded: true,
         },
       ];
     });
@@ -350,9 +402,17 @@ function NewPurchaseInvoicePageInner() {
           productId?: string;
           name?: string;
           unitCost?: number;
+          sellPrice?: number;
+          salePrice?: number | null;
         };
         if (!body.productId) return;
         const cost = Number(body.unitCost) || 0;
+        const regularPrice = String(body.sellPrice ?? 0);
+        const salePrice = formatSaleInput(body.salePrice);
+        lastSyncedPrices.current.set(
+          body.productId,
+          priceSignature(regularPrice, salePrice),
+        );
         setLines((prev) => {
           if (prev.some((l) => l.productId === body.productId)) return prev;
           const key = newKey();
@@ -366,6 +426,9 @@ function NewPurchaseInvoicePageInner() {
               quantity: "1",
               unitCost: String(cost),
               lineTotal: String(roundMoney(1 * cost)),
+              regularPrice,
+              salePrice,
+              priceSeeded: true,
             },
           ];
         });
@@ -374,6 +437,53 @@ function NewPurchaseInvoicePageInner() {
       }
     })();
   }, [draftReady, searchParams]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const missing = lines.filter((line) => !line.priceSeeded);
+    if (missing.length === 0) return;
+    let cancelled = false;
+
+    void Promise.all(
+      missing.map(async (line) => {
+        try {
+          const res = await fetch(
+            `/api/inventory/unit-cost?productId=${encodeURIComponent(line.productId)}&purchaseOnly=1`,
+          );
+          if (!res.ok) throw new Error("price lookup failed");
+          const body = (await res.json()) as {
+            sellPrice?: number;
+            salePrice?: number | null;
+          };
+          if (cancelled) return;
+          const regularPrice = String(body.sellPrice ?? 0);
+          const salePrice = formatSaleInput(body.salePrice);
+          lastSyncedPrices.current.set(
+            line.productId,
+            priceSignature(regularPrice, salePrice),
+          );
+          setLines((prev) =>
+            prev.map((row) =>
+              row.key === line.key && !row.priceSeeded
+                ? { ...row, regularPrice, salePrice, priceSeeded: true }
+                : row,
+            ),
+          );
+        } catch {
+          if (cancelled) return;
+          setLines((prev) =>
+            prev.map((row) =>
+              row.key === line.key ? { ...row, priceSeeded: true } : row,
+            ),
+          );
+        }
+      }),
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftReady, lines]);
 
   function updateQuantity(key: string, quantity: string) {
     setLines((prev) =>
@@ -422,10 +532,117 @@ function NewPurchaseInvoicePageInner() {
   }
 
   function removeLine(key: string) {
+    const timer = priceSyncTimers.current.get(key);
+    if (timer) window.clearTimeout(timer);
+    priceSyncTimers.current.delete(key);
     setLines((prev) => prev.filter((line) => line.key !== key));
     qtyInputRefs.current.delete(key);
     costInputRefs.current.delete(key);
     totalInputRefs.current.delete(key);
+  }
+
+  function patchSellingPrice(
+    key: string,
+    field: "regularPrice" | "salePrice",
+    value: string,
+  ) {
+    setLines((prev) =>
+      prev.map((line) =>
+        line.key === key ? { ...line, [field]: value, priceSeeded: true } : line,
+      ),
+    );
+  }
+
+  async function syncSellingPrices(line: LineDraft) {
+    const regular = Number(line.regularPrice);
+    const saleRaw = line.salePrice.trim();
+    const sale = saleRaw === "" ? null : Number(saleRaw);
+
+    if (!Number.isFinite(regular) || regular < 0) {
+      setPriceSync((prev) => ({ ...prev, [line.key]: "error" }));
+      setPriceSyncError((prev) => ({
+        ...prev,
+        [line.key]: "Enter a valid regular price",
+      }));
+      return;
+    }
+    if (sale != null && (!Number.isFinite(sale) || sale < 0)) {
+      setPriceSync((prev) => ({ ...prev, [line.key]: "error" }));
+      setPriceSyncError((prev) => ({
+        ...prev,
+        [line.key]: "Enter a valid sale price",
+      }));
+      return;
+    }
+    if (sale != null && sale > regular) {
+      setPriceSync((prev) => ({ ...prev, [line.key]: "error" }));
+      setPriceSyncError((prev) => ({
+        ...prev,
+        [line.key]: "Sale price must be less than or equal to the regular price",
+      }));
+      return;
+    }
+
+    const signature = priceSignature(line.regularPrice, line.salePrice);
+    if (lastSyncedPrices.current.get(line.productId) === signature) return;
+
+    const gen = (priceSyncGen.current.get(line.key) ?? 0) + 1;
+    priceSyncGen.current.set(line.key, gen);
+    setPriceSync((prev) => ({ ...prev, [line.key]: "saving" }));
+    setPriceSyncError((prev) => {
+      const next = { ...prev };
+      delete next[line.key];
+      return next;
+    });
+
+    try {
+      const res = await fetch("/api/products/quick-update-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: line.productId,
+          price: regular,
+          salePrice: sale,
+        }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (priceSyncGen.current.get(line.key) !== gen) return;
+      if (!res.ok) throw new Error(body.error ?? "Price sync failed");
+      lastSyncedPrices.current.set(line.productId, signature);
+      setPriceSync((prev) => ({ ...prev, [line.key]: "saved" }));
+      window.setTimeout(() => {
+        setPriceSync((prev) => {
+          if (prev[line.key] !== "saved") return prev;
+          const next = { ...prev };
+          delete next[line.key];
+          return next;
+        });
+      }, 1800);
+    } catch (err) {
+      if (priceSyncGen.current.get(line.key) !== gen) return;
+      setPriceSync((prev) => ({ ...prev, [line.key]: "error" }));
+      setPriceSyncError((prev) => ({
+        ...prev,
+        [line.key]: err instanceof Error ? err.message : "Price sync failed",
+      }));
+    }
+  }
+
+  function schedulePriceSync(line: LineDraft) {
+    const existing = priceSyncTimers.current.get(line.key);
+    if (existing) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      priceSyncTimers.current.delete(line.key);
+      void syncSellingPrices(line);
+    }, 1000);
+    priceSyncTimers.current.set(line.key, timer);
+  }
+
+  function flushPriceSync(line: LineDraft) {
+    const existing = priceSyncTimers.current.get(line.key);
+    if (existing) window.clearTimeout(existing);
+    priceSyncTimers.current.delete(line.key);
+    void syncSellingPrices(line);
   }
 
   function focusUnitCost(key: string) {
@@ -665,15 +882,18 @@ function NewPurchaseInvoicePageInner() {
                 <tr>
                   <th className="py-2 pr-3">Product</th>
                   <th className="w-24 py-2 px-2">Qty</th>
-                  <th className="w-32 py-2 px-2">Unit cost</th>
-                  <th className="w-32 py-2 px-2">Total</th>
+                  <th className="w-28 py-2 px-2">Unit cost</th>
+                  <th className="w-28 py-2 px-2">Total</th>
+                  <th className="w-32 py-2 px-2">Regular price</th>
+                  <th className="w-36 py-2 px-2">Sale price</th>
+                  <th className="w-24 py-2 px-2">Margin %</th>
                   <th className="w-12 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {lines.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
                       Scan or search and press Enter to add products
                     </td>
                   </tr>
@@ -757,6 +977,88 @@ function NewPurchaseInvoicePageInner() {
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
                           title="Edit bulk total to reverse-calculate unit cost"
                         />
+                      </td>
+                      <td className="px-2 py-3">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={line.regularPrice}
+                          onChange={(e) => {
+                            const regularPrice = e.target.value;
+                            patchSellingPrice(line.key, "regularPrice", regularPrice);
+                            schedulePriceSync({ ...line, regularPrice });
+                          }}
+                          onBlur={(e) =>
+                            flushPriceSync({ ...line, regularPrice: e.target.value })
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.preventDefault();
+                          }}
+                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
+                          aria-label="Regular selling price"
+                        />
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={line.salePrice}
+                            placeholder="—"
+                            onChange={(e) => {
+                              const salePrice = e.target.value;
+                              patchSellingPrice(line.key, "salePrice", salePrice);
+                              schedulePriceSync({ ...line, salePrice });
+                            }}
+                            onBlur={(e) =>
+                              flushPriceSync({ ...line, salePrice: e.target.value })
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.preventDefault();
+                            }}
+                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
+                            aria-label="Sale selling price"
+                          />
+                          {priceSync[line.key] === "saving" && (
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400" />
+                          )}
+                          {priceSync[line.key] === "saved" && (
+                            <Check
+                              className="h-4 w-4 shrink-0 text-emerald-600"
+                              aria-label="Selling price synced"
+                            />
+                          )}
+                        </div>
+                        {priceSync[line.key] === "error" && priceSyncError[line.key] && (
+                          <p className="mt-1 max-w-[11rem] text-[11px] leading-snug text-red-600">
+                            {priceSyncError[line.key]}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-2 py-3">
+                        {(() => {
+                          const margin = profitMarginPercent(
+                            line.unitCost,
+                            line.regularPrice,
+                            line.salePrice,
+                          );
+                          if (margin == null) {
+                            return <span className="text-slate-400">—</span>;
+                          }
+                          return (
+                            <span
+                              className={
+                                margin < 0
+                                  ? "font-semibold tabular-nums text-red-700"
+                                  : "font-semibold tabular-nums text-emerald-700"
+                              }
+                            >
+                              {margin.toFixed(1)}%
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 text-right">
                         <button

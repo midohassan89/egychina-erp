@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       id: true,
       name: true,
       price: true,
+      salePrice: true,
       stockQuantity: true,
       sku: true,
       barcode: true,
@@ -54,5 +55,6 @@ export async function GET(request: Request) {
     unitCost,
     stockQuantity: product.stockQuantity,
     sellPrice: product.price,
+    salePrice: product.salePrice,
   });
 }
