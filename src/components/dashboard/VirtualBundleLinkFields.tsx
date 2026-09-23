@@ -19,6 +19,8 @@ interface VirtualBundleLinkFieldsProps {
   bundleMultiplier: string;
   onBundleMultiplierChange: (value: string) => void;
   baseProducts: BundleBaseProductOption[];
+  parentLabel?: string;
+  multiplierLabel?: string;
 }
 
 export function VirtualBundleLinkFields({
@@ -27,6 +29,8 @@ export function VirtualBundleLinkFields({
   bundleMultiplier,
   onBundleMultiplierChange,
   baseProducts,
+  parentLabel = "Linked base product (single unit)",
+  multiplierLabel = "Bundle multiplier",
 }: VirtualBundleLinkFieldsProps) {
   const selected = useMemo(
     () => baseProducts.find((p) => p.id === linkedProductId) ?? null,
@@ -90,7 +94,7 @@ export function VirtualBundleLinkFields({
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="block space-y-1.5 sm:col-span-2" ref={wrapRef}>
         <span className="text-sm font-medium text-slate-700">
-          Linked base product (single unit)
+          {parentLabel}
         </span>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -176,7 +180,7 @@ export function VirtualBundleLinkFields({
 
       <div className="block space-y-1.5 sm:col-span-2">
         <span className="text-sm font-medium text-slate-700">
-          Bundle multiplier
+          {multiplierLabel}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {QUICK_MULTIPLIERS.map((n) => (

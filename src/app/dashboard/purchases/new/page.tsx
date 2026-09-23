@@ -23,6 +23,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
+import { QuickAddProductModal } from "@/components/dashboard/QuickAddProductModal";
 
 interface SupplierOption {
   id: number;
@@ -216,6 +217,10 @@ function NewPurchaseInvoicePageInner() {
   const [productQuery, setProductQuery] = useState("");
   const [productHits, setProductHits] = useState<ProductOption[]>([]);
   const [searching, setSearching] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState("");
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddQuery, setQuickAddQuery] = useState("");
+  const [quickAddToast, setQuickAddToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
@@ -291,9 +296,12 @@ function NewPurchaseInvoicePageInner() {
     const q = productQuery.trim();
     if (q.length < 1) {
       setProductHits([]);
+      setLookupQuery("");
       return;
     }
 
+    setLookupQuery("");
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
         setSearching(true);
@@ -304,17 +312,28 @@ function NewPurchaseInvoicePageInner() {
           const body = (await res.json()) as {
             products?: ProductOption[];
           };
+          if (cancelled) return;
           setProductHits(body.products ?? []);
         } finally {
-          setSearching(false);
+          if (!cancelled) {
+            setSearching(false);
+            setLookupQuery(q);
+          }
         }
       })();
     }, 250);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [productQuery]);
 
-  // After a product is added, focus its Quantity field
+  useEffect(() => {
+    if (!quickAddToast) return;
+    const timer = window.setTimeout(() => setQuickAddToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [quickAddToast]);
   useEffect(() => {
     const key = focusQtyKeyRef.current;
     if (!key) return;
@@ -855,11 +874,29 @@ function NewPurchaseInvoicePageInner() {
               className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               autoComplete="off"
             />
-            {(productHits.length > 0 || searching) && productQuery.trim() && (
-              <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+            {(productQuery.trim().length > 0 &&
+              (searching || lookupQuery === productQuery.trim())) && (
+              <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {searching && productHits.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-400">
                     Searching…
+                  </li>
+                ) : productHits.length === 0 ? (
+                  <li className="p-2">
+                    <p className="px-2 py-1.5 text-sm text-slate-500">
+                      No products match “{productQuery.trim()}”
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickAddQuery(productQuery.trim());
+                        setQuickAddOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-left text-sm font-semibold text-brand-800 hover:bg-brand-100"
+                    >
+                      <Plus className="h-4 w-4 shrink-0" />
+                      Add New Product
+                    </button>
                   </li>
                 ) : (
                   productHits.map((p) => (
@@ -1189,6 +1226,23 @@ function NewPurchaseInvoicePageInner() {
           </button>
         </div>
       </form>
+
+      {quickAddToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+          {quickAddToast}
+        </div>
+      )}
+
+      <QuickAddProductModal
+        open={quickAddOpen}
+        searchQuery={quickAddQuery}
+        onClose={() => setQuickAddOpen(false)}
+        onCreated={(product) => {
+          setQuickAddOpen(false);
+          setQuickAddToast(`${product.name} added to this invoice`);
+          void addProduct(product);
+        }}
+      />
     </div>
   );
 }
