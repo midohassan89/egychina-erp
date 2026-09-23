@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
-import {
-  VirtualBundleLinkFields,
-  type BundleBaseProductOption,
-} from "@/components/dashboard/VirtualBundleLinkFields";
+import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 
 export interface QuickAddedProduct {
   id: string;
@@ -41,9 +38,6 @@ export function QuickAddProductModal({
   const [isVirtual, setIsVirtual] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
-  const [baseProducts, setBaseProducts] = useState<BundleBaseProductOption[]>(
-    [],
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,26 +57,6 @@ export function QuickAddProductModal({
     setError(null);
     setSubmitting(false);
   }, [open, searchQuery]);
-
-  useEffect(() => {
-    if (!open) return;
-    void (async () => {
-      try {
-        const res = await fetch("/api/products?page=1&perPage=500");
-        if (!res.ok) return;
-        const body = (await res.json()) as {
-          products?: (BundleBaseProductOption & {
-            linkedProductId?: string | null;
-          })[];
-        };
-        setBaseProducts(
-          (body.products ?? []).filter((p) => !p.linkedProductId),
-        );
-      } catch {
-        // Parent list stays empty; the user can retry by reopening.
-      }
-    })();
-  }, [open]);
 
   if (!open) return null;
 
@@ -214,7 +188,6 @@ export function QuickAddProductModal({
               onLinkedProductIdChange={setLinkedProductId}
               bundleMultiplier={bundleMultiplier}
               onBundleMultiplierChange={setBundleMultiplier}
-              baseProducts={baseProducts}
               parentLabel="Parent product"
               multiplierLabel="Conversion rate (piece count)"
             />

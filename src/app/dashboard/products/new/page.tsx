@@ -44,9 +44,6 @@ function NewProductForm() {
   const [isBundle, setIsBundle] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
-  const [baseProducts, setBaseProducts] = useState<
-    { id: string; name: string; barcode: string | null; stockQuantity: number }[]
-  >([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -68,30 +65,6 @@ function NewProductForm() {
     setImagePreview(url);
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
-
-  // Load base (non-bundle) products for the virtual-bundle link dropdown
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch("/api/products?page=1&perPage=500");
-        if (!res.ok) return;
-        const body = (await res.json()) as {
-          products?: {
-            id: string;
-            name: string;
-            barcode: string | null;
-            stockQuantity: number;
-            linkedProductId: string | null;
-          }[];
-        };
-        setBaseProducts(
-          (body.products ?? []).filter((p) => !p.linkedProductId),
-        );
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
 
   const regular = useMemo(() => parseFloat(price), [price]);
   const sale = useMemo(() => {
@@ -426,7 +399,6 @@ function NewProductForm() {
               onLinkedProductIdChange={setLinkedProductId}
               bundleMultiplier={bundleMultiplier}
               onBundleMultiplierChange={setBundleMultiplier}
-              baseProducts={baseProducts}
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">

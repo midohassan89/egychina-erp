@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Search } from "lucide-react";
 import { clsx } from "clsx";
 
 export interface BundleBaseProductOption {
@@ -18,9 +18,16 @@ interface VirtualBundleLinkFieldsProps {
   onLinkedProductIdChange: (id: string) => void;
   bundleMultiplier: string;
   onBundleMultiplierChange: (value: string) => void;
-  baseProducts: BundleBaseProductOption[];
   parentLabel?: string;
   multiplierLabel?: string;
+  /** Hide this product so a bundle cannot link to itself. */
+  excludeProductId?: string;
+}
+
+function productLabel(product: BundleBaseProductOption): string {
+  return product.barcode
+    ? `${product.name} · ${product.barcode}`
+    : product.name;
 }
 
 export function VirtualBundleLinkFields({
@@ -28,31 +35,86 @@ export function VirtualBundleLinkFields({
   onLinkedProductIdChange,
   bundleMultiplier,
   onBundleMultiplierChange,
-  baseProducts,
   parentLabel = "Linked base product (single unit)",
   multiplierLabel = "Bundle multiplier",
+  excludeProductId,
 }: VirtualBundleLinkFieldsProps) {
-  const selected = useMemo(
-    () => baseProducts.find((p) => p.id === linkedProductId) ?? null,
-    [baseProducts, linkedProductId],
-  );
-
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [hits, setHits] = useState<BundleBaseProductOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<BundleBaseProductOption | null>(
+    null,
+  );
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Keep search box label in sync when selection changes externally
   useEffect(() => {
-    if (selected) {
-      setQuery(
-        selected.barcode
-          ? `${selected.name} · ${selected.barcode}`
-          : selected.name,
-      );
-    } else if (!linkedProductId) {
-      setQuery("");
+    if (!linkedProductId) {
+      setSelected(null);
+      return;
     }
-  }, [selected, linkedProductId]);
+    if (selected?.id === linkedProductId) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/products/search?id=${encodeURIComponent(linkedProductId)}`,
+        );
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          product?: BundleBaseProductOption | null;
+        };
+        if (cancelled || !body.product) return;
+        setSelected(body.product);
+        setQuery(productLabel(body.product));
+      } catch {
+        // The id is still saved; the label can stay blank until the next search.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedProductId, selected?.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    const selectedText = selected ? productLabel(selected) : "";
+    if (!q || (selected && q === selectedText)) {
+      setHits([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setLoading(true);
+        try {
+          const params = new URLSearchParams({ q });
+          if (excludeProductId) params.set("excludeId", excludeProductId);
+          const res = await fetch(`/api/products/search?${params}`);
+          const body = (await res.json()) as {
+            products?: BundleBaseProductOption[];
+          };
+          if (cancelled) return;
+          setHits(body.products ?? []);
+        } catch {
+          if (!cancelled) setHits([]);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query, open, excludeProductId, selected]);
 
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
@@ -64,31 +126,24 @@ export function VirtualBundleLinkFields({
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return baseProducts.slice(0, 40);
-    return baseProducts
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.barcode != null && p.barcode.toLowerCase().includes(q)),
-      )
-      .slice(0, 40);
-  }, [baseProducts, query]);
-
-  function selectProduct(p: BundleBaseProductOption) {
-    onLinkedProductIdChange(p.id);
-    setQuery(p.barcode ? `${p.name} · ${p.barcode}` : p.name);
+  function selectProduct(product: BundleBaseProductOption) {
+    setSelected(product);
+    onLinkedProductIdChange(product.id);
+    setQuery(productLabel(product));
     setOpen(false);
+    setHits([]);
   }
 
   function clearSelection() {
+    setSelected(null);
     onLinkedProductIdChange("");
     setQuery("");
+    setHits([]);
     setOpen(true);
   }
 
   const multNum = Math.floor(Number(bundleMultiplier));
+  const showResults = open && query.trim().length > 0 && query !== (selected ? productLabel(selected) : "");
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -97,7 +152,11 @@ export function VirtualBundleLinkFields({
           {parentLabel}
         </span>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          {loading ? (
+            <Loader2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+          ) : (
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          )}
           <input
             type="search"
             autoComplete="off"
@@ -105,8 +164,10 @@ export function VirtualBundleLinkFields({
             onChange={(e) => {
               setQuery(e.target.value);
               setOpen(true);
-              // Typing clears prior selection until a hit is chosen
-              if (linkedProductId) onLinkedProductIdChange("");
+              if (linkedProductId) {
+                setSelected(null);
+                onLinkedProductIdChange("");
+              }
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={(e) => {
@@ -116,7 +177,7 @@ export function VirtualBundleLinkFields({
               }
               if (e.key === "Enter") {
                 e.preventDefault();
-                const first = filtered[0];
+                const first = hits[0];
                 if (first) selectProduct(first);
               }
             }}
@@ -136,14 +197,18 @@ export function VirtualBundleLinkFields({
               Clear
             </button>
           )}
-          {open && (
+          {showResults && (
             <ul className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-              {filtered.length === 0 ? (
+              {loading && hits.length === 0 ? (
+                <li className="px-3 py-2.5 text-sm text-slate-400">
+                  Searching…
+                </li>
+              ) : hits.length === 0 ? (
                 <li className="px-3 py-2.5 text-sm text-slate-400">
                   No matching products
                 </li>
               ) : (
-                filtered.map((p) => (
+                hits.map((p) => (
                   <li key={p.id}>
                     <button
                       type="button"

@@ -5,7 +5,6 @@ import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
 import {
   VirtualBundleLinkFields,
-  type BundleBaseProductOption,
 } from "@/components/dashboard/VirtualBundleLinkFields";
 
 interface ProductEditModalProps {
@@ -39,9 +38,6 @@ export function ProductEditModal({
   const [bundleMultiplier, setBundleMultiplier] = useState(
     String(product.bundleMultiplier ?? 3),
   );
-  const [baseProducts, setBaseProducts] = useState<BundleBaseProductOption[]>(
-    [],
-  );
 
   useEffect(() => {
     if (!open) return;
@@ -54,28 +50,6 @@ export function ProductEditModal({
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [open, product.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    void (async () => {
-      try {
-        const res = await fetch("/api/products?page=1&perPage=500");
-        if (!res.ok) return;
-        const body = (await res.json()) as {
-          products?: (BundleBaseProductOption & {
-            linkedProductId: string | null;
-          })[];
-        };
-        setBaseProducts(
-          (body.products ?? []).filter(
-            (p) => !p.linkedProductId && p.id !== product.id,
-          ),
-        );
-      } catch {
-        // ignore
-      }
-    })();
   }, [open, product.id]);
 
   if (!open) return null;
@@ -188,7 +162,7 @@ export function ProductEditModal({
                 onLinkedProductIdChange={setLinkedProductId}
                 bundleMultiplier={bundleMultiplier}
                 onBundleMultiplierChange={setBundleMultiplier}
-                baseProducts={baseProducts}
+                excludeProductId={product.id}
               />
             ) : (
               <p className="text-xs text-slate-500">
