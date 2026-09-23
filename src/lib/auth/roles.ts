@@ -56,6 +56,7 @@ export type NavAccess =
   | "treasury"
   | "reports"
   | "shifts"
+  | "audit"
   | "users"
   | "profile";
 
@@ -81,6 +82,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "treasury",
     "reports",
     "shifts",
+    "audit",
     "users",
     "profile",
   ],
@@ -95,6 +97,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "treasury",
     "reports",
     "shifts",
+    "audit",
     "users",
     "profile",
   ],
@@ -128,6 +131,15 @@ export function dashboardBlockRedirect(
     role !== "ADMIN"
   ) {
     return "/dashboard/purchases";
+  }
+
+  // Sale audit queue — Manager and Admin
+  if (
+    pathname.startsWith("/dashboard/audit") &&
+    role !== "ADMIN" &&
+    role !== "MANAGER"
+  ) {
+    return "/dashboard";
   }
 
   // Users & Roles — Manager and Admin only

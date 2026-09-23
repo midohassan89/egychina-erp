@@ -9,9 +9,10 @@ import {
   History,
   ClipboardList,
   Shield,
+  ShieldAlert,
 } from "lucide-react";
 import { auth } from "@/auth";
-import { canManageUsers } from "@/lib/auth/roles";
+import { canManageUsers, isManagerOrAdmin } from "@/lib/auth/roles";
 
 const cards = [
   {
@@ -71,6 +72,14 @@ const cards = [
     usersOnly: false,
   },
   {
+    href: "/dashboard/audit",
+    title: "Sale Audit",
+    description: "Orders flagged for review — stock gaps and missing shifts",
+    icon: ShieldAlert,
+    usersOnly: false,
+    managersOnly: true,
+  },
+  {
     href: "/dashboard/users",
     title: "Users & Roles",
     description: "Manage staff accounts, roles, and PIN codes",
@@ -82,7 +91,12 @@ const cards = [
 export default async function DashboardPage() {
   const session = await auth();
   const showUsers = canManageUsers(session?.user?.role);
-  const visible = cards.filter((c) => !c.usersOnly || showUsers);
+  const showAudit = isManagerOrAdmin(session?.user?.role);
+  const visible = cards.filter((c) => {
+    if ("usersOnly" in c && c.usersOnly && !showUsers) return false;
+    if ("managersOnly" in c && c.managersOnly && !showAudit) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
