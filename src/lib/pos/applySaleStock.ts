@@ -125,12 +125,7 @@ export async function applySaleStockChanges(options: {
         404,
       );
     }
-    if (product.stockQuantity + delta < 0) {
-      throw new SaleStockError(
-        `Insufficient stock for "${product.name}" (have ${product.stockQuantity}, need ${Math.abs(delta)})`,
-        400,
-      );
-    }
+    // Overselling is allowed: stock may go to 0 or negative.
   }
 
   const updated: { productId: string; wcId: number; stockQuantity: number }[] =
