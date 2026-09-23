@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { getCachedCustomers } from "@/lib/cache/indexeddb";
+import { getCachedCustomers, getSales } from "@/lib/cache/indexeddb";
 import { useCart } from "@/hooks/useCart";
 import { useCatalogSync } from "@/hooks/useCatalogSync";
 import { useCheckout } from "@/hooks/useCheckout";
@@ -25,6 +25,7 @@ import {
 } from "@/components/pos/ProductGrid";
 import { ProductNotFoundModal } from "@/components/pos/ProductNotFoundModal";
 import { PriceCheckModal } from "@/components/pos/PriceCheckModal";
+import { SaleSyncStatusBadge } from "@/components/pos/SaleSyncStatus";
 import { ShiftStartScreen } from "@/components/pos/ShiftStartScreen";
 import { ZReportModal } from "@/components/pos/ZReportModal";
 import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboardContext";
@@ -40,6 +41,7 @@ import {
 import type {
   CachedCustomer,
   CachedProduct,
+  LocalSale,
   ZReportSummary,
 } from "@/types/woocommerce";
 
@@ -88,6 +90,7 @@ function POSPageInner() {
   const [heldReady, setHeldReady] = useState(false);
   const [heldModalOpen, setHeldModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [recentSales, setRecentSales] = useState<LocalSale[]>([]);
   const [highlightedItemId, setHighlightedItemId] = useState<number | null>(
     null,
   );
@@ -118,6 +121,10 @@ function POSPageInner() {
     const t = window.setTimeout(() => setToast(null), 2800);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    void getSales().then((sales) => setRecentSales(sales.slice(0, 6)));
+  }, [checkout.lastSale]);
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
@@ -491,6 +498,30 @@ function POSPageInner() {
             </button>
           </div>
         </header>
+
+        {recentSales.length > 0 && (
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-4 py-1.5">
+            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Recent
+            </span>
+            {recentSales.map((sale) => (
+              <span
+                key={sale.id}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-200"
+                title={sale.syncError}
+              >
+                <SaleSyncStatusBadge status={sale.syncStatus} variant="dark" />
+                <span className="tabular-nums">{formatEGP(sale.total)}</span>
+                <span className="text-slate-400">
+                  {new Date(sale.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <CartPanel

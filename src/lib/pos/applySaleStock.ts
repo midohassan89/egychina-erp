@@ -44,11 +44,14 @@ export async function applySaleStockChanges(options: {
   updated: { productId: string; wcId: number; stockQuantity: number }[];
   wooSynced: number;
   wooError: string | null;
+  /** Business-rule issues (oversell, missing bundle). Stock is still applied when possible. */
+  auditReasons: string[];
 }> {
   const deltaByProductId = new Map<string, number>();
   /** Product ids whose WC stock must be updated (bundle base units). */
   const wooSyncIds = new Set<string>();
   const productCache = new Map<string, ProductStockRow>();
+  const auditReasons: string[] = [];
 
   async function loadProduct(where: {
     id?: string;
@@ -96,10 +99,10 @@ export async function applySaleStockChanges(options: {
     if (isBundle) {
       const base = await loadProduct({ id: product.linkedProductId! });
       if (!base) {
-        throw new SaleStockError(
+        auditReasons.push(
           `Bundle "${product.name}" is missing its base unit product`,
-          400,
         );
+        continue;
       }
       const units = qty * Math.floor(Number(product.bundleMultiplier));
       deltaByProductId.set(
@@ -120,12 +123,14 @@ export async function applySaleStockChanges(options: {
     const product =
       productCache.get(productId) ?? (await loadProduct({ id: productId }));
     if (!product) {
-      throw new SaleStockError(
-        `Product ${productId} not found for stock update`,
-        404,
+      auditReasons.push(`Product ${productId} not found for stock update`);
+      continue;
+    }
+    if (product.stockQuantity + delta < 0) {
+      auditReasons.push(
+        `Negative stock for "${product.name}" (have ${product.stockQuantity}, need ${Math.abs(delta)})`,
       );
     }
-    // Overselling is allowed: stock may go to 0 or negative.
   }
 
   const updated: { productId: string; wcId: number; stockQuantity: number }[] =
@@ -149,16 +154,12 @@ export async function applySaleStockChanges(options: {
           },
         }));
       if (!current) {
-        throw new SaleStockError(`Product ${productId} not found`, 404);
+        auditReasons.push(`Product ${productId} not found`);
+        continue;
       }
 
       const nextQty = current.stockQuantity + delta;
-      const stockStatus =
-        nextQty > 0
-          ? "instock"
-          : nextQty === 0
-            ? "outofstock"
-            : current.stockStatus;
+      const stockStatus = nextQty > 0 ? "instock" : "outofstock";
 
       const row = await tx.product.update({
         where: { id: productId },
@@ -197,5 +198,5 @@ export async function applySaleStockChanges(options: {
     }
   }
 
-  return { updated, wooSynced, wooError };
+  return { updated, wooSynced, wooError, auditReasons };
 }

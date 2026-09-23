@@ -363,6 +363,9 @@ model Sale {
   status        String   @default("completed")
   wooOrderId    Int?
   customerName  String?
+  /** Set when the sale was saved despite a business-rule issue (oversell, no shift). */
+  requiresAudit Boolean  @default(false)
+  auditReason   String?
   createdAt     DateTime @default(now())
 
   lines SaleLine[]

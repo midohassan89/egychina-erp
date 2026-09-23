@@ -1,7 +1,10 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { roundMoney } from "@/lib/pos/money";
 import { resolveProductUnitCost } from "@/lib/inventory/resolveUnitCost";
 import type { PaymentMethod } from "@/types/woocommerce";
+
+type DbClient = Prisma.TransactionClient | typeof prisma;
 
 export interface PersistSaleLineInput {
   /** WooCommerce product id (POS cart uses wcId as product.id). */
@@ -22,20 +25,28 @@ export interface PersistSaleInput {
   wooOrderId?: number | null;
   customerName?: string | null;
   createdAt?: string | Date | null;
+  requiresAudit?: boolean;
+  auditReason?: string | null;
   lines: PersistSaleLineInput[];
 }
 
 /**
  * Persist a completed POS sale/return for reporting (idempotent on localId).
  */
-export async function persistSaleRecord(input: PersistSaleInput) {
+export async function persistSaleRecord(
+  input: PersistSaleInput,
+  db: DbClient = prisma,
+) {
   const localId =
     input.localId != null && String(input.localId).trim()
       ? String(input.localId).trim()
       : null;
 
   if (localId) {
-    const existing = await prisma.sale.findUnique({ where: { localId } });
+    const existing = await db.sale.findUnique({
+      where: { localId },
+      include: { lines: true },
+    });
     if (existing) return existing;
   }
 
@@ -53,7 +64,7 @@ export async function persistSaleRecord(input: PersistSaleInput) {
 
   const products =
     wcIds.length > 0
-      ? await prisma.product.findMany({
+      ? await db.product.findMany({
           where: { wcId: { in: wcIds }, isDeleted: false },
           select: { id: true, wcId: true },
         })
@@ -82,7 +93,7 @@ export async function persistSaleRecord(input: PersistSaleInput) {
 
     let unitCost = 0;
     if (productId) {
-      unitCost = await resolveProductUnitCost(prisma, productId);
+      unitCost = await resolveProductUnitCost(db, productId);
     }
 
     lineCreates.push({
@@ -96,7 +107,11 @@ export async function persistSaleRecord(input: PersistSaleInput) {
     });
   }
 
-  return prisma.sale.create({
+  const auditReason = input.auditReason?.trim()
+    ? input.auditReason.trim().slice(0, 500)
+    : null;
+
+  return db.sale.create({
     data: {
       localId,
       shiftId: input.shiftId != null ? Number(input.shiftId) : null,
@@ -107,6 +122,8 @@ export async function persistSaleRecord(input: PersistSaleInput) {
       status: "completed",
       wooOrderId: input.wooOrderId ?? null,
       customerName: input.customerName ?? null,
+      requiresAudit: Boolean(input.requiresAudit) || Boolean(auditReason),
+      auditReason,
       createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
       lines: { create: lineCreates },
     },

@@ -13,9 +13,9 @@ import type { PaymentMethod } from "@/types/woocommerce";
 
 /**
  * POST /api/checkout
- * 1. Update open shift payment bucket + tickets
- * 2. Persist Sale + SaleLine for Reports (P&L / bestsellers)
- * 3. Deduct local stock (bundles → linked base unit × multiplier)
+ * Saves the sale even when stock would go negative or no shift is open.
+ * Those cases set requiresAudit + auditReason and still return 200.
+ * 500 only when the sale row itself cannot be inserted.
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -66,22 +66,21 @@ export async function POST(request: Request) {
       ? roundMoney(Number(body.total))
       : delta;
 
-  const shift = await prisma.shift.findFirst({
-    where: {
-      userId: session.user.id,
-      status: "OPEN",
-      ...(body.shiftId != null && body.shiftId !== ""
-        ? { id: Number(body.shiftId) }
-        : {}),
-    },
-  });
+  const rawShift = body.shiftId;
+  const shiftIdNum = Number(rawShift);
+  const shiftIdProvided = rawShift != null && String(rawShift) !== "";
+  const shiftIdValid =
+    shiftIdProvided && Number.isFinite(shiftIdNum) && shiftIdNum > 0;
 
-  if (!shift) {
-    return NextResponse.json(
-      { error: "No open shift — cannot record sale" },
-      { status: 409 },
-    );
-  }
+  const shift = shiftIdProvided && !shiftIdValid
+    ? null
+    : await prisma.shift.findFirst({
+        where: {
+          userId: session.user.id,
+          status: "OPEN",
+          ...(shiftIdValid ? { id: shiftIdNum } : {}),
+        },
+      });
 
   const saleLines = (body.lines ?? []).map((line) => ({
     wcProductId: line.productId ?? null,
@@ -91,11 +90,45 @@ export async function POST(request: Request) {
     lineTotal: Number(line.lineTotal) || 0,
   }));
 
+  const localId =
+    body.localId != null && String(body.localId).trim()
+      ? String(body.localId).trim()
+      : null;
+
+  if (localId) {
+    const existing = await prisma.sale.findUnique({ where: { localId } });
+    if (existing) {
+      return NextResponse.json({
+        ok: true,
+        alreadySynced: true,
+        saleId: existing.id,
+        requiresAudit: existing.requiresAudit,
+        auditReason: existing.auditReason,
+        shift: shift ? mapShiftToCashierShift(shift) : null,
+        salesField,
+        salesDelta: delta,
+        stockUpdated: 0,
+        stockWooSynced: 0,
+        stockWooError: null,
+      });
+    }
+  }
+
+  const auditReasons: string[] = [];
+  if (!shift) {
+    auditReasons.push(
+      body.shiftId != null && body.shiftId !== ""
+        ? "No open shift for this cashier"
+        : "Missing shift ID",
+    );
+  }
+
   // Stock for sales only — returns use /api/pos/restock (bundle-aware).
   let stockResult: {
     updated: { productId: string; wcId: number; stockQuantity: number }[];
     wooSynced: number;
     wooError: string | null;
+    auditReasons: string[];
   } | null = null;
 
   if (!isReturn && saleLines.length > 0) {
@@ -106,54 +139,76 @@ export async function POST(request: Request) {
           quantity: l.quantity,
         })),
       });
-    } catch (error) {
-      if (error instanceof SaleStockError) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: error.statusCode },
-        );
+      auditReasons.push(...stockResult.auditReasons);
+      if (stockResult.wooError) {
+        auditReasons.push(stockResult.wooError);
       }
+    } catch (error) {
+      const message =
+        error instanceof SaleStockError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Stock update failed";
       console.error("[api/checkout] stock", error);
-      return NextResponse.json(
-        { error: "Stock update failed" },
-        { status: 500 },
-      );
+      auditReasons.push(message);
     }
   }
 
-  const updated = await prisma.shift.update({
-    where: { id: shift.id },
-    data: {
-      [salesField]: { increment: delta },
-      tickets: { increment: 1 },
-    },
-  });
+  const auditReason = auditReasons.length
+    ? auditReasons.join("; ").slice(0, 500)
+    : null;
+  const requiresAudit = auditReasons.length > 0;
 
+  let updatedShift = shift;
   let saleId: string | null = null;
   try {
-    const sale = await persistSaleRecord({
-      localId: body.localId,
-      shiftId: shift.id,
-      userId: session.user.id,
-      total: signedTotal,
-      paymentMethod,
-      isReturn,
-      wooOrderId: body.wooOrderId ?? null,
-      customerName: body.customerName ?? null,
-      createdAt: body.createdAt ?? null,
-      lines: saleLines,
+    const saved = await prisma.$transaction(async (tx) => {
+      if (shift) {
+        updatedShift = await tx.shift.update({
+          where: { id: shift.id },
+          data: {
+            [salesField]: { increment: delta },
+            tickets: { increment: 1 },
+          },
+        });
+      }
+
+      return persistSaleRecord(
+        {
+          localId,
+          shiftId: shift?.id ?? null,
+          userId: session.user.id,
+          total: signedTotal,
+          paymentMethod,
+          isReturn,
+          wooOrderId: body.wooOrderId ?? null,
+          customerName: body.customerName ?? null,
+          createdAt: body.createdAt ?? null,
+          requiresAudit,
+          auditReason,
+          lines: saleLines,
+        },
+        tx,
+      );
     });
-    saleId = sale.id;
+    saleId = saved.id;
   } catch (error) {
     console.error("[api/checkout] persist sale", error);
+    return NextResponse.json(
+      { error: "Could not save sale" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
     ok: true,
-    shift: mapShiftToCashierShift(updated),
+    shift: updatedShift ? mapShiftToCashierShift(updatedShift) : null,
     salesField,
     salesDelta: delta,
     saleId,
+    requiresAudit,
+    auditReason,
     stockUpdated: stockResult?.updated.length ?? 0,
     stockWooSynced: stockResult?.wooSynced ?? 0,
     stockWooError: stockResult?.wooError ?? null,

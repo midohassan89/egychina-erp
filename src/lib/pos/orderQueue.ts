@@ -1,6 +1,40 @@
 import { getPendingSales, saveSale } from "@/lib/cache/indexeddb";
 import { saleLinesToOrderPayload } from "@/lib/pos/orderPayload";
+import { isNetworkError } from "@/lib/pos/networkError";
 import type { LocalSale, WooCommerceOrder } from "@/types/woocommerce";
+
+/** Idempotent ERP persist. Business-rule issues return 200 with requiresAudit. */
+async function persistSaleToErp(sale: LocalSale): Promise<void> {
+  const response = await fetch("/api/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      paymentMethod: sale.paymentMethod,
+      amount: Math.abs(sale.total),
+      total: sale.total,
+      isReturn: Boolean(sale.isReturn),
+      shiftId: sale.shiftId,
+      localId: sale.id,
+      createdAt: sale.createdAt,
+      customerName: sale.customerName,
+      wooOrderId: sale.wooOrderId,
+      lines: sale.lines.map((line) => ({
+        productId: line.productId,
+        name: line.name,
+        qty: line.qty,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      })),
+    }),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(body.error ?? "Could not save sale");
+  }
+}
 
 async function syncReturnRestock(sale: LocalSale): Promise<LocalSale> {
   if (!sale.managerId) {
@@ -51,6 +85,8 @@ async function syncReturnRestock(sale: LocalSale): Promise<LocalSale> {
 export async function syncSaleToWooCommerce(
   sale: LocalSale,
 ): Promise<LocalSale> {
+  await persistSaleToErp(sale);
+
   if (sale.isReturn) {
     return syncReturnRestock(sale);
   }
@@ -101,11 +137,12 @@ export async function flushOfflineOrderQueue(): Promise<{
       await syncSaleToWooCommerce(sale);
       synced += 1;
     } catch (err) {
-      failed += 1;
+      const message = err instanceof Error ? err.message : "Order sync failed";
+      if (!isNetworkError(err)) failed += 1;
       await saveSale({
         ...sale,
-        syncStatus: "failed",
-        syncError: err instanceof Error ? err.message : "Order sync failed",
+        syncStatus: "pending",
+        syncError: message,
       });
     }
   }

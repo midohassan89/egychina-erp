@@ -12,6 +12,7 @@ import { roundMoney } from "@/lib/pos/money";
 import { cartToSaleLines } from "@/lib/pos/orderPayload";
 import { syncSaleToWooCommerce } from "@/lib/pos/orderQueue";
 import { isCashPayment } from "@/lib/pos/paymentMethods";
+import { isNetworkError } from "@/lib/pos/networkError";
 
 function newSaleId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -133,51 +134,65 @@ export function useCheckout() {
 
       await saveSale(sale);
 
-      // Update Prisma shift + persist Sale for Reports + stock deduction.
-      if (shiftId) {
-        try {
-          const checkoutRes = await fetch("/api/checkout", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              paymentMethod,
-              amount: absTotal,
-              total: sale.total,
-              isReturn,
-              shiftId,
-              localId: sale.id,
-              createdAt: sale.createdAt,
-              customerName: sale.customerName,
-              lines: saleLines.map((line) => ({
-                productId: line.productId,
-                name: line.name,
-                qty: line.qty,
-                unitPrice: line.unitPrice,
-                lineTotal: line.lineTotal,
-              })),
-            }),
-          });
-          if (!checkoutRes.ok) {
-            const body = (await checkoutRes.json()) as { error?: string };
-            const message = body.error ?? "Checkout failed";
-            console.warn("[checkout] shift/sale persist failed", message);
-            // Stock / validation errors must stop the ticket
-            if (checkoutRes.status === 400 || checkoutRes.status === 409) {
-              const failed: LocalSale = {
-                ...sale,
-                syncStatus: "failed",
-                syncError: message,
-              };
-              await saveSale(failed);
-              setLastSale(failed);
-              setError(message);
-              setIsSubmitting(false);
-              return failed;
-            }
-          }
-        } catch (err) {
-          console.warn("[checkout] shift/sale persist error", err);
+      if (!isOnline) {
+        setLastSale(sale);
+        setIsSubmitting(false);
+        return sale;
+      }
+
+      // Persist to ERP first. Business-rule issues are saved with requiresAudit (HTTP 200).
+      // A dropped connection keeps the ticket pending in IndexedDB.
+      try {
+        const checkoutRes = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentMethod,
+            amount: absTotal,
+            total: sale.total,
+            isReturn,
+            shiftId,
+            localId: sale.id,
+            createdAt: sale.createdAt,
+            customerName: sale.customerName,
+            lines: saleLines.map((line) => ({
+              productId: line.productId,
+              name: line.name,
+              qty: line.qty,
+              unitPrice: line.unitPrice,
+              lineTotal: line.lineTotal,
+            })),
+          }),
+        });
+        if (!checkoutRes.ok) {
+          const body = (await checkoutRes.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          const queued: LocalSale = {
+            ...sale,
+            syncStatus: "pending",
+            syncError: body.error ?? "Checkout will retry when the server is available",
+          };
+          await saveSale(queued);
+          setLastSale(queued);
+          setIsSubmitting(false);
+          return queued;
         }
+      } catch (err) {
+        console.warn("[checkout] sale persist error", err);
+        const queued: LocalSale = {
+          ...sale,
+          syncStatus: "pending",
+          syncError: isNetworkError(err)
+            ? "Offline — will sync when online"
+            : err instanceof Error
+              ? err.message
+              : "Could not reach the server",
+        };
+        await saveSale(queued);
+        setLastSale(queued);
+        setIsSubmitting(false);
+        return queued;
       }
 
       if (isReturn) {
@@ -205,16 +220,18 @@ export function useCheckout() {
           setLastSale(synced);
           return synced;
         } catch (err) {
-          const failed: LocalSale = {
+          const queued: LocalSale = {
             ...sale,
-            syncStatus: "failed",
+            syncStatus: "pending",
             syncError:
               err instanceof Error ? err.message : "Restock failed",
           };
-          await saveSale(failed);
-          setLastSale(failed);
-          setError(failed.syncError ?? "Restock failed");
-          return failed;
+          await saveSale(queued);
+          setLastSale(queued);
+          setError(
+            `${queued.syncError}. Saved on this register — will sync when online.`,
+          );
+          return queued;
         } finally {
           setIsSubmitting(false);
         }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Receipt } from "lucide-react";
 import { getSales } from "@/lib/cache/indexeddb";
+import { SaleSyncStatusBadge } from "@/components/pos/SaleSyncStatus";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 import type { LocalSale } from "@/types/woocommerce";
 
@@ -90,7 +91,7 @@ export default function AccountingPage() {
                     {sale.wooOrderId ? `#${sale.wooOrderId}` : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <SyncBadge status={sale.syncStatus} />
+                    <SaleSyncStatusBadge status={sale.syncStatus} />
                   </td>
                 </tr>
               ))}
@@ -108,20 +109,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
     </div>
-  );
-}
-
-function SyncBadge({ status }: { status: LocalSale["syncStatus"] }) {
-  const styles = {
-    synced: "bg-brand-50 text-brand-700",
-    pending: "bg-amber-50 text-amber-700",
-    failed: "bg-red-50 text-red-700",
-  };
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}
-    >
-      {status}
-    </span>
   );
 }
