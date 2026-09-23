@@ -10,7 +10,18 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgePercent,
+  Check,
+  Loader2,
+  Percent,
+  Plus,
+  Search,
+  Tag,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 
 interface SupplierOption {
@@ -882,11 +893,31 @@ function NewPurchaseInvoicePageInner() {
                 <tr>
                   <th className="py-2 pr-3">Product</th>
                   <th className="w-24 py-2 px-2">Qty</th>
-                  <th className="w-28 py-2 px-2">Unit cost</th>
+                  <th className="w-32 py-2 px-2">
+                    <span className="inline-flex items-center gap-1 text-slate-500">
+                      <Wallet className="h-3.5 w-3.5" />
+                      Unit cost
+                    </span>
+                  </th>
                   <th className="w-28 py-2 px-2">Total</th>
-                  <th className="w-32 py-2 px-2">Regular price</th>
-                  <th className="w-36 py-2 px-2">Sale price</th>
-                  <th className="w-24 py-2 px-2">Margin %</th>
+                  <th className="w-36 py-2 px-2">
+                    <span className="inline-flex items-center gap-1 text-blue-700">
+                      <Tag className="h-3.5 w-3.5" />
+                      Regular price
+                    </span>
+                  </th>
+                  <th className="w-40 py-2 px-2">
+                    <span className="inline-flex items-center gap-1 text-amber-700">
+                      <BadgePercent className="h-3.5 w-3.5" />
+                      Sale price
+                    </span>
+                  </th>
+                  <th className="w-28 py-2 px-2">
+                    <span className="inline-flex items-center gap-1">
+                      <Percent className="h-3.5 w-3.5" />
+                      Margin
+                    </span>
+                  </th>
                   <th className="w-12 py-2" />
                 </tr>
               </thead>
@@ -934,26 +965,30 @@ function NewPurchaseInvoicePageInner() {
                         />
                       </td>
                       <td className="px-2 py-3">
-                        <input
-                          ref={(el) => {
-                            if (el) costInputRefs.current.set(line.key, el);
-                            else costInputRefs.current.delete(line.key);
-                          }}
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={line.unitCost}
-                          onChange={(e) =>
-                            updateUnitCost(line.key, e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              focusLineTotal(line.key);
+                        <div className="relative">
+                          <Wallet className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                          <input
+                            ref={(el) => {
+                              if (el) costInputRefs.current.set(line.key, el);
+                              else costInputRefs.current.delete(line.key);
+                            }}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={line.unitCost}
+                            onChange={(e) =>
+                              updateUnitCost(line.key, e.target.value)
                             }
-                          }}
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
-                        />
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                focusLineTotal(line.key);
+                              }
+                            }}
+                            aria-label="Buying cost"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50"
+                          />
+                        </div>
                       </td>
                       <td className="px-2 py-3">
                         <input
@@ -979,48 +1014,54 @@ function NewPurchaseInvoicePageInner() {
                         />
                       </td>
                       <td className="px-2 py-3">
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={line.regularPrice}
-                          onChange={(e) => {
-                            const regularPrice = e.target.value;
-                            patchSellingPrice(line.key, "regularPrice", regularPrice);
-                            schedulePriceSync({ ...line, regularPrice });
-                          }}
-                          onBlur={(e) =>
-                            flushPriceSync({ ...line, regularPrice: e.target.value })
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") e.preventDefault();
-                          }}
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
-                          aria-label="Regular selling price"
-                        />
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="flex items-center gap-1.5">
+                        <div className="relative">
+                          <Tag className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-500" />
                           <input
                             type="number"
                             min={0}
                             step="0.01"
-                            value={line.salePrice}
-                            placeholder="—"
+                            value={line.regularPrice}
                             onChange={(e) => {
-                              const salePrice = e.target.value;
-                              patchSellingPrice(line.key, "salePrice", salePrice);
-                              schedulePriceSync({ ...line, salePrice });
+                              const regularPrice = e.target.value;
+                              patchSellingPrice(line.key, "regularPrice", regularPrice);
+                              schedulePriceSync({ ...line, regularPrice });
                             }}
                             onBlur={(e) =>
-                              flushPriceSync({ ...line, salePrice: e.target.value })
+                              flushPriceSync({ ...line, regularPrice: e.target.value })
                             }
                             onKeyDown={(e) => {
                               if (e.key === "Enter") e.preventDefault();
                             }}
-                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
-                            aria-label="Sale selling price"
+                            className="w-full rounded-lg border-2 border-blue-400 bg-white py-1.5 pl-7 pr-2 tabular-nums text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
+                            aria-label="Regular selling price"
                           />
+                        </div>
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="relative min-w-0 flex-1">
+                            <BadgePercent className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-amber-600" />
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={line.salePrice}
+                              placeholder="—"
+                              onChange={(e) => {
+                                const salePrice = e.target.value;
+                                patchSellingPrice(line.key, "salePrice", salePrice);
+                                schedulePriceSync({ ...line, salePrice });
+                              }}
+                              onBlur={(e) =>
+                                flushPriceSync({ ...line, salePrice: e.target.value })
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.preventDefault();
+                              }}
+                              className="w-full rounded-lg border border-amber-300 bg-amber-50 py-1.5 pl-7 pr-2 tabular-nums text-amber-950 outline-none placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40"
+                              aria-label="Sale selling price"
+                            />
+                          </div>
                           {priceSync[line.key] === "saving" && (
                             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400" />
                           )}
@@ -1045,17 +1086,23 @@ function NewPurchaseInvoicePageInner() {
                             line.salePrice,
                           );
                           if (margin == null) {
-                            return <span className="text-slate-400">—</span>;
+                            return (
+                              <span className="text-sm font-bold text-slate-300">
+                                —%
+                              </span>
+                            );
                           }
+                          const positive = margin > 0;
                           return (
                             <span
                               className={
-                                margin < 0
-                                  ? "font-semibold tabular-nums text-red-700"
-                                  : "font-semibold tabular-nums text-emerald-700"
+                                positive
+                                  ? "text-base font-bold tabular-nums text-emerald-600"
+                                  : "text-base font-bold tabular-nums text-red-600"
                               }
                             >
-                              {margin.toFixed(1)}%
+                              {margin.toFixed(1)}
+                              <span className="ml-0.5 text-lg">%</span>
                             </span>
                           );
                         })()}
