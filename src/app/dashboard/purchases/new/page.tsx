@@ -887,9 +887,9 @@ function NewPurchaseInvoicePageInner() {
             )}
           </div>
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mt-4 max-h-[65vh] overflow-auto rounded-lg">
+            <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+              <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
                 <tr>
                   <th className="py-2 pr-3">Product</th>
                   <th className="w-24 py-2 px-2">Qty</th>
@@ -921,7 +921,7 @@ function NewPurchaseInvoicePageInner() {
                   <th className="w-12 py-2" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="[&_td]:border-b [&_td]:border-slate-100">
                 {lines.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-8 text-center text-slate-400">
