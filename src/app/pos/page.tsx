@@ -6,6 +6,7 @@ import { getCachedCustomers, getSales } from "@/lib/cache/indexeddb";
 import { useCart } from "@/hooks/useCart";
 import { useCatalogSync } from "@/hooks/useCatalogSync";
 import { useCheckout } from "@/hooks/useCheckout";
+import { useOfflineSync, PENDING_SALE_ALERT_THRESHOLD } from "@/hooks/useOfflineSync";
 import { useReceiptPrint } from "@/hooks/useReceiptPrint";
 import { useShift } from "@/hooks/useShift";
 import { builtInQuickTapProducts } from "@/lib/pos/scaleCatalog";
@@ -63,6 +64,7 @@ function POSPageInner() {
   const { data: session } = useSession();
   const { insetStyle, close: closeKeyboard } = usePosKeyboard();
   const { products, productCount, isLoading, isOnline } = useCatalogSync();
+  const { pendingCount, overPendingLimit } = useOfflineSync();
   const [returnMode, setReturnMode] = useState(false);
   const [managerAuth, setManagerAuth] = useState<{
     managerId: string;
@@ -124,7 +126,16 @@ function POSPageInner() {
 
   useEffect(() => {
     void getSales().then((sales) => setRecentSales(sales.slice(0, 6)));
-  }, [checkout.lastSale]);
+  }, [checkout.lastSale, pendingCount]);
+
+  const pendingAlertArmed = useRef(false);
+  useEffect(() => {
+    if (overPendingLimit && !pendingAlertArmed.current) {
+      pendingAlertArmed.current = true;
+      playErrorBeep();
+    }
+    if (!overPendingLimit) pendingAlertArmed.current = false;
+  }, [overPendingLimit]);
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
@@ -434,6 +445,21 @@ function POSPageInner() {
       )}
 
       <div className="pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none">
+        {overPendingLimit && (
+          <div
+            role="alert"
+            className="sticky top-0 z-40 shrink-0 border-b border-amber-800 bg-amber-400 px-4 py-3 text-amber-950"
+          >
+            <p className="text-sm font-bold sm:text-base">
+              {pendingCount} sales are still on this register
+            </p>
+            <p className="mt-0.5 text-sm">
+              More than {PENDING_SALE_ALERT_THRESHOLD} tickets have not synced.
+              Check the internet connection. Sales stay saved on this device
+              and will send automatically when you are back online.
+            </p>
+          </div>
+        )}
         <header
           className={
             returnMode

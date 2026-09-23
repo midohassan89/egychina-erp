@@ -115,24 +115,35 @@ export async function syncSaleToWooCommerce(
   return synced;
 }
 
-/**
- * Drain the offline order queue — called on reconnect / app load / catalog sync.
- */
-export async function flushOfflineOrderQueue(): Promise<{
+export interface OfflineFlushResult {
   synced: number;
   failed: number;
   remaining: number;
-}> {
+}
+
+let flushInFlight: Promise<OfflineFlushResult> | null = null;
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+async function drainOfflineOrderQueue(): Promise<OfflineFlushResult> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     const pending = await getPendingSales();
     return { synced: 0, failed: 0, remaining: pending.length };
   }
 
-  const pending = await getPendingSales();
+  const pending = (await getPendingSales()).sort((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
   let synced = 0;
   let failed = 0;
 
   for (const sale of pending) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) break;
+    await yieldToUi();
     try {
       await syncSaleToWooCommerce(sale);
       synced += 1;
@@ -144,9 +155,22 @@ export async function flushOfflineOrderQueue(): Promise<{
         syncStatus: "pending",
         syncError: message,
       });
+      if (isNetworkError(err)) break;
     }
   }
 
   const remaining = (await getPendingSales()).length;
   return { synced, failed, remaining };
+}
+
+/**
+ * Drain the offline order queue — reconnect, app load, and the background timer.
+ * Overlapping calls share one run so the register is not synced twice.
+ */
+export function flushOfflineOrderQueue(): Promise<OfflineFlushResult> {
+  if (flushInFlight) return flushInFlight;
+  flushInFlight = drainOfflineOrderQueue().finally(() => {
+    flushInFlight = null;
+  });
+  return flushInFlight;
 }
