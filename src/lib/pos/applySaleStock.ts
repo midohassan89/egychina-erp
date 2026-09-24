@@ -40,6 +40,8 @@ type ProductStockRow = {
  */
 export async function applySaleStockChanges(options: {
   lines: SaleStockLineInput[];
+  /** Also push regular-product stock to WooCommerce (staff meals have no WC order). */
+  syncAllWooStock?: boolean;
 }): Promise<{
   updated: { productId: string; wcId: number; stockQuantity: number }[];
   wooSynced: number;
@@ -178,7 +180,7 @@ export async function applySaleStockChanges(options: {
   let wooError: string | null = null;
 
   for (const row of updated) {
-    if (!wooSyncIds.has(row.productId)) continue;
+    if (!options.syncAllWooStock && !wooSyncIds.has(row.productId)) continue;
     try {
       await wooCommerceFetch(`products/${row.wcId}`, {
         method: "PUT",

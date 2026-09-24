@@ -606,7 +606,13 @@ function POSPageInner() {
           onClose={() => {
             if (!checkout.isSubmitting) setCheckoutOpen(false);
           }}
-          onConfirm={async ({ paymentMethod, customer, tendered }) => {
+          onConfirm={async ({
+            paymentMethod,
+            customer,
+            tendered,
+            employeeId,
+            employeeName,
+          }) => {
             if (!shiftApi.shift) return;
             if (returnMode && !managerAuth) {
               setPendingPin({ type: "return_mode" });
@@ -618,6 +624,8 @@ function POSPageInner() {
               paymentMethod,
               customer,
               tendered,
+              employeeId,
+              employeeName,
               isOnline,
               shiftId: shiftApi.shift.id,
               isReturn: returnMode,
@@ -651,6 +659,10 @@ function POSPageInner() {
                 disableReturnMode();
                 setScanMessage(
                   `Refund ${formatEGP(Math.abs(sale.total))}${syncNote}`,
+                );
+              } else if (sale.paymentMethod === "STAFF_MEAL") {
+                setScanMessage(
+                  `Staff meal${sale.employeeName ? ` · ${sale.employeeName}` : ""} · no cash`,
                 );
               } else {
                 setScanMessage(`Sale complete${changeNote}${syncNote}`);

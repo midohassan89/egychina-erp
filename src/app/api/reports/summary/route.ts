@@ -63,6 +63,9 @@ export async function GET(request: Request) {
   }
 
   for (const sale of sales) {
+    // Staff meals collect no money. Their cost is an expense, not sale COGS.
+    if (sale.paymentMethod === "STAFF_MEAL") continue;
+
     totalRevenue += sale.total;
     const key = toDateKey(sale.createdAt);
     dailyMap.set(key, roundMoney((dailyMap.get(key) ?? 0) + sale.total));

@@ -6,6 +6,7 @@ import { formatEGP } from "@/lib/pos/money";
 import { buildCode128Svg, receiptBarcodeValue } from "@/lib/pos/code128";
 import {
   isCashPayment,
+  isStaffMealPayment,
   paymentMethodLabel,
 } from "@/lib/pos/paymentMethods";
 
@@ -72,6 +73,12 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
           <span>العميل / Customer</span>
           <span>{sale.customerName}</span>
         </div>
+        {isStaffMealPayment(sale.paymentMethod) && sale.employeeName ? (
+          <div className="receipt-meta-row">
+            <span>الموظف / Employee</span>
+            <span>{sale.employeeName}</span>
+          </div>
+        ) : null}
         {sale.isReturn ? (
           <>
             <div className="receipt-meta-row">
@@ -133,11 +140,21 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
               ? "المبلغ المرتجع / Refund"
               : "المجموع / Subtotal"}
           </span>
-          <span>{formatEGP(Math.abs(sale.total))}</span>
+          <span>
+            {formatEGP(
+              isStaffMealPayment(sale.paymentMethod)
+                ? sale.lines.reduce((sum, line) => sum + Math.abs(line.lineTotal), 0)
+                : Math.abs(sale.total),
+            )}
+          </span>
         </div>
         <div className="receipt-total-row receipt-total-final">
           <span>
-            {sale.isReturn ? "الإجمالي المرتجع / Total refund" : "الإجمالي / Total"}
+            {sale.isReturn
+              ? "الإجمالي المرتجع / Total refund"
+              : isStaffMealPayment(sale.paymentMethod)
+                ? "المحصّل / Collected"
+                : "الإجمالي / Total"}
           </span>
           <span>{formatEGP(sale.isReturn ? -Math.abs(sale.total) : sale.total)}</span>
         </div>
@@ -145,6 +162,12 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
           <span>الدفع / Payment</span>
           <span>{paymentLabel}</span>
         </div>
+        {isStaffMealPayment(sale.paymentMethod) && (
+          <div className="receipt-total-row">
+            <span>نقدي / Cash collected</span>
+            <span>{formatEGP(0)}</span>
+          </div>
+        )}
         {isCashPayment(sale.paymentMethod) && !sale.isReturn && (
           <>
             <div className="receipt-total-row">

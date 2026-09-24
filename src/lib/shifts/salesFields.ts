@@ -8,9 +8,10 @@ export type ShiftSalesField =
   | "instapaySales"
   | "wechatSales";
 
+/** Null for methods that must not touch the cash drawer or bank channels. */
 export function shiftSalesFieldForPayment(
   method: PaymentMethod | string,
-): ShiftSalesField {
+): ShiftSalesField | null {
   switch (method) {
     case "cash":
       return "cashSales";
@@ -23,6 +24,8 @@ export function shiftSalesFieldForPayment(
       return "instapaySales";
     case "wechat":
       return "wechatSales";
+    case "STAFF_MEAL":
+      return null;
     default:
       return "cashSales";
   }

@@ -7,6 +7,7 @@ import type { CachedCustomer, PaymentMethod } from "@/types/woocommerce";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 import {
   isCashPayment,
+  isStaffMealPayment,
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/pos/paymentMethods";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
@@ -31,6 +32,8 @@ interface CheckoutDialogProps {
     paymentMethod: PaymentMethod;
     customer: CachedCustomer | null;
     tendered: number;
+    employeeId: number | null;
+    employeeName: string | null;
   }) => Promise<void>;
 }
 
@@ -49,6 +52,10 @@ export function CheckoutDialog({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [customerId, setCustomerId] = useState("");
   const [tenderedInput, setTenderedInput] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [employees, setEmployees] = useState<{ id: number; name: string }[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
 
   const refundAmount = roundMoney(Math.abs(total));
 
@@ -56,6 +63,7 @@ export function CheckoutDialog({
     if (open) {
       setPaymentMethod("cash");
       setCustomerId("");
+      setEmployeeId("");
       if (isReturn) {
         setTenderedInput(String(refundAmount));
       } else {
@@ -70,14 +78,51 @@ export function CheckoutDialog({
   }, [open, total, isReturn, refundAmount]);
 
   useEffect(() => {
+    if (!open || isReturn) return;
+    let cancelled = false;
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+    void (async () => {
+      try {
+        const res = await fetch("/api/employees");
+        const body = (await res.json()) as {
+          error?: string;
+          employees?: { id: number; name: string }[];
+        };
+        if (!res.ok) throw new Error(body.error ?? "Could not load employees");
+        if (!cancelled) setEmployees(body.employees ?? []);
+      } catch (err) {
+        if (!cancelled) {
+          setEmployees([]);
+          setEmployeesError(
+            err instanceof Error ? err.message : "Could not load employees",
+          );
+        }
+      } finally {
+        if (!cancelled) setEmployeesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isReturn]);
+
+  useEffect(() => {
     if (!open) kb?.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- close only when dialog closes
   }, [open]);
 
   const tendered = roundMoney(parseFloat(tenderedInput || "0"));
   const cash = isCashPayment(paymentMethod);
+  const staffMeal = isStaffMealPayment(paymentMethod);
   const change = !isReturn && cash ? roundMoney(tendered - total) : 0;
   const shortfall = !isReturn && cash && tendered + 0.001 < total;
+  const selectedEmployee =
+    employees.find((employee) => String(employee.id) === employeeId) ?? null;
+  const employeeMissing = staffMeal && !selectedEmployee;
+  const paymentOptions = isReturn
+    ? PAYMENT_METHOD_OPTIONS.filter((method) => method.id !== "STAFF_MEAL")
+    : PAYMENT_METHOD_OPTIONS;
   const customer = useMemo(
     () => customers.find((c) => String(c.id) === customerId) ?? null,
     [customers, customerId],
@@ -154,7 +199,7 @@ export function CheckoutDialog({
               {isReturn ? "Refund method" : "Payment method"}
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {PAYMENT_METHOD_OPTIONS.map((method) => (
+              {paymentOptions.map((method) => (
                 <button
                   key={method.id}
                   type="button"
@@ -162,10 +207,14 @@ export function CheckoutDialog({
                   className={clsx(
                     "rounded-xl border px-2 py-3 text-center text-sm font-semibold",
                     paymentMethod === method.id
-                      ? isReturn
-                        ? "border-red-600 bg-red-50 text-red-700"
-                        : "border-brand-600 bg-brand-50 text-brand-700"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50",
+                      ? method.id === "STAFF_MEAL"
+                        ? "border-amber-600 bg-amber-50 text-amber-800"
+                        : isReturn
+                          ? "border-red-600 bg-red-50 text-red-700"
+                          : "border-brand-600 bg-brand-50 text-brand-700"
+                      : method.id === "STAFF_MEAL"
+                        ? "border-amber-300 bg-amber-50/60 text-amber-900 hover:bg-amber-50"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50",
                   )}
                 >
                   <span className="block">{method.labelAr}</span>
@@ -176,6 +225,39 @@ export function CheckoutDialog({
               ))}
             </div>
           </div>
+
+          {staffMeal && (
+            <label className="block rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <span className="mb-1 block text-sm font-semibold text-amber-950">
+                الموظف · Employee
+              </span>
+              <select
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="w-full rounded-xl border border-amber-200 bg-white px-3 py-3 text-base font-medium text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30"
+              >
+                <option value="">
+                  {employeesLoading ? "Loading employees…" : "Select employee…"}
+                </option>
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </option>
+                ))}
+              </select>
+              {employeesError && (
+                <p className="mt-2 text-xs text-red-700">{employeesError}</p>
+              )}
+              {!employeesLoading && employees.length === 0 && !employeesError && (
+                <p className="mt-2 text-xs text-amber-800">
+                  No active employees. An admin can add them under Employees.
+                </p>
+              )}
+              <p className="mt-2 text-xs text-amber-800">
+                Inventory is deducted. No cash is collected.
+              </p>
+            </label>
+          )}
 
           {cash && !isReturn && (
             <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -248,6 +330,7 @@ export function CheckoutDialog({
             </div>
           )}
 
+          {!staffMeal && (
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
               Customer
@@ -265,6 +348,7 @@ export function CheckoutDialog({
               ))}
             </select>
           </label>
+          )}
 
           {error && (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -276,30 +360,38 @@ export function CheckoutDialog({
         <div className="shrink-0 border-t border-slate-200 px-5 py-4">
           <button
             type="button"
-            disabled={isSubmitting || shortfall}
+            disabled={isSubmitting || shortfall || employeeMissing}
             onClick={() =>
               onConfirm({
                 paymentMethod,
-                customer,
-                tendered: cash
-                  ? isReturn
-                    ? refundAmount
-                    : tendered
-                  : refundAmount,
+                customer: staffMeal ? null : customer,
+                tendered: staffMeal
+                  ? 0
+                  : cash
+                    ? isReturn
+                      ? refundAmount
+                      : tendered
+                    : refundAmount,
+                employeeId: staffMeal ? (selectedEmployee?.id ?? null) : null,
+                employeeName: staffMeal ? (selectedEmployee?.name ?? null) : null,
               })
             }
             className={clsx(
               "w-full rounded-xl py-3.5 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300",
               isReturn
                 ? "bg-red-600 hover:bg-red-700"
-                : "bg-brand-600 hover:bg-brand-700",
+                : staffMeal
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-brand-600 hover:bg-brand-700",
             )}
           >
             {isSubmitting
               ? "Completing…"
               : isReturn
                 ? "Complete refund"
-                : "Complete sale"}
+                : staffMeal
+                  ? "Record staff meal"
+                  : "Complete sale"}
           </button>
         </div>
       </div>

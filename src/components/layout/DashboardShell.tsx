@@ -15,6 +15,7 @@ import {
   BarChart3,
   History,
   Users,
+  IdCard,
   UserCircle,
   PanelLeftClose,
   PanelLeftOpen,
@@ -47,6 +48,7 @@ const NAV_ITEMS: {
   { key: "shifts", href: "/dashboard/shifts", label: "Shifts / Z-Reports", icon: ClipboardList },
   { key: "audit", href: "/dashboard/audit", label: "Sale Audit", icon: ShieldAlert },
   { key: "users", href: "/dashboard/users", label: "Users & Roles", icon: Users },
+  { key: "employees", href: "/dashboard/employees", label: "Employees", icon: IdCard },
   { key: "profile", href: "/dashboard/profile", label: "My Profile", icon: UserCircle },
 ];
 

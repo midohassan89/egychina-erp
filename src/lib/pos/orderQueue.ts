@@ -1,5 +1,6 @@
 import { getPendingSales, saveSale } from "@/lib/cache/indexeddb";
 import { saleLinesToOrderPayload } from "@/lib/pos/orderPayload";
+import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import { isNetworkError } from "@/lib/pos/networkError";
 import type { LocalSale, WooCommerceOrder } from "@/types/woocommerce";
 
@@ -17,6 +18,7 @@ async function persistSaleToErp(sale: LocalSale): Promise<void> {
       localId: sale.id,
       createdAt: sale.createdAt,
       customerName: sale.customerName,
+      employeeId: sale.employeeId ?? null,
       wooOrderId: sale.wooOrderId,
       lines: sale.lines.map((line) => ({
         productId: line.productId,
@@ -89,6 +91,17 @@ export async function syncSaleToWooCommerce(
 
   if (sale.isReturn) {
     return syncReturnRestock(sale);
+  }
+
+  if (isStaffMealPayment(sale.paymentMethod)) {
+    const synced: LocalSale = {
+      ...sale,
+      wooOrderId: null,
+      syncStatus: "synced",
+      syncError: undefined,
+    };
+    await saveSale(synced);
+    return synced;
   }
 
   const response = await fetch("/api/woocommerce/orders", {

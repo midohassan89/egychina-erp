@@ -10,6 +10,7 @@ export const PAYMENT_METHOD_OPTIONS: {
   { id: "wallet", labelEn: "Wallet", labelAr: "محفظة" },
   { id: "instapay", labelEn: "InstaPay", labelAr: "انستا" },
   { id: "wechat", labelEn: "WeChat", labelAr: "وي شات" },
+  { id: "STAFF_MEAL", labelEn: "Staff Meal", labelAr: "وجبات عمال" },
 ];
 
 /** Bilingual label for receipts / UI. */
@@ -23,4 +24,8 @@ export function paymentMethodLabel(method: PaymentMethod): string {
 
 export function isCashPayment(method: PaymentMethod): boolean {
   return method === "cash";
+}
+
+export function isStaffMealPayment(method: PaymentMethod | string): boolean {
+  return method === "STAFF_MEAL";
 }

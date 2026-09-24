@@ -9,6 +9,11 @@ import {
   applySaleStockChanges,
   SaleStockError,
 } from "@/lib/pos/applySaleStock";
+import {
+  recordStaffMealExpense,
+  staffMealBuyingCost,
+} from "@/lib/pos/staffMealExpense";
+import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import type { PaymentMethod } from "@/types/woocommerce";
 
 /**
@@ -31,6 +36,7 @@ export async function POST(request: Request) {
     localId?: string | null;
     total?: number;
     customerName?: string | null;
+    employeeId?: number | null;
     createdAt?: string | null;
     wooOrderId?: number | null;
     lines?: {
@@ -48,21 +54,52 @@ export async function POST(request: Request) {
   }
 
   const paymentMethod = body.paymentMethod ?? "cash";
+  const isStaffMeal = isStaffMealPayment(paymentMethod);
   const salesField = shiftSalesFieldForPayment(paymentMethod);
   const isReturn = Boolean(body.isReturn);
 
+  if (isStaffMeal && isReturn) {
+    return NextResponse.json(
+      { error: "Staff meals cannot be refunded as cash" },
+      { status: 400 },
+    );
+  }
+
+  const employeeId = Number(body.employeeId);
+  let staffEmployee: { id: number; name: string } | null = null;
+  if (isStaffMeal) {
+    if (!Number.isFinite(employeeId) || employeeId <= 0) {
+      return NextResponse.json(
+        { error: "Select an employee for the staff meal" },
+        { status: 400 },
+      );
+    }
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, name: true, isActive: true },
+    });
+    if (!employee || !employee.isActive) {
+      return NextResponse.json(
+        { error: "Select an active employee" },
+        { status: 400 },
+      );
+    }
+    staffEmployee = { id: employee.id, name: employee.name };
+  }
+
   const rawAmount = Number(body.amount ?? body.total);
-  if (!Number.isFinite(rawAmount)) {
+  if (!isStaffMeal && !Number.isFinite(rawAmount)) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
-  let delta = roundMoney(Math.abs(rawAmount));
-  if (isReturn || rawAmount < 0) {
+  let delta = isStaffMeal ? 0 : roundMoney(Math.abs(rawAmount));
+  if (!isStaffMeal && (isReturn || rawAmount < 0)) {
     delta = -delta;
   }
 
-  const signedTotal =
-    body.total != null && Number.isFinite(Number(body.total))
+  const signedTotal = isStaffMeal
+    ? 0
+    : body.total != null && Number.isFinite(Number(body.total))
       ? roundMoney(Number(body.total))
       : delta;
 
@@ -138,6 +175,7 @@ export async function POST(request: Request) {
           wcProductId: l.wcProductId,
           quantity: l.quantity,
         })),
+        syncAllWooStock: isStaffMeal,
       });
       auditReasons.push(...stockResult.auditReasons);
       if (stockResult.wooError) {
@@ -168,13 +206,13 @@ export async function POST(request: Request) {
         updatedShift = await tx.shift.update({
           where: { id: shift.id },
           data: {
-            [salesField]: { increment: delta },
+            ...(salesField ? { [salesField]: { increment: delta } } : {}),
             tickets: { increment: 1 },
           },
         });
       }
 
-      return persistSaleRecord(
+      const sale = await persistSaleRecord(
         {
           localId,
           shiftId: shift?.id ?? null,
@@ -182,8 +220,9 @@ export async function POST(request: Request) {
           total: signedTotal,
           paymentMethod,
           isReturn,
-          wooOrderId: body.wooOrderId ?? null,
+          wooOrderId: isStaffMeal ? null : (body.wooOrderId ?? null),
           customerName: body.customerName ?? null,
+          employeeId: staffEmployee?.id ?? null,
           createdAt: body.createdAt ?? null,
           requiresAudit,
           auditReason,
@@ -191,6 +230,18 @@ export async function POST(request: Request) {
         },
         tx,
       );
+
+      if (isStaffMeal) {
+        const cost = await staffMealBuyingCost(tx, saleLines);
+        await recordStaffMealExpense(tx, {
+          saleId: sale.id,
+          employeeName: staffEmployee?.name ?? "Employee",
+          amount: cost,
+          date: sale.createdAt,
+        });
+      }
+
+      return sale;
     });
     saleId = saved.id;
   } catch (error) {

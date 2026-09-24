@@ -350,6 +350,18 @@ model AdjustmentItem {
   @@index([productId])
 }
 
+/// Staff who can receive an internal meal (وجبات عمال). Not a login account.
+model Employee {
+  id        Int      @id @default(autoincrement())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  sales Sale[]
+
+  @@index([isActive])
+}
+
 /// Completed POS sale / return — source of truth for Reports P&L and bestsellers.
 model Sale {
   id            String   @id @default(cuid())
@@ -359,7 +371,11 @@ model Sale {
   userId        String?
   user          User?    @relation(fields: [userId], references: [id])
   total         Float
+  /** cash | visa | wallet | instapay | wechat | STAFF_MEAL */
   paymentMethod String
+  /** Set when paymentMethod is STAFF_MEAL (وجبات عمال). */
+  employeeId    Int?
+  employee      Employee? @relation(fields: [employeeId], references: [id])
   isReturn      Boolean  @default(false)
   /** completed */
   status        String   @default("completed")
@@ -376,6 +392,7 @@ model Sale {
   @@index([status])
   @@index([userId])
   @@index([isReturn])
+  @@index([employeeId])
 }
 
 model SaleLine {

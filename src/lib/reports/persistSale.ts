@@ -24,6 +24,7 @@ export interface PersistSaleInput {
   isReturn?: boolean;
   wooOrderId?: number | null;
   customerName?: string | null;
+  employeeId?: number | null;
   createdAt?: string | Date | null;
   requiresAudit?: boolean;
   auditReason?: string | null;
@@ -122,6 +123,10 @@ export async function persistSaleRecord(
       status: "completed",
       wooOrderId: input.wooOrderId ?? null,
       customerName: input.customerName ?? null,
+      employeeId:
+        input.employeeId != null && Number(input.employeeId) > 0
+          ? Number(input.employeeId)
+          : null,
       requiresAudit: Boolean(input.requiresAudit) || Boolean(auditReason),
       auditReason,
       createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,

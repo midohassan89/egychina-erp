@@ -11,7 +11,7 @@ import { saveSale } from "@/lib/cache/indexeddb";
 import { roundMoney } from "@/lib/pos/money";
 import { cartToSaleLines } from "@/lib/pos/orderPayload";
 import { syncSaleToWooCommerce } from "@/lib/pos/orderQueue";
-import { isCashPayment } from "@/lib/pos/paymentMethods";
+import { isCashPayment, isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import { isNetworkError } from "@/lib/pos/networkError";
 
 function newSaleId(): string {
@@ -27,6 +27,8 @@ interface CompleteSaleInput {
   paymentMethod: PaymentMethod;
   customer: CachedCustomer | null;
   tendered: number;
+  employeeId?: number | null;
+  employeeName?: string | null;
   isOnline: boolean;
   shiftId?: string | null;
   isReturn?: boolean;
@@ -80,6 +82,8 @@ export function useCheckout() {
         paymentMethod,
         customer,
         tendered,
+        employeeId = null,
+        employeeName = null,
         isOnline,
         shiftId,
         isReturn = false,
@@ -99,29 +103,39 @@ export function useCheckout() {
       setError(null);
 
       const saleLines = cartToSaleLines(lines);
+      const staffMeal = isStaffMealPayment(paymentMethod);
       const absTotal = roundMoney(Math.abs(total));
       const change =
         !isReturn && isCashPayment(paymentMethod)
           ? roundMoney(Math.max(0, tendered - total))
           : 0;
+      const mealEmployeeId =
+        staffMeal && employeeId != null && Number(employeeId) > 0
+          ? Number(employeeId)
+          : null;
+      const mealEmployee = employeeName?.trim() || null;
 
       const sale: LocalSale = {
         id: newSaleId(),
         createdAt: new Date().toISOString(),
         paymentMethod,
-        customerId: customer?.id ?? null,
-        customerName: customer
-          ? `${customer.first_name} ${customer.last_name}`.trim() ||
-            customer.email
-          : "Walk-in",
+        customerId: staffMeal ? null : (customer?.id ?? null),
+        customerName: staffMeal
+          ? "Staff meal"
+          : customer
+            ? `${customer.first_name} ${customer.last_name}`.trim() ||
+              customer.email
+            : "Walk-in",
+        employeeId: mealEmployeeId,
+        employeeName: staffMeal ? mealEmployee : null,
         lines: saleLines,
-        total: isReturn ? -absTotal : total,
-        tendered: isCashPayment(paymentMethod)
+        total: isReturn ? -absTotal : staffMeal ? 0 : total,
+        tendered: staffMeal ? 0 : isCashPayment(paymentMethod)
           ? isReturn
             ? absTotal
             : tendered
           : absTotal,
-        change,
+        change: staffMeal ? 0 : change,
         wooOrderId: null,
         syncStatus: "pending",
         shiftId: shiftId ?? null,
@@ -155,6 +169,7 @@ export function useCheckout() {
             localId: sale.id,
             createdAt: sale.createdAt,
             customerName: sale.customerName,
+            employeeId: sale.employeeId ?? null,
             lines: saleLines.map((line) => ({
               productId: line.productId,
               name: line.name,
@@ -241,6 +256,18 @@ export function useCheckout() {
         setLastSale(sale);
         setIsSubmitting(false);
         return sale;
+      }
+
+      if (staffMeal) {
+        const synced: LocalSale = {
+          ...sale,
+          syncStatus: "synced",
+          syncError: undefined,
+        };
+        await saveSale(synced);
+        setLastSale(synced);
+        setIsSubmitting(false);
+        return synced;
       }
 
       try {

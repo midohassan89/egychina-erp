@@ -58,6 +58,7 @@ export type NavAccess =
   | "shifts"
   | "audit"
   | "users"
+  | "employees"
   | "profile";
 
 const ROLE_NAV: Record<string, NavAccess[]> = {
@@ -99,6 +100,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "shifts",
     "audit",
     "users",
+    "employees",
     "profile",
   ],
 };
@@ -139,6 +141,11 @@ export function dashboardBlockRedirect(
     role !== "ADMIN" &&
     role !== "MANAGER"
   ) {
+    return "/dashboard";
+  }
+
+  // Employees (staff meals) — Admin only
+  if (pathname.startsWith("/dashboard/employees") && role !== "ADMIN") {
     return "/dashboard";
   }
 

@@ -117,6 +117,8 @@ export type PaymentMethod =
   | "wallet"
   | "instapay"
   | "wechat"
+  /** Internal consumption — no cash collected. */
+  | "STAFF_MEAL"
   /** @deprecated legacy — treat as visa */
   | "card";
 
@@ -139,6 +141,9 @@ export interface LocalSale {
   paymentMethod: PaymentMethod;
   customerId: number | null;
   customerName: string;
+  /** Employee selected for a staff meal. Name is kept for the printed receipt. */
+  employeeId?: number | null;
+  employeeName?: string | null;
   lines: SaleLine[];
   total: number;
   tendered: number;
