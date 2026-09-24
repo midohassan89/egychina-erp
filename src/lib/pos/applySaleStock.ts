@@ -1,5 +1,8 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
+
+type StockDb = Prisma.TransactionClient | typeof prisma;
 
 export class SaleStockError extends Error {
   constructor(
@@ -42,13 +45,21 @@ export async function applySaleStockChanges(options: {
   lines: SaleStockLineInput[];
   /** Also push regular-product stock to WooCommerce (staff meals have no WC order). */
   syncAllWooStock?: boolean;
+  /**
+   * Join an existing transaction. WooCommerce is left to the caller so the
+   * database transaction is not held open during HTTP calls.
+   */
+  tx?: Prisma.TransactionClient;
 }): Promise<{
   updated: { productId: string; wcId: number; stockQuantity: number }[];
   wooSynced: number;
   wooError: string | null;
   /** Business-rule issues (oversell, missing bundle). Stock is still applied when possible. */
   auditReasons: string[];
+  /** Rows that still need a WooCommerce stock push when `tx` deferred it. */
+  wooRows: { productId: string; wcId: number; stockQuantity: number }[];
 }> {
+  const db: StockDb = options.tx ?? prisma;
   const deltaByProductId = new Map<string, number>();
   /** Product ids whose WC stock must be updated (bundle base units). */
   const wooSyncIds = new Set<string>();
@@ -64,7 +75,7 @@ export async function applySaleStockChanges(options: {
     );
     if (cached) return cached;
 
-    const row = await prisma.product.findFirst({
+    const row = await db.product.findFirst({
       where: {
         isDeleted: false,
         ...(where.id ? { id: where.id } : {}),
@@ -138,7 +149,7 @@ export async function applySaleStockChanges(options: {
   const updated: { productId: string; wcId: number; stockQuantity: number }[] =
     [];
 
-  await prisma.$transaction(async (tx) => {
+  async function writeStock(tx: StockDb) {
     for (const [productId, delta] of deltaByProductId) {
       if (delta === 0) continue;
       const current =
@@ -174,13 +185,37 @@ export async function applySaleStockChanges(options: {
         stockQuantity: row.stockQuantity,
       });
     }
-  });
+  }
+
+  if (options.tx) {
+    await writeStock(options.tx);
+  } else {
+    await prisma.$transaction(async (tx) => {
+      await writeStock(tx);
+    });
+  }
+
+  const wooRows = updated.filter(
+    (row) => options.syncAllWooStock || wooSyncIds.has(row.productId),
+  );
 
   let wooSynced = 0;
   let wooError: string | null = null;
+  if (!options.tx && wooRows.length > 0) {
+    const synced = await syncSaleStockRows(wooRows);
+    wooSynced = synced.wooSynced;
+    wooError = synced.wooError;
+  }
 
-  for (const row of updated) {
-    if (!options.syncAllWooStock && !wooSyncIds.has(row.productId)) continue;
+  return { updated, wooSynced, wooError, auditReasons, wooRows };
+}
+
+export async function syncSaleStockRows(
+  rows: { wcId: number; stockQuantity: number }[],
+): Promise<{ wooSynced: number; wooError: string | null }> {
+  let wooSynced = 0;
+  let wooError: string | null = null;
+  for (const row of rows) {
     try {
       await wooCommerceFetch(`products/${row.wcId}`, {
         method: "PUT",
@@ -199,6 +234,5 @@ export async function applySaleStockChanges(options: {
       break;
     }
   }
-
-  return { updated, wooSynced, wooError, auditReasons };
+  return { wooSynced, wooError };
 }

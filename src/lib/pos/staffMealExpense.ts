@@ -4,37 +4,47 @@ import { ensureTreasury, roundMoney } from "@/lib/treasury/ensureTreasury";
 
 type Tx = Prisma.TransactionClient;
 
-const CATEGORY_NAME = "Staff Meals";
+const CATEGORY_NAMES = ["وجبات عمال", "Staff Meals"] as const;
 
 export interface StaffMealCostLine {
   wcProductId?: number | null;
   quantity: number;
+  /** Selling price charged on this cart line. */
+  unitPrice?: number | null;
 }
 
-/** Buying cost of the units actually removed from stock. Never uses the selling price. */
-export async function staffMealBuyingCost(
+/**
+ * Staff-meal expense for one cart.
+ * Each line uses the product's last purchase cost when it is above zero,
+ * otherwise the selling price on that cart line.
+ */
+export async function staffMealExpenseAmount(
   tx: Tx,
   lines: StaffMealCostLine[],
 ): Promise<number> {
   let total = 0;
 
   for (const line of lines) {
-    const qty = Math.floor(Math.abs(Number(line.quantity) || 0));
+    const qty = Math.abs(Number(line.quantity) || 0);
+    if (qty <= 0) continue;
+
+    const selling = Number(line.unitPrice);
+    const sellingUnit = Number.isFinite(selling) && selling > 0 ? selling : 0;
+
+    let buying = 0;
     const wcId = Number(line.wcProductId);
-    if (qty <= 0 || !Number.isFinite(wcId) || wcId <= 0) continue;
+    if (Number.isFinite(wcId) && wcId > 0) {
+      const product = await tx.product.findFirst({
+        where: { wcId, isDeleted: false },
+        select: { id: true },
+      });
+      if (product) {
+        buying = await resolveLastPurchaseUnitCost(tx, product.id);
+      }
+    }
 
-    const product = await tx.product.findFirst({
-      where: { wcId, isDeleted: false },
-      select: { id: true, linkedProductId: true, bundleMultiplier: true },
-    });
-    if (!product) continue;
-
-    const multiplier = Math.floor(Number(product.bundleMultiplier) || 0);
-    const isBundle = Boolean(product.linkedProductId) && multiplier > 0;
-    const costProductId = isBundle ? product.linkedProductId! : product.id;
-    const units = isBundle ? qty * multiplier : qty;
-    const unitCost = await resolveLastPurchaseUnitCost(tx, costProductId);
-    total += units * unitCost;
+    const unit = buying > 0 ? buying : sellingUnit;
+    total += unit * qty;
   }
 
   return roundMoney(total);
@@ -56,11 +66,13 @@ export async function recordStaffMealExpense(
   const amount = roundMoney(input.amount);
   if (amount <= 0.001) return null;
 
-  const category = await tx.expenseCategory.upsert({
-    where: { name: CATEGORY_NAME },
-    create: { name: CATEGORY_NAME },
-    update: {},
+  const matches = await tx.expenseCategory.findMany({
+    where: { name: { in: [...CATEGORY_NAMES] } },
   });
+  const category =
+    matches.find((row) => row.name === "وجبات عمال") ??
+    matches[0] ??
+    (await tx.expenseCategory.create({ data: { name: "وجبات عمال" } }));
 
   const note = `وجبات عمال — ${input.employeeName} · Order #${input.saleId}`;
 

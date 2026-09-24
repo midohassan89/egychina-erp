@@ -8,10 +8,11 @@ import { persistSaleRecord } from "@/lib/reports/persistSale";
 import {
   applySaleStockChanges,
   SaleStockError,
+  syncSaleStockRows,
 } from "@/lib/pos/applySaleStock";
 import {
   recordStaffMealExpense,
-  staffMealBuyingCost,
+  staffMealExpenseAmount,
 } from "@/lib/pos/staffMealExpense";
 import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import type { PaymentMethod } from "@/types/woocommerce";
@@ -168,7 +169,7 @@ export async function POST(request: Request) {
     auditReasons: string[];
   } | null = null;
 
-  if (!isReturn && saleLines.length > 0) {
+  if (!isReturn && !isStaffMeal && saleLines.length > 0) {
     try {
       stockResult = await applySaleStockChanges({
         lines: saleLines.map((l) => ({
@@ -200,8 +201,35 @@ export async function POST(request: Request) {
 
   let updatedShift = shift;
   let saleId: string | null = null;
+  let savedRequiresAudit = requiresAudit;
+  let savedAuditReason = auditReason;
+  let deferredWoo: { wcId: number; stockQuantity: number }[] = [];
   try {
     const saved = await prisma.$transaction(async (tx) => {
+      const reasons = [...auditReasons];
+      if (isStaffMeal && !isReturn && saleLines.length > 0) {
+        const mealStock = await applySaleStockChanges({
+          lines: saleLines.map((l) => ({
+            wcProductId: l.wcProductId,
+            quantity: l.quantity,
+          })),
+          syncAllWooStock: true,
+          tx,
+        });
+        stockResult = {
+          updated: mealStock.updated,
+          wooSynced: 0,
+          wooError: null,
+          auditReasons: mealStock.auditReasons,
+        };
+        reasons.push(...mealStock.auditReasons);
+        deferredWoo = mealStock.wooRows;
+      }
+
+      const mealAudit = reasons.length
+        ? reasons.join("; ").slice(0, 500)
+        : null;
+
       if (shift) {
         updatedShift = await tx.shift.update({
           where: { id: shift.id },
@@ -224,18 +252,18 @@ export async function POST(request: Request) {
           customerName: body.customerName ?? null,
           employeeId: staffEmployee?.id ?? null,
           createdAt: body.createdAt ?? null,
-          requiresAudit,
-          auditReason,
+          requiresAudit: reasons.length > 0,
+          auditReason: mealAudit,
           lines: saleLines,
         },
         tx,
       );
 
-      if (isStaffMeal) {
-        const cost = await staffMealBuyingCost(tx, saleLines);
+      if (isStaffMeal && staffEmployee) {
+        const cost = await staffMealExpenseAmount(tx, saleLines);
         await recordStaffMealExpense(tx, {
           saleId: sale.id,
-          employeeName: staffEmployee?.name ?? "Employee",
+          employeeName: staffEmployee.name,
           amount: cost,
           date: sale.createdAt,
         });
@@ -244,6 +272,16 @@ export async function POST(request: Request) {
       return sale;
     });
     saleId = saved.id;
+    savedRequiresAudit = saved.requiresAudit;
+    savedAuditReason = saved.auditReason;
+
+    if (deferredWoo.length > 0) {
+      const synced = await syncSaleStockRows(deferredWoo);
+      if (stockResult) {
+        stockResult.wooSynced = synced.wooSynced;
+        stockResult.wooError = synced.wooError;
+      }
+    }
   } catch (error) {
     console.error("[api/checkout] persist sale", error);
     return NextResponse.json(
@@ -258,8 +296,8 @@ export async function POST(request: Request) {
     salesField,
     salesDelta: delta,
     saleId,
-    requiresAudit,
-    auditReason,
+    requiresAudit: savedRequiresAudit,
+    auditReason: savedAuditReason,
     stockUpdated: stockResult?.updated.length ?? 0,
     stockWooSynced: stockResult?.wooSynced ?? 0,
     stockWooError: stockResult?.wooError ?? null,
