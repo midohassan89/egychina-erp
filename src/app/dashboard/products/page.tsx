@@ -799,7 +799,12 @@ function ProductRow({
         )}
       </td>
       <td className="max-w-xs px-4 py-3">
-        <p className="line-clamp-2 font-medium text-slate-900">{product.name}</p>
+        <Link
+          href={`/dashboard/products/${product.id}`}
+          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline"
+        >
+          {product.name}
+        </Link>
         <p className="mt-0.5 text-xs text-slate-400">WC #{product.wcId}</p>
       </td>
       <td className="px-4 py-3 font-mono text-xs text-slate-600">
@@ -931,6 +936,12 @@ function ProductRow({
                 <Pencil className="h-3 w-3" />
                 Edit
               </button>
+              <Link
+                href={`/dashboard/products/${product.id}`}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Ledger
+              </Link>
               <button
                 type="button"
                 disabled={busy}

@@ -93,6 +93,13 @@ export default function SalesHistoryPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (id) void openDetails(id);
+    // Open a sale when the stock ledger links here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openDetails(orderId: string) {
     setDetailLoading(true);
     setDetail(null);
