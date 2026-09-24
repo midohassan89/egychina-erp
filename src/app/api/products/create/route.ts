@@ -31,8 +31,6 @@ export async function POST(request: Request) {
     const salePrice =
       saleRaw === "" ? null : parseFloat(saleRaw);
     const barcode = String(form.get("barcode") ?? "");
-    const stockRaw = String(form.get("stockQuantity") ?? "0");
-    const stockQuantity = parseInt(stockRaw, 10);
     const stockStatusRaw = String(form.get("stockStatus") ?? "instock");
     const stockStatus =
       stockStatusRaw === "outofstock" ? "outofstock" : "instock";
@@ -64,7 +62,7 @@ export async function POST(request: Request) {
       price,
       salePrice: Number.isFinite(salePrice as number) ? salePrice : null,
       barcode,
-      stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+      stockQuantity: 0,
       stockStatus,
       linkedProductId,
       bundleMultiplier:

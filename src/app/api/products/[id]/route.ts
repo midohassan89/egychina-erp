@@ -94,6 +94,16 @@ export async function PATCH(
       return NextResponse.json({ ok: true, product });
     }
 
+    if (body.stockQuantity !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Stock quantity is read-only. Use Opening Balances or Purchase Invoices.",
+        },
+        { status: 400 },
+      );
+    }
+
     const product = await updateProductAndSync(id, {
       name: body.name,
       sku: body.sku,
@@ -101,7 +111,6 @@ export async function PATCH(
       price: body.price,
       salePrice: body.salePrice,
       stockStatus: body.stockStatus,
-      stockQuantity: body.stockQuantity,
       linkedProductId: body.linkedProductId,
       bundleMultiplier: body.bundleMultiplier,
     });
@@ -115,7 +124,6 @@ export async function PATCH(
         price: body.price,
         salePrice: body.salePrice,
         stockStatus: body.stockStatus,
-        stockQuantity: body.stockQuantity,
         linkedProductId: body.linkedProductId,
         bundleMultiplier: body.bundleMultiplier,
       },

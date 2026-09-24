@@ -354,24 +354,6 @@ function ProductsManagement() {
     if (saved) await offerLinkedPrices(product, product.price, normalized);
   }
 
-  async function saveStockQty(product: AdminProductRow, raw: string) {
-    if (product.linkedProductId) {
-      toast("Virtual bundles have no own stock — edit the base unit", "error");
-      return;
-    }
-    const qty = parseInt(raw, 10);
-    if (!Number.isFinite(qty) || qty < 0) {
-      toast("Enter a valid stock quantity", "error");
-      return;
-    }
-    if (qty === product.stockQuantity) return;
-    await patchProduct(
-      product.id,
-      { stockQuantity: qty },
-      "Stock quantity updated on ERP & WooCommerce",
-    );
-  }
-
   async function toggleStock(product: AdminProductRow) {
     const stockStatus =
       product.stockStatus === "instock" ? "outofstock" : "instock";
@@ -679,7 +661,6 @@ function ProductsManagement() {
                     busy={savingId === product.id}
                     onSavePrice={savePrice}
                     onSaveSalePrice={saveSalePrice}
-                    onSaveStockQty={saveStockQty}
                     onToggleStock={toggleStock}
                     onToggleFavorite={() => void toggleFavorite(product)}
                     onEdit={() => setEditProduct(product)}
@@ -766,7 +747,6 @@ function ProductRow({
   busy,
   onSavePrice,
   onSaveSalePrice,
-  onSaveStockQty,
   onToggleStock,
   onToggleFavorite,
   onEdit,
@@ -779,7 +759,6 @@ function ProductRow({
   busy: boolean;
   onSavePrice: (product: AdminProductRow, raw: string) => Promise<void>;
   onSaveSalePrice: (product: AdminProductRow, raw: string) => Promise<void>;
-  onSaveStockQty: (product: AdminProductRow, raw: string) => Promise<void>;
   onToggleStock: (product: AdminProductRow) => Promise<void>;
   onToggleFavorite: () => void;
   onEdit: () => void;
@@ -791,7 +770,6 @@ function ProductRow({
   const [saleDraft, setSaleDraft] = useState(
     product.salePrice != null ? String(product.salePrice) : "",
   );
-  const [qtyDraft, setQtyDraft] = useState(String(product.stockQuantity));
   const inStock = product.stockStatus !== "outofstock";
 
   useEffect(() => {
@@ -801,10 +779,6 @@ function ProductRow({
   useEffect(() => {
     setSaleDraft(product.salePrice != null ? String(product.salePrice) : "");
   }, [product.salePrice]);
-
-  useEffect(() => {
-    setQtyDraft(String(product.stockQuantity));
-  }, [product.stockQuantity]);
 
   return (
     <tr className={clsx("hover:bg-slate-50/80", busy && "opacity-60")}>
@@ -947,19 +921,18 @@ function ProductRow({
             Bundle ×{product.bundleMultiplier ?? "?"}
           </span>
         ) : view === "active" ? (
-          <input
-            type="number"
-            min={0}
-            step={1}
-            disabled={busy}
-            value={qtyDraft}
-            onChange={(e) => setQtyDraft(e.target.value)}
-            onBlur={() => void onSaveStockQty(product, qtyDraft)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-            className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-          />
+          <div className="max-w-[16rem]">
+            <input
+              type="number"
+              readOnly
+              value={product.stockQuantity}
+              className="w-20 cursor-not-allowed rounded-md border border-slate-300 bg-gray-100 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-500"
+              aria-label="Stock quantity"
+            />
+            <p className="mt-1 text-[11px] leading-snug text-gray-500">
+              الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
+            </p>
+          </div>
         ) : (
           <span className="tabular-nums text-slate-700">
             {product.stockQuantity}

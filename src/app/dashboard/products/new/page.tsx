@@ -37,7 +37,6 @@ function NewProductForm() {
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [stockQuantity, setStockQuantity] = useState("0");
   const [stockStatus, setStockStatus] = useState<"instock" | "outofstock">(
     "instock",
   );
@@ -181,12 +180,11 @@ function NewProductForm() {
       if (isBundle) {
         form.set("linkedProductId", linkedProductId);
         form.set("bundleMultiplier", String(Math.floor(Number(bundleMultiplier))));
-        form.set("stockQuantity", "0");
         form.set("stockStatus", "instock");
       } else {
-        form.set("stockQuantity", stockQuantity || "0");
         form.set("stockStatus", stockStatus);
       }
+      form.set("stockQuantity", "0");
 
       if (imageFile) {
         setCompressing(true);
@@ -408,12 +406,13 @@ function NewProductForm() {
                 </span>
                 <input
                   type="number"
-                  min={0}
-                  step={1}
-                  value={stockQuantity}
-                  onChange={(e) => setStockQuantity(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  readOnly
+                  value="0"
+                  className="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-gray-100 px-3 py-2.5 text-sm text-gray-500 outline-none"
                 />
+                <span className="block text-xs text-gray-500">
+                  الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
+                </span>
               </label>
               <label className="block space-y-1.5">
                 <span className="text-sm font-medium text-slate-700">

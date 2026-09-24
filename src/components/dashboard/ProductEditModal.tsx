@@ -165,12 +165,12 @@ export function ProductEditModal({
                 excludeProductId={product.id}
               />
             ) : (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-gray-500">
                 Current stock:{" "}
                 <strong className="tabular-nums text-slate-800">
                   {product.stockQuantity}
-                </strong>{" "}
-                (edit stock from the products grid)
+                </strong>
+                . الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
               </p>
             )}
           </div>
