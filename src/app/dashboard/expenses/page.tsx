@@ -26,6 +26,21 @@ interface BankRow {
   balance: number;
 }
 
+function localIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function currentMonthBounds(): { start: string; end: string } {
+  const now = new Date();
+  return {
+    start: localIsoDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: localIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
+}
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -46,8 +61,9 @@ export default function ExpensesPage() {
   const [paymentSource, setPaymentSource] = useState("TREASURY");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [monthBounds] = useState(currentMonthBounds);
+  const [startDate, setStartDate] = useState(monthBounds.start);
+  const [endDate, setEndDate] = useState(monthBounds.end);
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
   const load = useCallback(async () => {
@@ -87,6 +103,10 @@ export default function ExpensesPage() {
     () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
     [expenses],
   );
+  const totalTitle =
+    startDate === monthBounds.start && endDate === monthBounds.end
+      ? "Total Expenses (This Month)"
+      : "Total Expenses (Selected Period)";
 
   useEffect(() => {
     void load();
@@ -221,9 +241,9 @@ export default function ExpensesPage() {
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
           <div className="space-y-4 border-b border-slate-200 px-4 py-4">
             <div className="flex flex-wrap items-stretch gap-3">
-              <div className="min-w-[200px] rounded-xl bg-slate-900 px-4 py-3 text-white">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                  Total expenses
+              <div className="min-w-[260px] rounded-xl bg-slate-900 px-4 py-3 text-white">
+                <p className="text-xs font-semibold tracking-wide text-white/70">
+                  {totalTitle}
                 </p>
                 <p className="mt-1 text-2xl font-bold tabular-nums">
                   {formatEGP(totalExpenses)}
