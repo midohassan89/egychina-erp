@@ -24,6 +24,10 @@ import Link from "next/link";
 import { CatalogSyncButton } from "@/components/dashboard/CatalogSyncButton";
 import { PermanentDeleteDialog } from "@/components/dashboard/PermanentDeleteDialog";
 import { ProductEditModal } from "@/components/dashboard/ProductEditModal";
+import {
+  fetchLinkedVirtualProducts,
+  LinkedProductsPriceModal,
+} from "@/components/dashboard/LinkedProductsPriceModal";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   downloadProductsExcel,
@@ -70,6 +74,12 @@ function ProductsManagement() {
   const [isPending, startTransition] = useTransition();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editProduct, setEditProduct] = useState<AdminProductRow | null>(null);
+  const [linkedPrompt, setLinkedPrompt] = useState<{
+    baseProductId: string;
+    baseName: string;
+    regularPrice: number;
+    salePrice: number | null;
+  } | null>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [deleteProduct, setDeleteProduct] = useState<AdminProductRow | null>(
     null,
@@ -241,7 +251,7 @@ function ProductsManagement() {
     id: string,
     body: Record<string, unknown>,
     successMessage: string,
-  ) {
+  ): Promise<boolean> {
     setSavingId(id);
     try {
       const res = await fetch(`/api/products/${id}`, {
@@ -266,12 +276,29 @@ function ProductsManagement() {
         }
       }
       toast(successMessage, "success");
+      return true;
     } catch (err) {
       toast(err instanceof Error ? err.message : "Update failed", "error");
       await loadProducts(page, query, view, stockFilter);
+      return false;
     } finally {
       setSavingId(null);
     }
+  }
+
+  async function offerLinkedPrices(
+    product: AdminProductRow,
+    regularPrice: number,
+    salePrice: number | null,
+  ) {
+    const linked = await fetchLinkedVirtualProducts(product.id);
+    if (linked.length === 0) return;
+    setLinkedPrompt({
+      baseProductId: product.id,
+      baseName: product.name,
+      regularPrice,
+      salePrice,
+    });
   }
 
   async function savePrice(product: AdminProductRow, raw: string) {
@@ -289,18 +316,22 @@ function ProductsManagement() {
       return;
     }
     if (price === product.price) return;
-    await patchProduct(product.id, { price }, "Price updated on ERP & WooCommerce");
+    const saved = await patchProduct(product.id, { price }, "Price updated on ERP & WooCommerce");
+    if (saved) {
+      await offerLinkedPrices(product, price, product.salePrice);
+    }
   }
 
   async function saveSalePrice(product: AdminProductRow, raw: string) {
     const trimmed = raw.trim();
     if (trimmed === "") {
       if (product.salePrice == null) return;
-      await patchProduct(
+      const saved = await patchProduct(
         product.id,
         { salePrice: null },
         "Sale price cleared on ERP & WooCommerce",
       );
+      if (saved) await offerLinkedPrices(product, product.price, null);
       return;
     }
     const salePrice = parseFloat(trimmed);
@@ -315,11 +346,12 @@ function ProductsManagement() {
     const normalized = salePrice > 0 ? salePrice : null;
     if (normalized === product.salePrice) return;
     if (normalized == null && product.salePrice == null) return;
-    await patchProduct(
+    const saved = await patchProduct(
       product.id,
       { salePrice: normalized },
       "Sale price updated on ERP & WooCommerce",
     );
+    if (saved) await offerLinkedPrices(product, product.price, normalized);
   }
 
   async function saveStockQty(product: AdminProductRow, raw: string) {
@@ -700,6 +732,17 @@ function ProductsManagement() {
           isSaving={isEditSaving}
           onClose={() => !isEditSaving && setEditProduct(null)}
           onSave={saveEdit}
+        />
+      )}
+      {linkedPrompt && (
+        <LinkedProductsPriceModal
+          open
+          baseProductId={linkedPrompt.baseProductId}
+          baseProductName={linkedPrompt.baseName}
+          regularPrice={linkedPrompt.regularPrice}
+          salePrice={linkedPrompt.salePrice}
+          onClose={() => setLinkedPrompt(null)}
+          onSaved={() => toast("Linked product prices updated", "success")}
         />
       )}
 

@@ -17,6 +17,10 @@ import {
   Wallet,
 } from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
+import {
+  fetchLinkedVirtualProducts,
+  LinkedProductsPriceModal,
+} from "@/components/dashboard/LinkedProductsPriceModal";
 
 interface SupplierOption {
   id: number;
@@ -202,6 +206,12 @@ export default function EditPurchaseInvoicePage({
   const [lookupQuery, setLookupQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkedPrompt, setLinkedPrompt] = useState<{
+    baseProductId: string;
+    baseName: string;
+    regularPrice: number;
+    salePrice: number | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
   const [priceSync, setPriceSync] = useState<Record<string, PriceSyncState>>({});
@@ -552,6 +562,16 @@ export default function EditPurchaseInvoicePage({
       if (!res.ok) throw new Error(body.error ?? "Price sync failed");
       lastSyncedPrices.current.set(line.productId, signature);
       setPriceSync((prev) => ({ ...prev, [line.key]: "saved" }));
+      const linked = await fetchLinkedVirtualProducts(line.productId);
+      if (priceSyncGen.current.get(line.key) !== gen) return;
+      if (linked.length > 0) {
+        setLinkedPrompt({
+          baseProductId: line.productId,
+          baseName: line.productName,
+          regularPrice: regular,
+          salePrice: sale != null && sale > 0 ? sale : null,
+        });
+      }
       window.setTimeout(() => {
         setPriceSync((prev) => {
           if (prev[line.key] !== "saved") return prev;
@@ -1142,6 +1162,16 @@ export default function EditPurchaseInvoicePage({
           </button>
         </div>
       </form>
+      {linkedPrompt && (
+        <LinkedProductsPriceModal
+          open
+          baseProductId={linkedPrompt.baseProductId}
+          baseProductName={linkedPrompt.baseName}
+          regularPrice={linkedPrompt.regularPrice}
+          salePrice={linkedPrompt.salePrice}
+          onClose={() => setLinkedPrompt(null)}
+        />
+      )}
     </div>
   );
 }
