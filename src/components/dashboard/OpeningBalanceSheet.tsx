@@ -35,6 +35,43 @@ function newKey() {
   return `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+const OPENING_BALANCE_DRAFT_KEY = "opening_balance_draft";
+
+function readOpeningBalanceDraft(): { items: LineDraft[]; estimatedMargin: string } | null {
+  try {
+    const raw = localStorage.getItem(OPENING_BALANCE_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      items?: unknown;
+      estimatedMargin?: unknown;
+    };
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .filter(
+            (line): line is LineDraft =>
+              !!line &&
+              typeof line === "object" &&
+              typeof (line as LineDraft).productId === "string" &&
+              (line as LineDraft).productId.length > 0,
+          )
+          .map((line) => ({
+            key: typeof line.key === "string" && line.key ? line.key : newKey(),
+            productId: line.productId,
+            productName: typeof line.productName === "string" ? line.productName : "",
+            packQty: typeof line.packQty === "string" ? line.packQty : "0",
+            packSize: typeof line.packSize === "string" ? line.packSize : "1",
+            looseQty: typeof line.looseQty === "string" ? line.looseQty : "0",
+            pieceCost: typeof line.pieceCost === "string" ? line.pieceCost : "0",
+          }))
+      : [];
+    const estimatedMargin =
+      typeof parsed.estimatedMargin === "string" ? parsed.estimatedMargin : "25";
+    return { items, estimatedMargin };
+  } catch {
+    return null;
+  }
+}
+
 function todayInputValue() {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -122,7 +159,43 @@ function OpeningBalanceSheet({
   const [lookupQuery, setLookupQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(mode !== "create");
   const focusQtyKeyRef = useRef<string | null>(null);
+  const allowUnloadRef = useRef(false);
+  const draftClearedRef = useRef(false);
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    const draft = readOpeningBalanceDraft();
+    if (draft) {
+      setLines(draft.items);
+      setMarginPercent(draft.estimatedMargin);
+    }
+    setDraftReady(true);
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "create" || !draftReady || draftClearedRef.current) return;
+    try {
+      localStorage.setItem(
+        OPENING_BALANCE_DRAFT_KEY,
+        JSON.stringify({ items: lines, estimatedMargin: marginPercent }),
+      );
+    } catch {
+      // ignore quota / private-mode errors
+    }
+  }, [mode, draftReady, lines, marginPercent]);
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (allowUnloadRef.current || lines.length === 0) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [mode, lines.length]);
 
   useEffect(() => {
     if (mode !== "edit" || !documentId) return;
@@ -353,6 +426,13 @@ function OpeningBalanceSheet({
       if (mode === "edit") {
         toast("Opening balance updated", "success");
         return;
+      }
+      draftClearedRef.current = true;
+      allowUnloadRef.current = true;
+      try {
+        localStorage.removeItem(OPENING_BALANCE_DRAFT_KEY);
+      } catch {
+        // ignore private-mode errors
       }
       router.push(`/dashboard/inventory/opening-balance/${body.id}/edit`);
     } catch {
