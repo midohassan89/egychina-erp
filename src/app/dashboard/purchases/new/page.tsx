@@ -373,8 +373,8 @@ function NewPurchaseInvoicePageInner() {
     if (!key) return;
     focusQtyKeyRef.current = null;
     const focus = () => {
-      const el = qtyInputRefs.current.get(key);
-      if (!el) return;
+      const el = document.getElementById(`purchase-packs-${key}`);
+      if (!(el instanceof HTMLInputElement)) return;
       el.focus();
       el.select();
     };
@@ -782,18 +782,55 @@ function NewPurchaseInvoicePageInner() {
     void syncSellingPrices(line);
   }
 
-  function focusUnitCost(key: string) {
-    const el = costInputRefs.current.get(key);
-    if (!el) return;
-    el.focus();
-    el.select();
+  function focusById(id: string) {
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (!(el instanceof HTMLInputElement)) return;
+      el.focus();
+      el.select();
+    });
+  }
+
+  function isBlankOrOne(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    const n = Number(trimmed);
+    return Number.isFinite(n) && n === 1;
+  }
+
+  function isBlankOrZero(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    const n = Number(trimmed);
+    return Number.isFinite(n) && n === 0;
+  }
+
+  function focusPacks(key: string) {
+    focusById(`purchase-packs-${key}`);
+  }
+
+  function focusPackSize(key: string) {
+    focusById(`purchase-pack-size-${key}`);
+  }
+
+  function focusPackCost(key: string) {
+    focusById(`purchase-pack-cost-${key}`);
   }
 
   function focusLineTotal(key: string) {
-    const el = totalInputRefs.current.get(key);
-    if (!el) return;
-    el.focus();
-    el.select();
+    focusById(`purchase-line-total-${key}`);
+  }
+
+  function focusRegularPrice(key: string) {
+    focusById(`purchase-regular-price-${key}`);
+  }
+
+  function focusSalePrice(key: string) {
+    focusById(`purchase-sale-price-${key}`);
+  }
+
+  function focusSearch() {
+    focusById("purchase-product-search");
   }
 
   async function handleSearchKeyDown(
@@ -973,6 +1010,7 @@ function NewPurchaseInvoicePageInner() {
           <div className="relative mt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              id="purchase-product-search"
               ref={searchInputRef}
               value={productQuery}
               onChange={(e) => setProductQuery(e.target.value)}
@@ -1087,6 +1125,7 @@ function NewPurchaseInvoicePageInner() {
                       </td>
                       <td className="px-2 py-3">
                         <input
+                          id={`purchase-packs-${line.key}`}
                           ref={(el) => {
                             if (el) qtyInputRefs.current.set(line.key, el);
                             else qtyInputRefs.current.delete(line.key);
@@ -1099,18 +1138,10 @@ function NewPurchaseInvoicePageInner() {
                             updateQuantity(line.key, e.target.value)
                           }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              focusUnitCost(line.key);
-                              return;
-                            }
-                            if (e.key === "Tab" && !e.shiftKey) {
-                              // Let Tab move to Unit Cost (next field); select for quick edit
-                              window.setTimeout(
-                                () => focusUnitCost(line.key),
-                                0,
-                              );
-                            }
+                            if (e.key !== "Enter") return;
+                            e.preventDefault();
+                            if (isBlankOrOne(line.packSize)) focusPackSize(line.key);
+                            else focusPackCost(line.key);
                           }}
                           aria-label="Number of cartons"
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
@@ -1119,6 +1150,7 @@ function NewPurchaseInvoicePageInner() {
                       <td className="px-2 py-3">
                         <div className="flex items-center gap-1">
                           <input
+                            id={`purchase-pack-size-${line.key}`}
                             type="number"
                             min={1}
                             step={1}
@@ -1130,7 +1162,9 @@ function NewPurchaseInvoicePageInner() {
                             }}
                             onBlur={(e) => flushPackSync(line, e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") e.preventDefault();
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              focusPackCost(line.key);
                             }}
                             aria-label="Pieces per carton"
                             title="Pieces in one carton or box"
@@ -1148,6 +1182,7 @@ function NewPurchaseInvoicePageInner() {
                         <div className="relative">
                           <Wallet className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                           <input
+                            id={`purchase-pack-cost-${line.key}`}
                             ref={(el) => {
                               if (el) costInputRefs.current.set(line.key, el);
                               else costInputRefs.current.delete(line.key);
@@ -1160,10 +1195,9 @@ function NewPurchaseInvoicePageInner() {
                               updateUnitCost(line.key, e.target.value)
                             }
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                focusLineTotal(line.key);
-                              }
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              focusLineTotal(line.key);
                             }}
                             aria-label="Pack cost"
                             className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50"
@@ -1172,6 +1206,7 @@ function NewPurchaseInvoicePageInner() {
                       </td>
                       <td className="px-2 py-3">
                         <input
+                          id={`purchase-line-total-${line.key}`}
                           ref={(el) => {
                             if (el) totalInputRefs.current.set(line.key, el);
                             else totalInputRefs.current.delete(line.key);
@@ -1184,9 +1219,14 @@ function NewPurchaseInvoicePageInner() {
                             updateLineTotal(line.key, e.target.value)
                           }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              searchInputRef.current?.focus();
+                            if (e.key !== "Enter") return;
+                            e.preventDefault();
+                            if (isBlankOrZero(line.regularPrice)) {
+                              focusRegularPrice(line.key);
+                            } else if (isBlankOrZero(line.salePrice)) {
+                              focusSalePrice(line.key);
+                            } else {
+                              focusSearch();
                             }
                           }}
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
@@ -1213,6 +1253,7 @@ function NewPurchaseInvoicePageInner() {
                         <div className="relative">
                           <Tag className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-500" />
                           <input
+                            id={`purchase-regular-price-${line.key}`}
                             type="number"
                             min={0}
                             step="0.01"
@@ -1226,7 +1267,10 @@ function NewPurchaseInvoicePageInner() {
                               flushPriceSync({ ...line, regularPrice: e.target.value })
                             }
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") e.preventDefault();
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              if (isBlankOrZero(line.salePrice)) focusSalePrice(line.key);
+                              else focusSearch();
                             }}
                             className="w-full rounded-lg border-2 border-blue-400 bg-white py-1.5 pl-7 pr-2 tabular-nums text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
                             aria-label="Regular selling price"
@@ -1238,6 +1282,7 @@ function NewPurchaseInvoicePageInner() {
                           <div className="relative min-w-0 flex-1">
                             <BadgePercent className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-amber-600" />
                             <input
+                              id={`purchase-sale-price-${line.key}`}
                               type="number"
                               min={0}
                               step="0.01"
@@ -1252,7 +1297,9 @@ function NewPurchaseInvoicePageInner() {
                                 flushPriceSync({ ...line, salePrice: e.target.value })
                               }
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") e.preventDefault();
+                                if (e.key !== "Enter") return;
+                                e.preventDefault();
+                                focusSearch();
                               }}
                               className="w-full rounded-lg border border-amber-300 bg-amber-50 py-1.5 pl-7 pr-2 tabular-nums text-amber-950 outline-none placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40"
                               aria-label="Sale selling price"
