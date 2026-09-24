@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { syncPurchaseTreasuryPayment } from "@/lib/purchases/purchaseTreasury";
 import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
 
 export class PurchaseServiceError extends Error {
@@ -186,6 +187,23 @@ export async function createPurchaseInvoice(input: CreatePurchaseInput) {
         where: { id: supplierId },
         data: { balance: { increment: dueAmount } },
       });
+    }
+
+    try {
+      await syncPurchaseTreasuryPayment(tx, {
+        invoiceId: created.id,
+        previousPaid: 0,
+        nextPaid: paidAmount,
+        date: invoiceDate,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Insufficient treasury")
+      ) {
+        throw new PurchaseServiceError(error.message, 400);
+      }
+      throw error;
     }
 
     return created;

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { syncPurchaseTreasuryPayment } from "@/lib/purchases/purchaseTreasury";
 import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
 import {
   PurchaseServiceError,
@@ -219,6 +220,23 @@ export async function updatePurchaseInvoice(
         supplier: { select: { id: true, name: true } },
       },
     });
+
+    try {
+      await syncPurchaseTreasuryPayment(tx, {
+        invoiceId,
+        previousPaid: existing.paidAmount,
+        nextPaid: paidAmount,
+        date: invoiceDate,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Insufficient treasury")
+      ) {
+        throw new PurchaseServiceError(error.message, 400);
+      }
+      throw error;
+    }
 
     // Adjust supplier A/P balances
     if (oldSupplierId === supplierId) {
