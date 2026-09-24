@@ -214,7 +214,7 @@ export async function buildProductStockLedger(
       occurredAt: line.openingBalance.date,
       type: "OPENING_BALANCE",
       reference: "Opening Balance",
-      href: "/dashboard/inventory/opening-balance",
+      href: `/dashboard/inventory/opening-balance/${line.openingBalance.id}/edit`,
       party: null,
       qtyIn: line.totalStock,
       qtyOut: 0,
