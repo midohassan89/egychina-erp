@@ -14,6 +14,9 @@ interface ProductOption {
   sku: string | null;
   barcode: string | null;
   stockQuantity: number;
+  price?: number;
+  salePrice?: number | null;
+  buyingCost?: number | null;
   purchasePackSize?: number;
   linkedProductId?: string | null;
 }
@@ -78,18 +81,25 @@ function pickBestProduct(
   return exact ?? products[0];
 }
 
-async function fetchLastPurchaseCost(productId: string): Promise<number> {
-  try {
-    const res = await fetch(
-      `/api/inventory/unit-cost?productId=${encodeURIComponent(productId)}&purchaseOnly=1`,
-    );
-    if (!res.ok) return 0;
-    const body = (await res.json()) as { unitCost?: number };
-    const cost = Number(body.unitCost);
-    return Number.isFinite(cost) && cost >= 0 ? roundMoney(cost) : 0;
-  } catch {
-    return 0;
-  }
+function activeSellingPrice(product: ProductOption): number {
+  const sale = Number(product.salePrice);
+  if (Number.isFinite(sale) && sale > 0) return sale;
+  const regular = Number(product.price);
+  if (Number.isFinite(regular) && regular > 0) return regular;
+  return 0;
+}
+
+/** Stored buying cost, or selling price reduced by the estimated margin. */
+function pieceCostForProduct(product: ProductOption, marginRaw: string): number {
+  const buying = Number(product.buyingCost);
+  if (Number.isFinite(buying) && buying > 0) return roundMoney(buying);
+
+  const selling = activeSellingPrice(product);
+  if (selling <= 0) return 0;
+
+  const margin = Number(marginRaw);
+  const pct = Number.isFinite(margin) ? margin : 0;
+  return roundMoney(Math.max(0, selling * (1 - pct / 100)));
 }
 
 function OpeningBalanceSheet({
@@ -102,6 +112,7 @@ function OpeningBalanceSheet({
   const router = useRouter();
   const { toast } = useToast();
   const [date, setDate] = useState(todayInputValue);
+  const [marginPercent, setMarginPercent] = useState("25");
   const [ready, setReady] = useState(mode === "create");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([]);
@@ -220,7 +231,7 @@ function OpeningBalanceSheet({
       setError(`${product.name} is a virtual bundle and does not hold stock`);
       return;
     }
-    const lastPieceCost = await fetchLastPurchaseCost(product.id);
+    const pieceCost = pieceCostForProduct(product, marginPercent);
     const packSize = Math.max(1, Math.floor(Number(product.purchasePackSize)) || 1);
 
     setLines((prev) => {
@@ -243,14 +254,14 @@ function OpeningBalanceSheet({
           packQty: "1",
           packSize: String(packSize),
           looseQty: "0",
-          pieceCost: lastPieceCost > 0 ? String(lastPieceCost) : "",
+          pieceCost: String(pieceCost),
         },
       ];
     });
     setProductQuery("");
     setProductHits([]);
     setError(null);
-  }, []);
+  }, [marginPercent]);
 
   function focusById(id: string) {
     window.requestAnimationFrame(() => {
@@ -385,7 +396,20 @@ function OpeningBalanceSheet({
         }}
         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Estimated Margin % for Missing Costs
+            </span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={marginPercent}
+              onChange={(e) => setMarginPercent(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+          </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Date</span>
             <input
