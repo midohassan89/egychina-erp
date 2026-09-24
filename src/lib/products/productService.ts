@@ -28,6 +28,7 @@ function serializeAdminProduct(p: Product) {
     salePrice: p.salePrice,
     stockQuantity: p.stockQuantity,
     stockStatus: p.stockStatus,
+    purchasePackSize: p.purchasePackSize,
     imageUrl: p.imageUrl,
     isDeleted: p.isDeleted,
     isFavorite: p.isFavorite,

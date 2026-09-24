@@ -59,6 +59,8 @@ model Product {
   salePrice     Float?
   stockQuantity Int      @default(0)
   stockStatus   String   @default("instock")
+  /** Pieces in one supplier carton/box. Purchase qty is packs; stock is qty × this. */
+  purchasePackSize Int   @default(1)
   imageUrl      String?
   isDeleted     Boolean  @default(false)
   isFavorite    Boolean  @default(false)

@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       barcode: p.barcode,
       price: p.price,
       salePrice: p.salePrice,
+      purchasePackSize: p.purchasePackSize,
       stockQuantity: p.stockQuantity,
       stockStatus: p.stockStatus,
       imageUrl: p.imageUrl,

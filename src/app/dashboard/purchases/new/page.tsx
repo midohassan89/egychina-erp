@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   BadgePercent,
+  Boxes,
   Check,
   Loader2,
   Percent,
@@ -39,6 +40,7 @@ interface ProductOption {
   stockQuantity: number;
   price: number;
   salePrice: number | null;
+  purchasePackSize?: number;
 }
 
 interface LineDraft {
@@ -46,6 +48,9 @@ interface LineDraft {
   productId: string;
   productName: string;
   quantity: string;
+  /** Pieces in one supplier carton. */
+  packSize: string;
+  /** Cost of one carton. */
   unitCost: string;
   lineTotal: string;
   regularPrice: string;
@@ -75,6 +80,28 @@ function profitMarginPercent(
     return null;
   }
   return ((active - cost) / active) * 100;
+}
+
+function piecesPerPack(packSize: string): number {
+  const n = Math.floor(Number(packSize));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+function stockPieces(line: { quantity: string; packSize: string }): number {
+  const packs = Math.floor(Number(line.quantity)) || 0;
+  return packs * piecesPerPack(line.packSize);
+}
+
+/** What one piece costs, from the supplier line total and pieces received. */
+function pieceCostOf(line: {
+  quantity: string;
+  packSize: string;
+  lineTotal: string;
+}): number {
+  const pieces = stockPieces(line);
+  const total = Number(line.lineTotal);
+  if (pieces <= 0 || !Number.isFinite(total)) return 0;
+  return total / pieces;
 }
 
 function priceSignature(regularPrice: string, salePrice: string): string {
@@ -124,6 +151,10 @@ function readPurchaseDraft(): PurchaseDraftPayload | null {
                 ? line.productName
                 : "Product",
             quantity: String(line.quantity ?? "1"),
+            packSize:
+              typeof line.packSize === "string" && line.packSize
+                ? line.packSize
+                : "1",
             unitCost: String(line.unitCost ?? "0"),
             lineTotal: String(
               line.lineTotal ??
@@ -233,9 +264,12 @@ function NewPurchaseInvoicePageInner() {
   const costInputRefs = useRef(new Map<string, HTMLInputElement>());
   const totalInputRefs = useRef(new Map<string, HTMLInputElement>());
   const [priceSync, setPriceSync] = useState<Record<string, PriceSyncState>>({});
+  const [packSync, setPackSync] = useState<Record<string, "saving" | "saved">>({});
   const [priceSyncError, setPriceSyncError] = useState<Record<string, string>>({});
   const priceSyncTimers = useRef(new Map<string, number>());
+  const packSyncTimers = useRef(new Map<string, number>());
   const lastSyncedPrices = useRef(new Map<string, string>());
+  const lastSyncedPackSizes = useRef(new Map<string, number>());
   const priceSyncGen = useRef(new Map<string, number>());
 
   // Restore draft on mount (before any auto-save writes)
@@ -367,7 +401,12 @@ function NewPurchaseInvoicePageInner() {
     dueAmount <= 0.001 ? "PAID" : paid > 0.001 ? "PARTIAL" : "UNPAID";
 
   const addProduct = useCallback(async (product: ProductOption) => {
-    const lastCost = await fetchLastPurchaseCost(product.id);
+    const lastPieceCost = await fetchLastPurchaseCost(product.id);
+    const packSize = Math.max(
+      1,
+      Math.floor(Number(product.purchasePackSize)) || 1,
+    );
+    const packCost = roundMoney(lastPieceCost * packSize);
 
     setLines((prev) => {
       const existing = prev.find((l) => l.productId === product.id);
@@ -396,6 +435,7 @@ function NewPurchaseInvoicePageInner() {
         product.id,
         priceSignature(String(product.price ?? 0), formatSaleInput(product.salePrice)),
       );
+      lastSyncedPackSizes.current.set(product.id, packSize);
       return [
         ...prev,
         {
@@ -403,8 +443,9 @@ function NewPurchaseInvoicePageInner() {
           productId: product.id,
           productName: product.name,
           quantity: "1",
-          unitCost: String(lastCost),
-          lineTotal: String(roundMoney(qty * lastCost)),
+          packSize: String(packSize),
+          unitCost: String(packCost),
+          lineTotal: String(roundMoney(qty * packCost)),
           regularPrice: String(product.price ?? 0),
           salePrice: formatSaleInput(product.salePrice),
           priceSeeded: true,
@@ -434,15 +475,19 @@ function NewPurchaseInvoicePageInner() {
           unitCost?: number;
           sellPrice?: number;
           salePrice?: number | null;
+          purchasePackSize?: number;
         };
         if (!body.productId) return;
-        const cost = Number(body.unitCost) || 0;
+        const pieceCost = Number(body.unitCost) || 0;
+        const packSize = Math.max(1, Math.floor(Number(body.purchasePackSize)) || 1);
+        const packCost = roundMoney(pieceCost * packSize);
         const regularPrice = String(body.sellPrice ?? 0);
         const salePrice = formatSaleInput(body.salePrice);
         lastSyncedPrices.current.set(
           body.productId,
           priceSignature(regularPrice, salePrice),
         );
+        lastSyncedPackSizes.current.set(body.productId, packSize);
         setLines((prev) => {
           if (prev.some((l) => l.productId === body.productId)) return prev;
           const key = newKey();
@@ -454,8 +499,9 @@ function NewPurchaseInvoicePageInner() {
               productId: body.productId!,
               productName: body.name ?? "Reorder item",
               quantity: "1",
-              unitCost: String(cost),
-              lineTotal: String(roundMoney(1 * cost)),
+              packSize: String(packSize),
+              unitCost: String(packCost),
+              lineTotal: String(roundMoney(1 * packCost)),
               regularPrice,
               salePrice,
               priceSeeded: true,
@@ -528,6 +574,67 @@ function NewPurchaseInvoicePageInner() {
         };
       }),
     );
+  }
+
+  function updatePackSize(key: string, packSize: string) {
+    setLines((prev) =>
+      prev.map((line) => (line.key === key ? { ...line, packSize } : line)),
+    );
+  }
+
+  async function syncPackSize(line: LineDraft, raw: string) {
+    const purchasePackSize = Math.floor(Number(raw));
+    if (!Number.isFinite(purchasePackSize) || purchasePackSize < 1) return;
+    if (lastSyncedPackSizes.current.get(line.productId) === purchasePackSize) {
+      return;
+    }
+    setPackSync((prev) => ({ ...prev, [line.key]: "saving" }));
+    try {
+      const res = await fetch("/api/products/quick-update-pack-size", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: line.productId,
+          purchasePackSize,
+        }),
+      });
+      if (!res.ok) return;
+      lastSyncedPackSizes.current.set(line.productId, purchasePackSize);
+      setPackSync((prev) => ({ ...prev, [line.key]: "saved" }));
+      window.setTimeout(() => {
+        setPackSync((prev) => {
+          if (prev[line.key] !== "saved") return prev;
+          const next = { ...prev };
+          delete next[line.key];
+          return next;
+        });
+      }, 1600);
+    } catch {
+      setPackSync((prev) => {
+        const next = { ...prev };
+        delete next[line.key];
+        return next;
+      });
+    }
+  }
+
+  function schedulePackSync(line: LineDraft, packSize: string) {
+    const existing = packSyncTimers.current.get(line.key);
+    if (existing) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      packSyncTimers.current.delete(line.key);
+      void syncPackSize(line, packSize);
+    }, 600);
+    packSyncTimers.current.set(line.key, timer);
+  }
+
+  function flushPackSync(line: LineDraft, packSize: string) {
+    const existing = packSyncTimers.current.get(line.key);
+    if (existing) window.clearTimeout(existing);
+    packSyncTimers.current.delete(line.key);
+    const normalized = String(piecesPerPack(packSize));
+    if (normalized !== packSize) updatePackSize(line.key, normalized);
+    void syncPackSize({ ...line, packSize: normalized }, normalized);
   }
 
   function updateUnitCost(key: string, unitCost: string) {
@@ -751,8 +858,8 @@ function NewPurchaseInvoicePageInner() {
           ),
           items: lines.map((line) => ({
             productId: line.productId,
-            quantity: Math.floor(Number(line.quantity)),
-            unitCost: Number(line.unitCost),
+            quantity: Math.max(1, stockPieces(line)),
+            unitCost: pieceCostOf(line),
           })),
         }),
       });
@@ -929,14 +1036,21 @@ function NewPurchaseInvoicePageInner() {
               <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
                 <tr>
                   <th className="py-2 pr-3">Product</th>
-                  <th className="w-24 py-2 px-2">Qty</th>
+                  <th className="w-24 py-2 px-2">Packs</th>
+                  <th className="w-28 py-2 px-2">
+                    <span className="inline-flex items-center gap-1 text-slate-600">
+                      <Boxes className="h-3.5 w-3.5" />
+                      Pack size
+                    </span>
+                  </th>
                   <th className="w-32 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-slate-500">
                       <Wallet className="h-3.5 w-3.5" />
-                      Unit cost
+                      Pack cost
                     </span>
                   </th>
-                  <th className="w-28 py-2 px-2">Total</th>
+                  <th className="w-28 py-2 px-2">Line total</th>
+                  <th className="w-36 py-2 px-2">To stock</th>
                   <th className="w-36 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-blue-700">
                       <Tag className="h-3.5 w-3.5" />
@@ -961,7 +1075,7 @@ function NewPurchaseInvoicePageInner() {
               <tbody className="[&_td]:border-b [&_td]:border-slate-100">
                 {lines.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={10} className="py-8 text-center text-slate-400">
                       Scan or search and press Enter to add products
                     </td>
                   </tr>
@@ -998,8 +1112,37 @@ function NewPurchaseInvoicePageInner() {
                               );
                             }
                           }}
+                          aria-label="Number of cartons"
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
                         />
+                      </td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={line.packSize}
+                            onChange={(e) => {
+                              const packSize = e.target.value;
+                              updatePackSize(line.key, packSize);
+                              schedulePackSync(line, packSize);
+                            }}
+                            onBlur={(e) => flushPackSync(line, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.preventDefault();
+                            }}
+                            aria-label="Pieces per carton"
+                            title="Pieces in one carton or box"
+                            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 tabular-nums outline-none focus:border-slate-500"
+                          />
+                          {packSync[line.key] === "saving" && (
+                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
+                          )}
+                          {packSync[line.key] === "saved" && (
+                            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-3">
                         <div className="relative">
@@ -1022,7 +1165,7 @@ function NewPurchaseInvoicePageInner() {
                                 focusLineTotal(line.key);
                               }
                             }}
-                            aria-label="Buying cost"
+                            aria-label="Pack cost"
                             className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50"
                           />
                         </div>
@@ -1047,8 +1190,24 @@ function NewPurchaseInvoicePageInner() {
                             }
                           }}
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
-                          title="Edit bulk total to reverse-calculate unit cost"
+                          title="Supplier line total. Editing it recalculates the pack cost."
                         />
+                      </td>
+                      <td className="px-2 py-3">
+                        {(() => {
+                          const pieces = stockPieces(line);
+                          const pieceCost = pieceCostOf(line);
+                          return (
+                            <div className="leading-tight">
+                              <p className="font-semibold tabular-nums text-slate-900">
+                                {pieces} pcs
+                              </p>
+                              <p className="text-xs tabular-nums text-slate-500">
+                                {formatEGP(pieceCost)} / pc
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-2 py-3">
                         <div className="relative">
@@ -1118,7 +1277,7 @@ function NewPurchaseInvoicePageInner() {
                       <td className="px-2 py-3">
                         {(() => {
                           const margin = profitMarginPercent(
-                            line.unitCost,
+                            String(pieceCostOf(line)),
                             line.regularPrice,
                             line.salePrice,
                           );
