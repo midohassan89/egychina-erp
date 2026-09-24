@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { formatEGP } from "@/lib/pos/money";
 
@@ -46,13 +46,21 @@ export default function ExpensesPage() {
   const [paymentSource, setPaymentSource] = useState("TREASURY");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [filterCategoryId, setFilterCategoryId] = useState("");
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    if (filterCategoryId) params.set("categoryId", filterCategoryId);
+    const query = params.toString();
     try {
       const [expRes, bankRes] = await Promise.all([
-        fetch("/api/expenses"),
+        fetch(query ? `/api/expenses?${query}` : "/api/expenses"),
         fetch("/api/bank-accounts"),
       ]);
       const body = (await expRes.json()) as {
@@ -73,7 +81,12 @@ export default function ExpensesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [startDate, endDate, filterCategoryId]);
+
+  const totalExpenses = useMemo(
+    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
+    [expenses],
+  );
 
   useEffect(() => {
     void load();
@@ -206,7 +219,61 @@ export default function ExpensesPage() {
         </section>
 
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
-          <div className="border-b border-slate-200 px-4 py-3">
+          <div className="space-y-4 border-b border-slate-200 px-4 py-4">
+            <div className="flex flex-wrap items-stretch gap-3">
+              <div className="min-w-[200px] rounded-xl bg-slate-900 px-4 py-3 text-white">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                  Total expenses
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
+                  {formatEGP(totalExpenses)}
+                </p>
+                <p className="mt-0.5 text-xs text-white/60">
+                  {expenses.length} {expenses.length === 1 ? "record" : "records"}
+                </p>
+              </div>
+              <div className="flex min-w-[240px] flex-1 flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <label className="block min-w-[140px] flex-1">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">
+                    Start date
+                  </span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </label>
+                <label className="block min-w-[140px] flex-1">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">
+                    End date
+                  </span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </label>
+                <label className="block min-w-[160px] flex-1">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">
+                    Category
+                  </span>
+                  <select
+                    value={filterCategoryId}
+                    onChange={(e) => setFilterCategoryId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    <option value="">All categories</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
             <h2 className="text-sm font-semibold text-slate-800">
               Recent expenses
             </h2>
@@ -238,7 +305,7 @@ export default function ExpensesPage() {
                       colSpan={5}
                       className="px-4 py-10 text-center text-slate-400"
                     >
-                      No expenses logged yet.
+                      No expenses match these filters.
                     </td>
                   </tr>
                 ) : (
