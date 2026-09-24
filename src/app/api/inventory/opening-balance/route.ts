@@ -163,6 +163,7 @@ export async function POST(request: Request) {
           stockQuantity: nextStock,
           stockStatus: nextStock > 0 ? "instock" : "outofstock",
           buyingCost: line.pieceCost,
+          purchasePackSize: line.packSize,
         },
       });
       stockAfter.push({ wcId: product.wcId, stockQuantity: nextStock });
