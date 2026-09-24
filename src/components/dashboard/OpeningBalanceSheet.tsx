@@ -100,7 +100,7 @@ function packSizeNeedsEntry(packSize: string) {
   const trimmed = packSize.trim();
   if (!trimmed) return true;
   const n = Number(trimmed);
-  return Number.isFinite(n) && n <= 1;
+  return !Number.isFinite(n) || n <= 1;
 }
 
 function pickBestProduct(
@@ -287,7 +287,7 @@ function OpeningBalanceSheet({
     if (!key) return;
     focusQtyKeyRef.current = null;
     window.requestAnimationFrame(() => {
-      const el = document.getElementById(`opening-pack-qty-${key}`);
+      const el = document.getElementById(`pack-qty-${key}`);
       if (!(el instanceof HTMLInputElement)) return;
       el.focus();
       el.select();
@@ -597,7 +597,7 @@ function OpeningBalanceSheet({
                       </td>
                       <td className="px-2 py-3">
                         <input
-                          id={`opening-pack-qty-${line.key}`}
+                          id={`pack-qty-${line.key}`}
                           type="number"
                           min={0}
                           step={1}
@@ -606,7 +606,11 @@ function OpeningBalanceSheet({
                           onKeyDown={(e) => {
                             if (e.key !== "Enter") return;
                             e.preventDefault();
-                            focusById(`opening-loose-${line.key}`);
+                            if (packSizeNeedsEntry(line.packSize)) {
+                              focusById(`pack-size-${line.key}`);
+                            } else {
+                              focusById(`loose-qty-${line.key}`);
+                            }
                           }}
                           aria-label="Pack quantity"
                           className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
@@ -614,7 +618,7 @@ function OpeningBalanceSheet({
                       </td>
                       <td className="px-2 py-3">
                         <input
-                          id={`opening-pack-size-${line.key}`}
+                          id={`pack-size-${line.key}`}
                           type="number"
                           min={1}
                           step={1}
@@ -623,7 +627,7 @@ function OpeningBalanceSheet({
                           onKeyDown={(e) => {
                             if (e.key !== "Enter") return;
                             e.preventDefault();
-                            focusById(`opening-piece-cost-${line.key}`);
+                            focusById(`loose-qty-${line.key}`);
                           }}
                           aria-label="Pack size"
                           className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 tabular-nums outline-none focus:border-slate-500"
@@ -631,7 +635,7 @@ function OpeningBalanceSheet({
                       </td>
                       <td className="px-2 py-3">
                         <input
-                          id={`opening-loose-${line.key}`}
+                          id={`loose-qty-${line.key}`}
                           type="number"
                           min={0}
                           step={1}
@@ -640,11 +644,7 @@ function OpeningBalanceSheet({
                           onKeyDown={(e) => {
                             if (e.key !== "Enter") return;
                             e.preventDefault();
-                            if (packSizeNeedsEntry(line.packSize)) {
-                              focusById(`opening-pack-size-${line.key}`);
-                            } else {
-                              focusById(`opening-piece-cost-${line.key}`);
-                            }
+                            focusById("opening-product-search");
                           }}
                           aria-label="Loose quantity"
                           className="w-full rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 tabular-nums text-violet-950 outline-none focus:border-violet-500"
