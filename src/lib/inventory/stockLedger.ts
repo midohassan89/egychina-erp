@@ -15,6 +15,8 @@ export interface StockLedgerMovement {
   type: StockLedgerType;
   reference: string;
   href: string | null;
+  /** Supplier, employee, or retail customer. */
+  party: string | null;
   qtyIn: number;
   qtyOut: number;
   /** Piece cost for purchases, selling price for sales. */
@@ -29,6 +31,7 @@ interface DraftMovement {
   type: StockLedgerType;
   reference: string;
   href: string | null;
+  party: string | null;
   qtyIn: number;
   qtyOut: number;
   unitAmount: number | null;
@@ -39,7 +42,10 @@ function saleHref(saleId: string) {
   return `/dashboard/sales?id=${encodeURIComponent(saleId)}`;
 }
 
-export async function buildProductStockLedger(productId: string): Promise<{
+export async function buildProductStockLedger(
+  productId: string,
+  range?: { start?: Date | null; end?: Date | null },
+): Promise<{
   product: {
     id: string;
     name: string;
@@ -67,14 +73,25 @@ export async function buildProductStockLedger(productId: string): Promise<{
       where: { productId },
       include: {
         invoice: {
-          select: { id: true, invoiceNumber: true, createdAt: true },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            createdAt: true,
+            supplier: { select: { name: true } },
+          },
         },
       },
     }),
     prisma.purchaseReturnItem.findMany({
       where: { productId },
       include: {
-        return: { select: { id: true, createdAt: true } },
+        return: {
+          select: {
+            id: true,
+            createdAt: true,
+            supplier: { select: { name: true } },
+          },
+        },
       },
     }),
     prisma.saleLine.findMany({
@@ -118,6 +135,7 @@ export async function buildProductStockLedger(productId: string): Promise<{
         ? line.invoice.invoiceNumber.trim()
         : `PI-${line.invoice.id}`,
       href: `/dashboard/purchases/edit/${line.invoice.id}`,
+      party: line.invoice.supplier.name,
       qtyIn: line.quantity,
       qtyOut: 0,
       unitAmount: line.unitCost,
@@ -132,6 +150,7 @@ export async function buildProductStockLedger(productId: string): Promise<{
       type: "PURCHASE_RETURN",
       reference: `RTV-${line.return.id}`,
       href: "/dashboard/purchases/returns",
+      party: line.return.supplier.name,
       qtyIn: 0,
       qtyOut: line.quantity,
       unitAmount: line.unitCost,
@@ -170,14 +189,13 @@ export async function buildProductStockLedger(productId: string): Promise<{
       type,
       reference: line.sale.id.slice(0, 8).toUpperCase(),
       href: saleHref(line.sale.id),
+      party: staffMeal
+        ? line.sale.employee?.name ?? null
+        : "Retail Customer",
       qtyIn: isReturn ? pieces : 0,
       qtyOut: isReturn ? 0 : pieces,
       unitAmount: line.unitPrice,
-      note: staffMeal
-        ? line.sale.employee?.name ?? null
-        : isBundleDraw
-          ? `Bundle ×${multiplier}`
-          : null,
+      note: isBundleDraw ? `Bundle ×${multiplier}` : null,
     });
   }
 
@@ -190,6 +208,7 @@ export async function buildProductStockLedger(productId: string): Promise<{
       type: "ADJUSTMENT",
       reference: `ADJ-${line.adjustment.id}`,
       href: "/dashboard/inventory/adjustments",
+      party: null,
       qtyIn: delta > 0 ? delta : 0,
       qtyOut: delta < 0 ? Math.abs(delta) : 0,
       unitAmount: line.unitCost,
@@ -205,41 +224,64 @@ export async function buildProductStockLedger(productId: string): Promise<{
     return a.id.localeCompare(b.id);
   });
 
-  const net = drafts.reduce((sum, row) => sum + row.qtyIn - row.qtyOut, 0);
-  const opening = product.stockQuantity - net;
-  if (opening !== 0) {
-    const firstAt = drafts[0]?.occurredAt.getTime() ?? product.createdAt.getTime();
-    drafts.unshift({
+  const start = range?.start ?? null;
+  const end = range?.end ?? null;
+  const inPeriod = (at: Date) => {
+    if (start && at < start) return false;
+    if (end && at > end) return false;
+    return true;
+  };
+
+  const prior = start ? drafts.filter((row) => row.occurredAt < start) : [];
+  const period = drafts.filter((row) => inPeriod(row.occurredAt));
+
+  const netAll = drafts.reduce((sum, row) => sum + row.qtyIn - row.qtyOut, 0);
+  const priorNet = prior.reduce((sum, row) => sum + row.qtyIn - row.qtyOut, 0);
+  const unexplained = product.stockQuantity - netAll;
+  const openingBalance = start ? unexplained + priorNet : unexplained;
+
+  const showOpening = Boolean(start) || openingBalance !== 0;
+  const openingAt = start ?? new Date((period[0]?.occurredAt.getTime() ?? product.createdAt.getTime()) - 1000);
+
+  let balance = showOpening ? openingBalance : 0;
+  const chronological: StockLedgerMovement[] = [];
+
+  if (showOpening) {
+    chronological.push({
       id: "opening",
-      occurredAt: new Date(firstAt - 1000),
+      occurredAt: openingAt.toISOString(),
       type: "OPENING",
-      reference: "Opening",
+      reference: "الرصيد الافتتاحي",
       href: null,
-      qtyIn: opening > 0 ? opening : 0,
-      qtyOut: opening < 0 ? Math.abs(opening) : 0,
+      party: null,
+      qtyIn: 0,
+      qtyOut: 0,
       unitAmount: null,
-      note: "Stock not explained by later movements",
+      runningBalance: openingBalance,
+      note: null,
     });
   }
 
-  let balance = 0;
-  const chronological: StockLedgerMovement[] = drafts.map((row) => {
+  for (const row of period) {
     balance += row.qtyIn - row.qtyOut;
-    return {
+    chronological.push({
       id: row.id,
       occurredAt: row.occurredAt.toISOString(),
       type: row.type,
       reference: row.reference,
       href: row.href,
+      party: row.party,
       qtyIn: row.qtyIn,
       qtyOut: row.qtyOut,
       unitAmount: row.unitAmount,
       runningBalance: balance,
       note: row.note,
-    };
-  });
+    });
+  }
 
-  chronological.reverse();
+  const openingRow = chronological[0]?.type === "OPENING" ? chronological[0] : null;
+  const movements = chronological.filter((row) => row.type !== "OPENING").reverse();
+  if (openingRow) movements.unshift(openingRow);
 
   return {
     product: {
@@ -249,6 +291,6 @@ export async function buildProductStockLedger(productId: string): Promise<{
       barcode: product.barcode,
       stockQuantity: product.stockQuantity,
     },
-    movements: chronological,
+    movements,
   };
 }

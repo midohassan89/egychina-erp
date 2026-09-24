@@ -48,8 +48,8 @@ const BADGE: Record<
     className: "bg-amber-50 text-amber-900 ring-amber-200",
   },
   OPENING: {
-    label: "Opening",
-    className: "bg-slate-50 text-slate-600 ring-slate-200",
+    label: "Opening Balance",
+    className: "bg-slate-50 text-slate-700 ring-slate-300",
   },
 };
 
@@ -69,6 +69,8 @@ export default function ProductStockLedgerPage() {
   const [data, setData] = useState<LedgerResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     if (!productId) return;
@@ -77,7 +79,15 @@ export default function ProductStockLedgerPage() {
     setError(null);
     void (async () => {
       try {
-        const res = await fetch(`/api/products/${productId}/ledger`);
+        const params = new URLSearchParams();
+        if (startDate) params.set("startDate", startDate);
+        if (endDate) params.set("endDate", endDate);
+        const query = params.toString();
+        const res = await fetch(
+          query
+            ? `/api/products/${productId}/ledger?${query}`
+            : `/api/products/${productId}/ledger`,
+        );
         const body = (await res.json()) as LedgerResponse & { error?: string };
         if (!res.ok) throw new Error(body.error ?? "Failed to load ledger");
         if (!cancelled) setData(body);
@@ -92,7 +102,7 @@ export default function ProductStockLedgerPage() {
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+  }, [productId, startDate, endDate]);
 
   return (
     <div className="space-y-6">
@@ -134,13 +144,41 @@ export default function ProductStockLedgerPage() {
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Inventory statement
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Newest movements first. The balance is the stock level after each
-            transaction.
-          </p>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">
+                Inventory statement
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Newest movements first. A start date adds the opening balance
+                from every movement before that day.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">
+                  Start date
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">
+                  End date
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                />
+              </label>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -148,6 +186,7 @@ export default function ProductStockLedgerPage() {
               <tr>
                 <th className="px-4 py-3">Date & time</th>
                 <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Party / Entity</th>
                 <th className="px-4 py-3">Reference</th>
                 <th className="px-4 py-3 text-right">Qty in</th>
                 <th className="px-4 py-3 text-right">Qty out</th>
@@ -158,13 +197,13 @@ export default function ProductStockLedgerPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                     Loading ledger…
                   </td>
                 </tr>
               ) : !data || data.movements.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                     No stock movements yet.
                   </td>
                 </tr>
@@ -172,7 +211,14 @@ export default function ProductStockLedgerPage() {
                 data.movements.map((row) => {
                   const badge = BADGE[row.type];
                   return (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
+                    <tr
+                      key={row.id}
+                      className={
+                        row.type === "OPENING"
+                          ? "bg-slate-50/90"
+                          : "hover:bg-slate-50/80"
+                      }
+                    >
                       <td className="whitespace-nowrap px-4 py-3 text-slate-700">
                         {formatWhen(row.occurredAt)}
                       </td>
@@ -188,6 +234,9 @@ export default function ProductStockLedgerPage() {
                         {row.note ? (
                           <p className="mt-1 text-xs text-slate-500">{row.note}</p>
                         ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {row.party || "—"}
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {row.href ? (
