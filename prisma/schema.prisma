@@ -61,6 +61,8 @@ model Product {
   stockStatus   String   @default("instock")
   /** Pieces in one supplier carton/box. Purchase qty is packs; stock is qty × this. */
   purchasePackSize Int   @default(1)
+  /** Last piece cost recorded by an opening-balance entry. */
+  buyingCost       Float @default(0)
   imageUrl      String?
   isDeleted     Boolean  @default(false)
   isFavorite    Boolean  @default(false)
@@ -74,10 +76,11 @@ model Product {
   linkedProduct   Product?  @relation("ProductToBundle", fields: [linkedProductId], references: [id])
   virtualBundles  Product[] @relation("ProductToBundle")
 
-  purchaseItems   PurchaseInvoiceItem[]
-  purchaseReturns PurchaseReturnItem[]
-  adjustmentItems AdjustmentItem[]
-  saleLines       SaleLine[]
+  purchaseItems       PurchaseInvoiceItem[]
+  purchaseReturns     PurchaseReturnItem[]
+  adjustmentItems     AdjustmentItem[]
+  saleLines           SaleLine[]
+  openingBalanceItems OpeningBalanceItem[]
 
   @@index([barcode])
   @@index([sku])
@@ -347,6 +350,35 @@ model AdjustmentItem {
   createdAt      DateTime            @default(now())
 
   @@index([adjustmentId])
+  @@index([productId])
+}
+
+model OpeningBalance {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  items OpeningBalanceItem[]
+
+  @@index([date])
+}
+
+model OpeningBalanceItem {
+  id               Int            @id @default(autoincrement())
+  openingBalanceId Int
+  openingBalance   OpeningBalance @relation(fields: [openingBalanceId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id])
+  packQty          Int
+  packSize         Int
+  looseQty         Int
+  pieceCost        Float
+  totalStock       Int
+  totalValue       Float
+  createdAt        DateTime       @default(now())
+
+  @@index([openingBalanceId])
   @@index([productId])
 }
 

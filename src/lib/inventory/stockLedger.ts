@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export type StockLedgerType =
   | "OPENING"
+  | "OPENING_BALANCE"
   | "PURCHASE"
   | "PURCHASE_RETURN"
   | "SALE"
@@ -68,7 +69,8 @@ export async function buildProductStockLedger(
   });
   if (!product) return null;
 
-  const [purchases, purchaseReturns, saleLines, adjustments] = await Promise.all([
+  const [purchases, purchaseReturns, saleLines, adjustments, openingItems] =
+    await Promise.all([
     prisma.purchaseInvoiceItem.findMany({
       where: { productId },
       include: {
@@ -120,6 +122,12 @@ export async function buildProductStockLedger(
         adjustment: {
           select: { id: true, type: true, notes: true, createdAt: true },
         },
+      },
+    }),
+    prisma.openingBalanceItem.findMany({
+      where: { productId },
+      include: {
+        openingBalance: { select: { id: true, date: true } },
       },
     }),
   ]);
@@ -196,6 +204,22 @@ export async function buildProductStockLedger(
       qtyOut: isReturn ? 0 : pieces,
       unitAmount: line.unitPrice,
       note: isBundleDraw ? `Bundle ×${multiplier}` : null,
+    });
+  }
+
+  for (const line of openingItems) {
+    if (line.totalStock <= 0) continue;
+    drafts.push({
+      id: `opening-balance-${line.id}`,
+      occurredAt: line.openingBalance.date,
+      type: "OPENING_BALANCE",
+      reference: "Opening Balance",
+      href: "/dashboard/inventory/opening-balance",
+      party: null,
+      qtyIn: line.totalStock,
+      qtyOut: 0,
+      unitAmount: line.pieceCost,
+      note: `OB-${line.openingBalance.id}`,
     });
   }
 

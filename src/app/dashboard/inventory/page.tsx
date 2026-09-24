@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { ClipboardList, Package, Printer, ScanLine } from "lucide-react";
+import { ClipboardList, Package, Printer, Scale, ScanLine } from "lucide-react";
 
 const tools = [
+  {
+    href: "/dashboard/inventory/opening-balance",
+    title: "Opening Balance",
+    description: "أرصدة أول المدة — enter starting cartons, loose pieces, and piece cost",
+    icon: Scale,
+  },
   {
     href: "/dashboard/inventory/adjustments",
     title: "Inventory Adjustments",

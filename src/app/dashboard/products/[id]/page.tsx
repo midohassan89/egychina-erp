@@ -51,6 +51,10 @@ const BADGE: Record<
     label: "Opening Balance",
     className: "bg-slate-50 text-slate-700 ring-slate-300",
   },
+  OPENING_BALANCE: {
+    label: "رصيد افتتاحي",
+    className: "bg-purple-100 text-purple-800 ring-purple-200",
+  },
 };
 
 function formatWhen(iso: string) {
