@@ -70,9 +70,12 @@ model Product {
   linkedProductId  String?
   /** How many base units one sold bundle consumes (e.g. 3). */
   bundleMultiplier Int?
+  /** Optional department. Existing products stay uncategorized. */
+  categoryId       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  category        Category? @relation(fields: [categoryId], references: [id])
   linkedProduct   Product?  @relation("ProductToBundle", fields: [linkedProductId], references: [id])
   virtualBundles  Product[] @relation("ProductToBundle")
 
@@ -88,6 +91,7 @@ model Product {
   @@index([isDeleted])
   @@index([isFavorite])
   @@index([linkedProductId])
+  @@index([categoryId])
 }
 
 model Supplier {
@@ -446,4 +450,17 @@ model SaleLine {
   @@index([saleId])
   @@index([productId])
   @@index([wcProductId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  /** Arabic department name (مثل: مكرونات، جبن، عصائر). */
+  name        String    @unique
+  /** English website slug (مثل: pastas). */
+  slug        String    @unique
+  description String?
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
