@@ -43,6 +43,8 @@ function NewProductForm() {
   const [isBundle, setIsBundle] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -54,6 +56,17 @@ function NewProductForm() {
   const [generating, setGenerating] = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/categories");
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        categories?: { id: string; name: string }[];
+      };
+      setCategories(body.categories ?? []);
+    })();
+  }, []);
 
   useEffect(() => {
     if (!imageFile) {
@@ -185,6 +198,7 @@ function NewProductForm() {
         form.set("stockStatus", stockStatus);
       }
       form.set("stockQuantity", "0");
+      if (categoryId) form.set("categoryId", categoryId);
 
       if (imageFile) {
         setCompressing(true);
@@ -270,6 +284,22 @@ function NewProductForm() {
             className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             placeholder="e.g. Olive Oil 1L"
           />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Category</span>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          >
+            <option value="">No category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">

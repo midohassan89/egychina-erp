@@ -9,6 +9,7 @@ import {
   Receipt,
   ShoppingBag,
   Tags,
+  FolderTree,
   Truck,
   Wallet,
   LogOut,
@@ -38,6 +39,7 @@ const NAV_ITEMS: {
 }[] = [
   { key: "overview", href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { key: "products", href: "/dashboard/products", label: "Products", icon: Tags },
+  { key: "categories", href: "/dashboard/categories", label: "الأقسام", icon: FolderTree },
   { key: "suppliers", href: "/dashboard/suppliers", label: "Suppliers", icon: Truck },
   { key: "purchases", href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },
   { key: "sales", href: "/dashboard/sales", label: "Sales", icon: History },

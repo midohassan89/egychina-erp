@@ -388,6 +388,7 @@ function ProductsManagement() {
     barcode: string;
     linkedProductId: string | null;
     bundleMultiplier: number | null;
+    categoryId: string | null;
   }) {
     if (!editProduct) return;
     setIsEditSaving(true);
@@ -401,6 +402,7 @@ function ProductsManagement() {
           barcode: values.barcode || null,
           linkedProductId: values.linkedProductId,
           bundleMultiplier: values.bundleMultiplier,
+          categoryId: values.categoryId,
         }),
       });
       const data = (await res.json()) as {

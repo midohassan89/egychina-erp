@@ -63,6 +63,7 @@ export async function PATCH(
       stockQuantity?: number;
       linkedProductId?: string | null;
       bundleMultiplier?: number | null;
+      categoryId?: string | null;
       isDeleted?: boolean;
       isFavorite?: boolean;
     };
@@ -113,6 +114,7 @@ export async function PATCH(
       stockStatus: body.stockStatus,
       linkedProductId: body.linkedProductId,
       bundleMultiplier: body.bundleMultiplier,
+      categoryId: body.categoryId,
     });
 
     await logAuditAction(session.user.id, "UPDATE", "PRODUCT", id, {
@@ -126,6 +128,7 @@ export async function PATCH(
         stockStatus: body.stockStatus,
         linkedProductId: body.linkedProductId,
         bundleMultiplier: body.bundleMultiplier,
+        categoryId: body.categoryId,
       },
     });
 

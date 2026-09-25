@@ -13,5 +13,6 @@ export interface AdminProductRow {
   isFavorite: boolean;
   linkedProductId: string | null;
   bundleMultiplier: number | null;
+  categoryId: string | null;
   updatedAt: string;
 }

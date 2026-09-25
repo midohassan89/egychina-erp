@@ -18,6 +18,7 @@ interface ProductEditModalProps {
     barcode: string;
     linkedProductId: string | null;
     bundleMultiplier: number | null;
+    categoryId: string | null;
   }) => Promise<void>;
 }
 
@@ -38,6 +39,8 @@ export function ProductEditModal({
   const [bundleMultiplier, setBundleMultiplier] = useState(
     String(product.bundleMultiplier ?? 3),
   );
+  const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -47,10 +50,27 @@ export function ProductEditModal({
     setIsBundle(Boolean(product.linkedProductId));
     setLinkedProductId(product.linkedProductId ?? "");
     setBundleMultiplier(String(product.bundleMultiplier ?? 3));
+    setCategoryId(product.categoryId ?? "");
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [open, product.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch("/api/categories");
+      if (!res.ok || cancelled) return;
+      const body = (await res.json()) as {
+        categories?: { id: string; name: string }[];
+      };
+      if (!cancelled) setCategories(body.categories ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -95,6 +115,7 @@ export function ProductEditModal({
                 barcode,
                 linkedProductId,
                 bundleMultiplier: mult,
+                categoryId: categoryId || null,
               });
               return;
             }
@@ -104,6 +125,7 @@ export function ProductEditModal({
               barcode,
               linkedProductId: null,
               bundleMultiplier: null,
+              categoryId: categoryId || null,
             });
           }}
         >
@@ -115,6 +137,21 @@ export function ProductEditModal({
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Category</span>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            >
+              <option value="">No category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Barcode</span>

@@ -26,6 +26,7 @@ export interface CreateProductInput {
   linkedProductId?: string | null;
   /** Units of the base product consumed per bundle sold. */
   bundleMultiplier?: number | null;
+  categoryId?: string | null;
   image?: {
     buffer: Buffer;
     filename: string;
@@ -112,6 +113,19 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     bundleMultiplier = mult;
   }
 
+  let categoryId: string | null = null;
+  const categoryRaw = input.categoryId?.trim() ?? "";
+  if (categoryRaw) {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryRaw },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new CreateProductError("Category not found", 400);
+    }
+    categoryId = category.id;
+  }
+
   let mediaId: number | undefined;
   let imageUrl: string | null = null;
 
@@ -183,6 +197,7 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
       isDeleted: false,
       linkedProductId,
       bundleMultiplier,
+      categoryId,
     },
   });
 

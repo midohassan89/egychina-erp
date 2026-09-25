@@ -101,6 +101,7 @@ export async function GET(request: Request) {
       isFavorite: p.isFavorite,
       linkedProductId: p.linkedProductId,
       bundleMultiplier: p.bundleMultiplier,
+      categoryId: p.categoryId,
       updatedAt: p.updatedAt.toISOString(),
     }));
 

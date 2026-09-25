@@ -15,6 +15,7 @@ export interface ProductUpdateInput {
   stockQuantity?: number;
   linkedProductId?: string | null;
   bundleMultiplier?: number | null;
+  categoryId?: string | null;
 }
 
 function serializeAdminProduct(p: Product) {
@@ -34,6 +35,7 @@ function serializeAdminProduct(p: Product) {
     isFavorite: p.isFavorite,
     linkedProductId: p.linkedProductId,
     bundleMultiplier: p.bundleMultiplier,
+    categoryId: p.categoryId,
     updatedAt: p.updatedAt.toISOString(),
   };
 }
@@ -104,6 +106,7 @@ export async function updateProductAndSync(
     stockQuantity?: number;
     linkedProductId?: string | null;
     bundleMultiplier?: number | null;
+    categoryId?: string | null;
   } = {};
 
   if (input.name !== undefined) {
@@ -201,6 +204,20 @@ export async function updateProductAndSync(
       );
     }
     data.bundleMultiplier = mult;
+  }
+
+  if (input.categoryId !== undefined) {
+    const categoryId = input.categoryId?.trim() ?? "";
+    if (!categoryId) {
+      data.categoryId = null;
+    } else {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { id: true },
+      });
+      if (!category) throw new ProductServiceError("Category not found", 400);
+      data.categoryId = category.id;
+    }
   }
 
   if (Object.keys(data).length === 0) {
