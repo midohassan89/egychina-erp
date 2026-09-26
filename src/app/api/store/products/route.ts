@@ -11,11 +11,13 @@ const corsHeaders = {
 export async function GET(req: NextRequest) {
   try {
     const categoryId = req.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
+    const search = req.nextUrl.searchParams.get("search")?.trim() ?? "";
 
     const rows = await prisma.product.findMany({
       where: {
         isDeleted: false,
         ...(categoryId ? { categoryId } : {}),
+        ...(search ? { name: { contains: search } } : {}),
       },
       select: {
         id: true,
