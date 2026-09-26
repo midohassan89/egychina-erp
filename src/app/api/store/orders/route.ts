@@ -8,6 +8,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
+function sendWhatsApp(phone: string, message: string) {
+  console.log("Sending WA to", phone, message);
+}
+
 function apiKeyMatches(provided: string, expected: string): boolean {
   const providedBytes = Buffer.from(provided);
   const expectedBytes = Buffer.from(expected);
@@ -123,6 +127,15 @@ export async function POST(request: Request) {
       },
       include: { items: true },
     });
+
+    const notifyNumbers = (process.env.WHATSAPP_NOTIFY_NUMBERS ?? "")
+      .split(",")
+      .map((number) => number.trim())
+      .filter(Boolean);
+    const message = `🛒 أوردر جديد من المتجر!\n👤 العميل: ${order.customerName}\n📱 الهاتف: ${order.phone}\n📍 العنوان: ${order.address}\n💰 الإجمالي: ${order.totalAmount} EGP`;
+    for (const notifyPhone of notifyNumbers) {
+      void sendWhatsApp(notifyPhone, message);
+    }
 
     return NextResponse.json(order, { status: 201, headers: corsHeaders });
   } catch (error) {
