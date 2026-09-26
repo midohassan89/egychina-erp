@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
 import { PurchaseServiceError } from "@/lib/purchases/createPurchase";
 
 export interface CreatePurchaseReturnItemInput {
@@ -14,8 +13,6 @@ export interface CreatePurchaseReturnInput {
   notes?: string | null;
   items: CreatePurchaseReturnItemInput[];
 }
-
-const WC_BATCH_LIMIT = 100;
 
 function roundMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
@@ -168,32 +165,8 @@ export async function createPurchaseReturn(input: CreatePurchaseReturnInput) {
     return created;
   });
 
-  const wooUpdates = [...stockAfter.values()].map((row) => ({
-    id: row.wcId,
-    stock_quantity: row.stockQuantity,
-    manage_stock: true,
-    stock_status: row.stockQuantity > 0 ? "instock" : "outofstock",
-  }));
-
-  let wooSynced = 0;
-  let wooError: string | null = null;
-
-  for (let i = 0; i < wooUpdates.length; i += WC_BATCH_LIMIT) {
-    const chunk = wooUpdates.slice(i, i + WC_BATCH_LIMIT);
-    try {
-      await wooCommerceFetch("products/batch", {
-        method: "POST",
-        body: { update: chunk },
-      });
-      wooSynced += chunk.length;
-    } catch (error) {
-      wooError =
-        error instanceof WooCommerceError
-          ? error.message
-          : "WooCommerce batch sync failed";
-      break;
-    }
-  }
+  const wooSynced = 0;
+  const wooError: string | null = null;
 
   return {
     purchaseReturn: {

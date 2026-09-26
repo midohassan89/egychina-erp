@@ -16,7 +16,7 @@ interface StockProduct {
 }
 
 interface CategoryOption {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -34,16 +34,12 @@ export default function StockTakePage() {
 
   const loadCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/woocommerce/categories");
+      const res = await fetch("/api/categories");
       if (!res.ok) return;
-      const body = (await res.json()) as CategoryOption[] | { error?: string };
-      if (Array.isArray(body)) {
-        setCategories(
-          body
-            .map((c) => ({ id: c.id, name: c.name }))
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        );
-      }
+      const body = (await res.json()) as {
+        categories?: CategoryOption[];
+      };
+      setCategories(body.categories ?? []);
     } catch {
       // categories optional if WC down
     }

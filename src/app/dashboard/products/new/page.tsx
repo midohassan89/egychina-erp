@@ -279,7 +279,7 @@ function NewProductForm() {
             Create New Product
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            Saves to WooCommerce and the local ERP database
+            Saves to the local ERP database
           </p>
         </div>
       </div>

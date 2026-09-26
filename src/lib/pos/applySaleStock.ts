@@ -1,6 +1,5 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
 
 type StockDb = Prisma.TransactionClient | typeof prisma;
 
@@ -211,28 +210,7 @@ export async function applySaleStockChanges(options: {
 }
 
 export async function syncSaleStockRows(
-  rows: { wcId: number; stockQuantity: number }[],
+  _rows: { wcId: number; stockQuantity: number }[],
 ): Promise<{ wooSynced: number; wooError: string | null }> {
-  let wooSynced = 0;
-  let wooError: string | null = null;
-  for (const row of rows) {
-    try {
-      await wooCommerceFetch(`products/${row.wcId}`, {
-        method: "PUT",
-        body: {
-          manage_stock: true,
-          stock_quantity: row.stockQuantity,
-          stock_status: row.stockQuantity > 0 ? "instock" : "outofstock",
-        },
-      });
-      wooSynced += 1;
-    } catch (error) {
-      wooError =
-        error instanceof WooCommerceError
-          ? error.message
-          : "WooCommerce stock sync failed";
-      break;
-    }
-  }
-  return { wooSynced, wooError };
+  return { wooSynced: 0, wooError: null };
 }

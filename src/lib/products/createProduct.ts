@@ -1,8 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
-import { OP_BARCODE_META_KEY } from "@/lib/pos/opBarcode";
 import { serializeAdminProduct } from "@/lib/products/productService";
-import type { WooCommerceProduct } from "@/types/woocommerce";
 
 export class CreateProductError extends Error {
   constructor(
@@ -50,8 +47,7 @@ function localProductImagePath(raw: string | null | undefined): string | null {
 }
 
 /**
- * Create product on WooCommerce, then mirror to Prisma.
- * Images are local paths only — they are not uploaded to WordPress.
+ * Create a product in the local ERP database only.
  */
 export async function createProductOnErpAndWoo(input: CreateProductInput) {
   const name = input.name.trim();
@@ -151,38 +147,16 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
       ? "outofstock"
       : "instock";
 
-  const wcBody: Record<string, unknown> = {
-    name,
-    type: "simple",
-    status: "publish",
-    regular_price: String(input.price),
-    sale_price: salePrice != null ? String(salePrice) : "",
-    manage_stock: !isBundle,
-    stock_quantity: isBundle ? null : stockQuantity,
-    stock_status: stockStatus,
-    meta_data: [{ key: OP_BARCODE_META_KEY, value: barcode }],
-  };
-
-  let wcProduct: WooCommerceProduct;
-  try {
-    wcProduct = await wooCommerceFetch<WooCommerceProduct>("products", {
-      method: "POST",
-      body: wcBody,
-    });
-  } catch (error) {
-    if (error instanceof WooCommerceError) throw error;
-    throw new CreateProductError("Failed to create WooCommerce product", 502);
-  }
-
-  if (!wcProduct?.id) {
-    throw new CreateProductError("WooCommerce did not return a product id", 502);
-  }
+  const latest = await prisma.product.findFirst({
+    orderBy: { wcId: "desc" },
+    select: { wcId: true },
+  });
+  const wcId = (latest?.wcId ?? 0) + 1;
 
   const product = await prisma.product.create({
     data: {
-      wcId: wcProduct.id,
-      name: wcProduct.name || name,
-      sku: wcProduct.sku?.trim() ? wcProduct.sku.trim() : null,
+      wcId,
+      name,
       barcode,
       price: input.price,
       salePrice,

@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       product,
-      message: "Product created on ERP & WooCommerce",
+      message: "Product created",
     });
   } catch (error) {
     if (error instanceof CreateProductError) {

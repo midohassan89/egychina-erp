@@ -1,6 +1,11 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  applySaleStockChanges,
+  syncSaleStockRows,
+} from "@/lib/pos/applySaleStock";
+import { persistSaleRecord } from "@/lib/reports/persistSale";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,7 +129,7 @@ export async function POST(request: Request) {
 
     const products = await prisma.product.findMany({
       where: { id: { in: items.map((item) => item.productId) }, isDeleted: false },
-      select: { id: true },
+      select: { id: true, wcId: true, name: true },
     });
     if (products.length !== new Set(items.map((item) => item.productId)).size) {
       return NextResponse.json(
@@ -132,24 +137,73 @@ export async function POST(request: Request) {
         { status: 400, headers: corsHeaders },
       );
     }
+    const productById = new Map(products.map((product) => [product.id, product]));
 
-    const order = await prisma.order.create({
-      data: {
-        customerName,
-        phone,
-        address,
-        notes,
-        totalAmount,
-        items: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-        },
-      },
-      include: { items: true },
+    const saleLines = items.map((item) => {
+      const product = productById.get(item.productId)!;
+      return {
+        wcProductId: product.wcId,
+        name: product.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        lineTotal: item.price * item.quantity,
+      };
     });
+
+    let wooRows: { wcId: number; stockQuantity: number }[] = [];
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          customerName,
+          phone,
+          address,
+          notes,
+          totalAmount,
+          items: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      const stockResult = await applySaleStockChanges({
+        lines: saleLines.map((line) => ({
+          wcProductId: line.wcProductId,
+          quantity: line.quantity,
+        })),
+        syncAllWooStock: true,
+        tx,
+      });
+      wooRows = stockResult.wooRows;
+      const auditReason = stockResult.auditReasons.length
+        ? stockResult.auditReasons.join("; ").slice(0, 500)
+        : null;
+
+      await persistSaleRecord(
+        {
+          total: totalAmount,
+          paymentMethod: "store",
+          customerName,
+          requiresAudit: stockResult.auditReasons.length > 0,
+          auditReason,
+          lines: saleLines,
+        },
+        tx,
+      );
+
+      return created;
+    });
+
+    if (wooRows.length > 0) {
+      const synced = await syncSaleStockRows(wooRows);
+      if (synced.wooError) {
+        console.error("[api/store/orders] WooCommerce stock sync", synced.wooError);
+      }
+    }
 
     const notifyNumbers = (process.env.WHATSAPP_NOTIFY_NUMBERS ?? "")
       .split(",")

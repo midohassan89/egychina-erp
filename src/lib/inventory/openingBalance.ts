@@ -1,5 +1,4 @@
 import { roundMoney } from "@/lib/pos/money";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
 
 export interface OpeningBalanceLineInput {
   productId: string;
@@ -90,27 +89,7 @@ export function formatOpeningBalanceDay(date: Date): string {
 }
 
 export async function syncOpeningBalanceStock(
-  rows: { wcId: number; stockQuantity: number }[],
+  _rows: { wcId: number; stockQuantity: number }[],
 ): Promise<string | null> {
-  const wooUpdates = rows.map((row) => ({
-    id: row.wcId,
-    stock_quantity: row.stockQuantity,
-    manage_stock: true,
-    stock_status: row.stockQuantity > 0 ? "instock" : "outofstock",
-  }));
-
-  for (let i = 0; i < wooUpdates.length; i += 100) {
-    const chunk = wooUpdates.slice(i, i + 100);
-    try {
-      await wooCommerceFetch("products/batch", {
-        method: "POST",
-        body: { update: chunk },
-      });
-    } catch (error) {
-      return error instanceof WooCommerceError
-        ? error.message
-        : "WooCommerce stock sync failed";
-    }
-  }
   return null;
 }

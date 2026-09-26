@@ -18,6 +18,7 @@ export async function GET() {
         price: true,
         imageUrl: true,
         categoryId: true,
+        stockQuantity: true,
       },
       orderBy: { id: "desc" },
       take: 16,
@@ -29,6 +30,7 @@ export async function GET() {
       price: product.price,
       image: product.imageUrl,
       categoryId: product.categoryId,
+      stock: product.stockQuantity,
     }));
 
     return NextResponse.json(products, { headers: corsHeaders });

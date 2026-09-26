@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { roundMoney } from "@/lib/pos/money";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
-
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
 }
@@ -153,7 +151,6 @@ export async function POST(request: Request) {
       },
     });
 
-    const stockAfter: { wcId: number; stockQuantity: number }[] = [];
     for (const line of lines) {
       const product = byId.get(line.productId)!;
       const nextStock = product.stockQuantity + line.totalStock;
@@ -166,38 +163,13 @@ export async function POST(request: Request) {
           purchasePackSize: line.packSize,
         },
       });
-      stockAfter.push({ wcId: product.wcId, stockQuantity: nextStock });
     }
 
-    return { id: header.id, stockAfter };
+    return { id: header.id };
   });
-
-  let wooError: string | null = null;
-  const wooUpdates = created.stockAfter.map((row) => ({
-    id: row.wcId,
-    stock_quantity: row.stockQuantity,
-    manage_stock: true,
-    stock_status: row.stockQuantity > 0 ? "instock" : "outofstock",
-  }));
-
-  for (let i = 0; i < wooUpdates.length; i += 100) {
-    const chunk = wooUpdates.slice(i, i + 100);
-    try {
-      await wooCommerceFetch("products/batch", {
-        method: "POST",
-        body: { update: chunk },
-      });
-    } catch (error) {
-      wooError =
-        error instanceof WooCommerceError
-          ? error.message
-          : "WooCommerce stock sync failed";
-      break;
-    }
-  }
 
   return NextResponse.json({
     id: created.id,
-    wooError,
+    wooError: null,
   });
 }

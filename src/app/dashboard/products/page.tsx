@@ -21,7 +21,6 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { CatalogSyncButton } from "@/components/dashboard/CatalogSyncButton";
 import { PermanentDeleteDialog } from "@/components/dashboard/PermanentDeleteDialog";
 import { ProductEditModal } from "@/components/dashboard/ProductEditModal";
 import {
@@ -166,13 +165,6 @@ function ProductsManagement() {
     });
   }
 
-  function refreshAfterSync() {
-    startTransition(() => {
-      setPage(1);
-      void loadProducts(1, query, view, stockFilter);
-    });
-  }
-
   async function fetchAllActiveProducts(): Promise<AdminProductRow[]> {
     const params = new URLSearchParams({
       page: "1",
@@ -211,7 +203,7 @@ function ProductsManagement() {
       }
 
       setBulkMessage(
-        `Updating ${rows.length} products on ERP & WooCommerce…`,
+        `Updating ${rows.length} products…`,
       );
       const res = await fetch("/api/products/bulk-update", {
         method: "POST",
@@ -316,7 +308,7 @@ function ProductsManagement() {
       return;
     }
     if (price === product.price) return;
-    const saved = await patchProduct(product.id, { price }, "Price updated on ERP & WooCommerce");
+    const saved = await patchProduct(product.id, { price }, "Price updated");
     if (saved) {
       await offerLinkedPrices(product, price, product.salePrice);
     }
@@ -329,7 +321,7 @@ function ProductsManagement() {
       const saved = await patchProduct(
         product.id,
         { salePrice: null },
-        "Sale price cleared on ERP & WooCommerce",
+        "Sale price cleared",
       );
       if (saved) await offerLinkedPrices(product, product.price, null);
       return;
@@ -349,7 +341,7 @@ function ProductsManagement() {
     const saved = await patchProduct(
       product.id,
       { salePrice: normalized },
-      "Sale price updated on ERP & WooCommerce",
+      "Sale price updated",
     );
     if (saved) await offerLinkedPrices(product, product.price, normalized);
   }
@@ -434,7 +426,7 @@ function ProductsManagement() {
       setTotal((t) => Math.max(0, t - 1));
       toast(
         scope === "both"
-          ? "Deleted from ERP & WooCommerce"
+          ? "Deleted"
           : "Deleted from ERP only",
         "success",
       );
@@ -467,7 +459,7 @@ function ProductsManagement() {
             Products Management
           </h1>
           <p className="mt-1 text-slate-500">
-            Local ERP catalog with live WooCommerce sync
+            Local ERP catalog
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -480,7 +472,6 @@ function ProductsManagement() {
                 <Plus className="h-4 w-4" />
                 Create New Product
               </Link>
-              <CatalogSyncButton variant="page" onSuccess={refreshAfterSync} />
             </>
           )}
         </div>

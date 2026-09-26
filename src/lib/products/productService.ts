@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
-import { OP_BARCODE_META_KEY } from "@/lib/pos/opBarcode";
 import type { Product } from "@prisma/client";
 
 export type StockStatus = "instock" | "outofstock";
@@ -40,37 +38,6 @@ function serializeAdminProduct(p: Product) {
   };
 }
 
-function buildWooPayload(input: ProductUpdateInput): Record<string, unknown> {
-  const body: Record<string, unknown> = {};
-
-  if (input.name !== undefined) body.name = input.name;
-  if (input.sku !== undefined) body.sku = input.sku ?? "";
-  if (input.price !== undefined) {
-    body.regular_price = String(input.price);
-  }
-  if (input.salePrice !== undefined) {
-    body.sale_price =
-      input.salePrice == null ? "" : String(input.salePrice);
-  }
-  if (input.stockStatus !== undefined) {
-    body.stock_status = input.stockStatus;
-  }
-  if (input.stockQuantity !== undefined) {
-    body.manage_stock = true;
-    body.stock_quantity = input.stockQuantity;
-  }
-  if (input.barcode !== undefined) {
-    body.meta_data = [
-      {
-        key: OP_BARCODE_META_KEY,
-        value: input.barcode ?? "",
-      },
-    ];
-  }
-
-  return body;
-}
-
 function assertSaleNotAboveRegular(
   regular: number,
   sale: number | null | undefined,
@@ -85,7 +52,7 @@ function assertSaleNotAboveRegular(
 }
 
 /**
- * Update local Prisma product and mirror changes to WooCommerce via PUT.
+ * Update a product in the local ERP database.
  */
 export async function updateProductAndSync(
   id: string,
@@ -229,49 +196,6 @@ export async function updateProductAndSync(
     data.salePrice !== undefined ? data.salePrice : existing.salePrice;
   assertSaleNotAboveRegular(nextRegular, nextSale);
 
-  const willBeBundle =
-    data.linkedProductId !== undefined
-      ? data.linkedProductId != null
-      : Boolean(existing.linkedProductId);
-
-  // Keep WooCommerce payload in sync with normalized sale (0 → clear)
-  const wooInput: ProductUpdateInput = { ...input };
-  if (data.salePrice !== undefined) {
-    wooInput.salePrice = data.salePrice;
-  }
-  // Skip pushing stock for virtual bundles; disable WC stock management
-  if (willBeBundle) {
-    delete wooInput.stockQuantity;
-    delete wooInput.stockStatus;
-  }
-
-  const wooBody = buildWooPayload(wooInput);
-  if (willBeBundle) {
-    wooBody.manage_stock = false;
-    wooBody.stock_quantity = null;
-  } else if (
-    data.linkedProductId === null &&
-    existing.linkedProductId != null
-  ) {
-    // Cleared bundle mode — re-enable stock management
-    wooBody.manage_stock = true;
-    if (data.stockQuantity !== undefined) {
-      wooBody.stock_quantity = data.stockQuantity;
-    }
-  }
-
-  if (Object.keys(wooBody).length > 0) {
-    try {
-      await wooCommerceFetch(`products/${existing.wcId}`, {
-        method: "PUT",
-        body: wooBody,
-      });
-    } catch (error) {
-      if (error instanceof WooCommerceError) throw error;
-      throw new ProductServiceError("Failed to update WooCommerce product", 502);
-    }
-  }
-
   const updated = await prisma.product.update({
     where: { id },
     data,
@@ -324,9 +248,7 @@ export async function restoreProduct(id: string) {
 
 export type PermanentDeleteScope = "erp" | "both";
 
-/**
- * Hard-delete from Prisma. Optionally force-delete on WooCommerce first.
- */
+/** Hard-delete from the local ERP database. */
 export async function permanentlyDeleteProduct(
   id: string,
   scope: PermanentDeleteScope,
@@ -334,22 +256,6 @@ export async function permanentlyDeleteProduct(
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) {
     throw new ProductServiceError("Product not found", 404);
-  }
-
-  if (scope === "both") {
-    try {
-      await wooCommerceFetch(`products/${existing.wcId}`, {
-        method: "DELETE",
-        params: { force: true },
-      });
-    } catch (error) {
-      if (
-        !(error instanceof WooCommerceError) ||
-        (error.statusCode !== 404 && error.statusCode !== 410)
-      ) {
-        throw error;
-      }
-    }
   }
 
   await prisma.product.delete({ where: { id } });
@@ -367,7 +273,7 @@ export class ProductServiceError extends Error {
 }
 
 /**
- * Increase local + WooCommerce stock for returned POS items (by WC product id).
+ * Increase local stock for returned POS items (by product id).
  * Virtual bundles restore stock on the linked base unit (qty × multiplier).
  */
 export async function restockProductsByWcId(
@@ -414,23 +320,6 @@ export async function restockProductsByWcId(
 
     const nextQty = target.stockQuantity + restoreQty;
     const stockStatus = nextQty > 0 ? "instock" : target.stockStatus;
-
-    try {
-      await wooCommerceFetch(`products/${target.wcId}`, {
-        method: "PUT",
-        body: {
-          manage_stock: true,
-          stock_quantity: nextQty,
-          stock_status: stockStatus,
-        },
-      });
-    } catch (error) {
-      if (error instanceof WooCommerceError) throw error;
-      throw new ProductServiceError(
-        `Failed to restock WooCommerce product ${target.wcId}`,
-        502,
-      );
-    }
 
     const updated = await prisma.product.update({
       where: { id: target.id },

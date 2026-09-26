@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
-import { OP_BARCODE_META_KEY } from "@/lib/pos/opBarcode";
 
 export interface BulkProductRow {
   Local_ID: string;
@@ -23,10 +21,8 @@ export class BulkUpdateError extends Error {
   }
 }
 
-const WC_BATCH_LIMIT = 100;
-
 /**
- * Update products in Prisma (transaction), then sync via WooCommerce products/batch.
+ * Update products in the local ERP database.
  */
 export async function bulkUpdateProducts(rows: BulkProductRow[]) {
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -117,41 +113,8 @@ export async function bulkUpdateProducts(rows: BulkProductRow[]) {
     ),
   );
 
-  const wooUpdates = normalized.map((row) => {
-    const item: Record<string, unknown> = {
-      id: row.wcId,
-      regular_price: String(row.price),
-      sale_price: row.salePrice != null ? String(row.salePrice) : "",
-      stock_quantity: row.stockQuantity,
-      stock_status: row.stockStatus,
-      manage_stock: true,
-    };
-    if (row.name !== undefined) item.name = row.name;
-    if (row.barcode !== undefined) {
-      item.meta_data = [{ key: OP_BARCODE_META_KEY, value: row.barcode ?? "" }];
-    }
-    return item;
-  });
-
-  // WooCommerce batch endpoint accepts max 100 objects per request
-  for (let i = 0; i < wooUpdates.length; i += WC_BATCH_LIMIT) {
-    const chunk = wooUpdates.slice(i, i + WC_BATCH_LIMIT);
-    try {
-      await wooCommerceFetch("products/batch", {
-        method: "POST",
-        body: { update: chunk },
-      });
-    } catch (error) {
-      if (error instanceof WooCommerceError) throw error;
-      throw new BulkUpdateError(
-        "Local DB updated but WooCommerce batch sync failed",
-        502,
-      );
-    }
-  }
-
   return {
     updated: normalized.length,
-    wooBatches: Math.ceil(wooUpdates.length / WC_BATCH_LIMIT),
+    wooBatches: 0,
   };
 }

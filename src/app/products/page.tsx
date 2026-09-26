@@ -53,8 +53,7 @@ export default function ProductsPage() {
           <Package className="mx-auto h-12 w-12 text-slate-300" />
           <p className="mt-4 text-slate-600">No products in local database</p>
           <p className="mt-1 text-sm text-slate-400">
-            Ask a Manager to use &quot;Pull Catalog from WooCommerce&quot; on the
-            ERP dashboard.
+            Create products from the ERP dashboard.
           </p>
         </div>
       ) : (

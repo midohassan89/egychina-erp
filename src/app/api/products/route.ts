@@ -4,6 +4,29 @@ import { prisma } from "@/lib/prisma";
 import { prismaProductToCached } from "@/lib/products/mapProduct";
 import type { Prisma } from "@prisma/client";
 
+/** Live inventory is stockQuantity. Do not select the removed storefront `stock` column. */
+const productSelect = {
+  id: true,
+  wcId: true,
+  name: true,
+  sku: true,
+  barcode: true,
+  price: true,
+  salePrice: true,
+  buyingCost: true,
+  purchasePackSize: true,
+  stockQuantity: true,
+  stockStatus: true,
+  imageUrl: true,
+  isDeleted: true,
+  isFavorite: true,
+  linkedProductId: true,
+  bundleMultiplier: true,
+  categoryId: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.ProductSelect;
+
 /**
  * Fast catalog read from local Prisma DB (POS source of truth).
  *
@@ -64,8 +87,9 @@ export async function GET(request: Request) {
             : {}),
         },
         orderBy: { name: "asc" },
+        select: productSelect,
       });
-      const cached = products.map(prismaProductToCached);
+      const cached = products.map((product) => prismaProductToCached(product));
       return NextResponse.json({
         products: cached,
         count: cached.length,
@@ -81,6 +105,7 @@ export async function GET(request: Request) {
         orderBy: { name: "asc" },
         skip: (page - 1) * perPage,
         take: perPage,
+        select: productSelect,
       }),
     ]);
 

@@ -1,8 +1,6 @@
 import { getPendingSales, saveSale } from "@/lib/cache/indexeddb";
-import { saleLinesToOrderPayload } from "@/lib/pos/orderPayload";
-import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import { isNetworkError } from "@/lib/pos/networkError";
-import type { LocalSale, WooCommerceOrder } from "@/types/woocommerce";
+import type { LocalSale } from "@/types/woocommerce";
 
 /** Idempotent ERP persist. Business-rule issues return 200 with requiresAudit. */
 async function persistSaleToErp(sale: LocalSale): Promise<void> {
@@ -81,8 +79,8 @@ async function syncReturnRestock(sale: LocalSale): Promise<LocalSale> {
 }
 
 /**
- * Push a single sale to WooCommerce as a completed order.
- * Updates IndexedDB sync status on success or failure.
+ * Save a sale on the local ERP and mark it synced.
+ * Returns restore stock locally. Nothing is sent to WooCommerce.
  */
 export async function syncSaleToWooCommerce(
   sale: LocalSale,
@@ -93,34 +91,9 @@ export async function syncSaleToWooCommerce(
     return syncReturnRestock(sale);
   }
 
-  if (isStaffMealPayment(sale.paymentMethod)) {
-    const synced: LocalSale = {
-      ...sale,
-      wooOrderId: null,
-      syncStatus: "synced",
-      syncError: undefined,
-    };
-    await saveSale(synced);
-    return synced;
-  }
-
-  const response = await fetch("/api/woocommerce/orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      saleLinesToOrderPayload(sale.lines, sale.paymentMethod, sale.customerId),
-    ),
-  });
-
-  if (!response.ok) {
-    const body = (await response.json()) as { error?: string };
-    throw new Error(body.error ?? "Could not create WooCommerce order");
-  }
-
-  const order = (await response.json()) as WooCommerceOrder;
   const synced: LocalSale = {
     ...sale,
-    wooOrderId: order.id,
+    wooOrderId: null,
     syncStatus: "synced",
     syncError: undefined,
   };
