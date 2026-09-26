@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import {
   permanentlyDeleteProduct,
@@ -138,12 +139,9 @@ export async function PATCH(
   }
 }
 
-/**
- * DELETE — permanent delete.
- * Query `scope=erp` (Prisma only) or `scope=both` (Prisma + WC force=true).
- */
+/** DELETE — hard-delete the product from the local database. */
 export async function DELETE(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
@@ -155,19 +153,26 @@ export async function DELETE(
   }
 
   const { id } = await context.params;
-  const { searchParams } = new URL(request.url);
-  const scopeParam = searchParams.get("scope") ?? "erp";
-  const scope: PermanentDeleteScope =
-    scopeParam === "both" ? "both" : "erp";
 
   try {
-    const result = await permanentlyDeleteProduct(id, scope);
+    const result = await permanentlyDeleteProduct(id, "erp");
     await logAuditAction(session.user.id, "DELETE", "PRODUCT", id, {
       permanent: true,
-      scope,
     });
     return NextResponse.json(result);
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This product is used on invoices or orders and cannot be permanently deleted.",
+        },
+        { status: 409 },
+      );
+    }
     return errorResponse(error);
   }
 }

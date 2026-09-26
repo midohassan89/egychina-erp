@@ -412,24 +412,18 @@ function ProductsManagement() {
     }
   }
 
-  async function permanentDelete(scope: "erp" | "both") {
+  async function permanentDelete() {
     if (!deleteProduct) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(
-        `/api/products/${deleteProduct.id}?scope=${scope}`,
-        { method: "DELETE" },
-      );
+      const res = await fetch(`/api/products/${deleteProduct.id}`, {
+        method: "DELETE",
+      });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Delete failed");
       setProducts((prev) => prev.filter((p) => p.id !== deleteProduct.id));
       setTotal((t) => Math.max(0, t - 1));
-      toast(
-        scope === "both"
-          ? "Deleted"
-          : "Deleted from ERP only",
-        "success",
-      );
+      toast("تم الحذف النهائي", "success");
       setDeleteProduct(null);
     } catch (err) {
       toast(err instanceof Error ? err.message : "Delete failed", "error");
@@ -726,8 +720,7 @@ function ProductsManagement() {
           open={!!deleteProduct}
           isDeleting={isDeleting}
           onClose={() => !isDeleting && setDeleteProduct(null)}
-          onDeleteErpOnly={() => void permanentDelete("erp")}
-          onDeleteBoth={() => void permanentDelete("both")}
+          onConfirm={() => void permanentDelete()}
         />
       )}
     </div>
@@ -969,7 +962,7 @@ function ProductRow({
                 onClick={onRestore}
                 className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
               >
-                Restore
+                استعادة
               </button>
               <button
                 type="button"

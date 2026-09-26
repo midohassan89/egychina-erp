@@ -8,8 +8,7 @@ interface PermanentDeleteDialogProps {
   open: boolean;
   isDeleting: boolean;
   onClose: () => void;
-  onDeleteErpOnly: () => void;
-  onDeleteBoth: () => void;
+  onConfirm: () => void;
 }
 
 export function PermanentDeleteDialog({
@@ -17,8 +16,7 @@ export function PermanentDeleteDialog({
   open,
   isDeleting,
   onClose,
-  onDeleteErpOnly,
-  onDeleteBoth,
+  onConfirm,
 }: PermanentDeleteDialogProps) {
   if (!open) return null;
 
@@ -37,46 +35,33 @@ export function PermanentDeleteDialog({
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
             <div>
               <h2 className="text-lg font-semibold text-red-900">
-                Permanently delete product?
+                هل أنت متأكد من الحذف النهائي؟
               </h2>
               <p className="mt-1 text-sm text-red-800/80">
-                This cannot be undone. Choose where to remove{" "}
-                <span className="font-semibold">{product.name}</span>.
+                سيتم حذف{" "}
+                <span className="font-semibold">{product.name}</span> من قاعدة
+                البيانات ولن يمكن استعادته.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="space-y-3 px-5 py-5">
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={onDeleteErpOnly}
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Delete from ERP only
-            <span className="mt-0.5 block text-xs font-normal text-slate-500">
-              Removes from the local database. WooCommerce product stays online.
-            </span>
-          </button>
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={onDeleteBoth}
-            className="w-full rounded-lg border border-red-300 bg-red-600 px-4 py-3 text-left text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-          >
-            Delete from ERP &amp; WooCommerce
-            <span className="mt-0.5 block text-xs font-normal text-red-100">
-              Force-deletes on WooCommerce (force=true) and removes from ERP.
-            </span>
-          </button>
+        <div className="flex flex-col-reverse gap-2 px-5 py-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             disabled={isDeleting}
             onClick={onClose}
-            className="w-full rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
           >
-            Cancel
+            إلغاء
+          </button>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={onConfirm}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {isDeleting ? "جارٍ الحذف…" : "حذف نهائي"}
           </button>
         </div>
       </div>

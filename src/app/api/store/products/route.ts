@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const corsHeaders = {
@@ -8,10 +8,15 @@ const corsHeaders = {
 };
 
 /** GET /api/store/products — public catalog for the storefront. */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const categoryId = req.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
+
     const rows = await prisma.product.findMany({
-      where: { isDeleted: false },
+      where: {
+        isDeleted: false,
+        ...(categoryId ? { categoryId } : {}),
+      },
       select: {
         id: true,
         name: true,
