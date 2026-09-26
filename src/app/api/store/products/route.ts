@@ -12,24 +12,36 @@ export async function GET(req: NextRequest) {
   try {
     const categoryId = req.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
     const search = req.nextUrl.searchParams.get("search")?.trim() ?? "";
+    const pageRaw = Number(req.nextUrl.searchParams.get("page") ?? "1");
+    const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? "20");
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+    const limit =
+      Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.floor(limitRaw) : 20;
+    const skip = (page - 1) * limit;
 
-    const rows = await prisma.product.findMany({
-      where: {
-        isDeleted: false,
-        ...(categoryId ? { categoryId } : {}),
-        ...(search ? { name: { contains: search } } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        imageUrl: true,
-        categoryId: true,
-        stockQuantity: true,
-      },
-      orderBy: { id: "desc" },
-      take: 16,
-    });
+    const where = {
+      isDeleted: false,
+      ...(categoryId ? { categoryId } : {}),
+      ...(search ? { name: { contains: search } } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          imageUrl: true,
+          categoryId: true,
+          stockQuantity: true,
+        },
+        orderBy: { id: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
 
     const products = rows.map((product) => ({
       id: product.id,
@@ -40,7 +52,21 @@ export async function GET(req: NextRequest) {
       stock: product.stockQuantity,
     }));
 
-    return NextResponse.json(products, { headers: corsHeaders });
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json(
+      {
+        products,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasMore: page < totalPages,
+        },
+      },
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[api/store/products]", error);
     return NextResponse.json(
