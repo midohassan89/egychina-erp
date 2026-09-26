@@ -160,6 +160,12 @@ export async function POST(request: Request) {
       void sendWhatsApp(notifyPhone, message);
     }
 
+    let customerPhone = order.phone.replace(/\D/g, "");
+    if (customerPhone.startsWith("0")) customerPhone = "2" + customerPhone;
+    if (!customerPhone.startsWith("20")) customerPhone = "20" + customerPhone;
+    const customerMessage = `مرحباً ${order.customerName}،\nشكراً لطلبك من *ايجي شاينا ماركت* 🛒\n\nطلبك رقم *#${order.id}* تم استلامه وجاري تجهيزه الآن.\nالإجمالي: *${order.totalAmount} EGP*\n\nسنتواصل معك قريباً عند خروج الطلب للتوصيل 🚚\nلأي استفسار: 01009972972`;
+    void sendWhatsApp(customerPhone, customerMessage);
+
     return NextResponse.json(order, { status: 201, headers: corsHeaders });
   } catch (error) {
     console.error("[api/store/orders]", error);

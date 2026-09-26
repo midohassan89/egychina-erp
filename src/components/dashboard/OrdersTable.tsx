@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatEGP } from "@/lib/pos/money";
 
 export const ORDER_STATUSES = [
@@ -133,20 +134,29 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                   {formatEGP(order.totalAmount)}
                 </td>
                 <td className="px-4 py-3">
-                  <select
-                    value={displayStatus(order.status)}
-                    disabled={savingId === order.id}
-                    onChange={(event) =>
-                      void updateStatus(order.id, event.target.value)
-                    }
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
-                  >
-                    {ORDER_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={displayStatus(order.status)}
+                      disabled={savingId === order.id}
+                      onChange={(event) =>
+                        void updateStatus(order.id, event.target.value)
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+                    >
+                      {ORDER_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    <Link
+                      href={`/print/order/${order.id}`}
+                      target="_blank"
+                      className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      طباعة
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
