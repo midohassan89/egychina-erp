@@ -8,8 +8,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
-function sendWhatsApp(phone: string, message: string) {
-  console.log("Sending WA to", phone, message);
+function formatWhatsAppPhone(phone: string): string {
+  let formatted = phone.trim().replace(/^\+/, "");
+  if (formatted.startsWith("00")) formatted = formatted.slice(2);
+  if (formatted.startsWith("0")) formatted = `20${formatted.slice(1)}`;
+  return formatted;
+}
+
+async function sendWhatsApp(phone: string, message: string) {
+  const formattedPhone = formatWhatsAppPhone(phone);
+  const url = `https://api.green-api.com/waInstance${process.env.GREEN_API_ID_INSTANCE}/sendMessage/${process.env.GREEN_API_TOKEN_INSTANCE}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chatId: `${formattedPhone}@c.us`,
+        message,
+      }),
+    });
+    const body = await response.text();
+    console.log("[whatsapp] Green-API", formattedPhone, response.status, body);
+  } catch (error) {
+    console.error("[whatsapp] Green-API send failed", formattedPhone, error);
+  }
 }
 
 function apiKeyMatches(provided: string, expected: string): boolean {
