@@ -18,10 +18,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Public customer kiosk — no login required
+  // Public customer kiosk and storefront catalog — no login required
   if (
     pathname.startsWith("/price-checker") ||
-    pathname.startsWith("/api/price-checker")
+    pathname.startsWith("/api/price-checker") ||
+    pathname.startsWith("/api/store")
   ) {
     return NextResponse.next();
   }
@@ -45,10 +46,19 @@ export default auth((req) => {
       pathname.startsWith("/reports") ||
       pathname.startsWith("/settings") ||
       pathname.startsWith("/products") ||
-      pathname.startsWith("/customers")
+      pathname.startsWith("/customers") ||
+      pathname.startsWith("/admin")
     ) {
       return NextResponse.redirect(new URL("/pos", req.nextUrl.origin));
     }
+  }
+
+  if (
+    pathname.startsWith("/admin") &&
+    role !== "ADMIN" &&
+    role !== "MANAGER"
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
   if (pathname.startsWith("/pos") && !canUsePos(role)) {

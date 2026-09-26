@@ -46,6 +46,7 @@ function NewProductForm() {
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
@@ -200,6 +201,7 @@ function NewProductForm() {
       form.set("stockQuantity", "0");
       if (categoryId) form.set("categoryId", categoryId);
 
+      let savedImageUrl = imageUrl;
       if (imageFile) {
         setCompressing(true);
         try {
@@ -217,17 +219,30 @@ function NewProductForm() {
                   imageFile.name.replace(/\.\w+$/, "") + ".jpg",
                   { type: "image/jpeg" },
                 );
-          form.set("image", uploadFile);
+          const uploadBody = new FormData();
+          uploadBody.set("image", uploadFile);
+          const uploadRes = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: uploadBody,
+          });
+          const uploadData = (await uploadRes.json()) as {
+            url?: string;
+            error?: string;
+          };
+          if (!uploadRes.ok || !uploadData.url) {
+            throw new Error(uploadData.error ?? "Image upload failed");
+          }
+          savedImageUrl = uploadData.url;
+          setImageUrl(uploadData.url);
         } catch (err) {
           throw new Error(
-            err instanceof Error
-              ? `Image compression failed: ${err.message}`
-              : "Image compression failed",
+            err instanceof Error ? err.message : "Image upload failed",
           );
         } finally {
           setCompressing(false);
         }
       }
+      if (savedImageUrl) form.set("imageUrl", savedImageUrl);
 
       const res = await fetch("/api/products/create", {
         method: "POST",
@@ -484,6 +499,7 @@ function NewProductForm() {
                 onChange={(e) => {
                   const file = e.target.files?.[0] ?? null;
                   setImageFile(file);
+                  setImageUrl(null);
                 }}
               />
             </label>
@@ -504,7 +520,10 @@ function NewProductForm() {
             <button
               type="button"
               className="text-xs text-slate-500 underline hover:text-slate-800"
-              onClick={() => setImageFile(null)}
+              onClick={() => {
+                setImageFile(null);
+                setImageUrl(null);
+              }}
             >
               Remove image
             </button>

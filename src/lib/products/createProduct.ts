@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { wooCommerceFetch, WooCommerceError } from "@/lib/woocommerce/client";
-import { uploadWordPressMedia } from "@/lib/wordpress/media";
 import { OP_BARCODE_META_KEY } from "@/lib/pos/opBarcode";
 import { serializeAdminProduct } from "@/lib/products/productService";
 import type { WooCommerceProduct } from "@/types/woocommerce";
@@ -27,11 +26,8 @@ export interface CreateProductInput {
   /** Units of the base product consumed per bundle sold. */
   bundleMultiplier?: number | null;
   categoryId?: string | null;
-  image?: {
-    buffer: Buffer;
-    filename: string;
-    contentType: string;
-  } | null;
+  /** Local path returned by /api/admin/upload, e.g. /uploads/products/file.jpg */
+  imageUrl?: string | null;
 }
 
 export async function isBarcodeTaken(barcode: string): Promise<boolean> {
@@ -44,8 +40,18 @@ export async function isBarcodeTaken(barcode: string): Promise<boolean> {
   return Boolean(existing);
 }
 
+function localProductImagePath(raw: string | null | undefined): string | null {
+  const value = raw?.trim() ?? "";
+  if (!value) return null;
+  if (!value.startsWith("/uploads/products/") || value.includes("..")) {
+    throw new CreateProductError("Image must be a local upload path", 400);
+  }
+  return value;
+}
+
 /**
- * Create product on WooCommerce (with optional WP media upload), then mirror to Prisma.
+ * Create product on WooCommerce, then mirror to Prisma.
+ * Images are local paths only — they are not uploaded to WordPress.
  */
 export async function createProductOnErpAndWoo(input: CreateProductInput) {
   const name = input.name.trim();
@@ -126,14 +132,7 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     categoryId = category.id;
   }
 
-  let mediaId: number | undefined;
-  let imageUrl: string | null = null;
-
-  if (input.image?.buffer?.length) {
-    const media = await uploadWordPressMedia(input.image);
-    mediaId = media.id;
-    imageUrl = media.source_url ?? null;
-  }
+  const imageUrl = localProductImagePath(input.imageUrl);
 
   // Virtual bundles never hold their own inventory
   const stockQuantity = isBundle
@@ -164,10 +163,6 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     meta_data: [{ key: OP_BARCODE_META_KEY, value: barcode }],
   };
 
-  if (mediaId != null) {
-    wcBody.images = [{ id: mediaId }];
-  }
-
   let wcProduct: WooCommerceProduct;
   try {
     wcProduct = await wooCommerceFetch<WooCommerceProduct>("products", {
@@ -193,7 +188,7 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
       salePrice,
       stockQuantity,
       stockStatus,
-      imageUrl: wcProduct.images?.[0]?.src ?? imageUrl,
+      imageUrl,
       isDeleted: false,
       linkedProductId,
       bundleMultiplier,

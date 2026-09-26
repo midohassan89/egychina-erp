@@ -22,6 +22,7 @@ import {
   PanelLeftOpen,
   ClipboardList,
   ShieldAlert,
+  ShoppingCart,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { signOut } from "next-auth/react";
@@ -43,6 +44,7 @@ const NAV_ITEMS: {
   { key: "suppliers", href: "/dashboard/suppliers", label: "Suppliers", icon: Truck },
   { key: "purchases", href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },
   { key: "sales", href: "/dashboard/sales", label: "Sales", icon: History },
+  { key: "orders", href: "/admin/orders", label: "الطلبات", icon: ShoppingCart },
   { key: "inventory", href: "/dashboard/inventory", label: "Inventory", icon: Package },
   { key: "expenses", href: "/dashboard/expenses", label: "Expenses", icon: Receipt },
   { key: "treasury", href: "/dashboard/treasury", label: "Treasury", icon: Wallet },

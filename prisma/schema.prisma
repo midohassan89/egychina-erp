@@ -84,6 +84,7 @@ model Product {
   adjustmentItems     AdjustmentItem[]
   saleLines           SaleLine[]
   openingBalanceItems OpeningBalanceItem[]
+  orderItems          OrderItem[]
 
   @@index([barcode])
   @@index([sku])
@@ -463,4 +464,30 @@ model Category {
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  customerName String
+  phone        String
+  address      String
+  notes        String?
+  totalAmount  Float
+  status       String      @default("PENDING")
+  createdAt    DateTime    @default(now())
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
 }

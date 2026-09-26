@@ -12,7 +12,7 @@ function requireEditor(role: string | undefined) {
 
 /**
  * POST multipart/form-data:
- * name, price, salePrice?, barcode, stockQuantity?, stockStatus?, image?
+ * name, price, salePrice?, barcode, stockQuantity?, stockStatus?, imageUrl?
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -42,22 +42,7 @@ export async function POST(request: Request) {
     const categoryIdRaw = String(form.get("categoryId") ?? "").trim();
     const categoryId = categoryIdRaw || null;
 
-    const file = form.get("image");
-    let image:
-      | { buffer: Buffer; filename: string; contentType: string }
-      | null = null;
-
-    if (file && typeof file === "object" && "arrayBuffer" in file) {
-      const blob = file as File;
-      if (blob.size > 0) {
-        const buffer = Buffer.from(await blob.arrayBuffer());
-        image = {
-          buffer,
-          filename: blob.name || "product.jpg",
-          contentType: blob.type || "image/jpeg",
-        };
-      }
-    }
+    const imageUrlRaw = String(form.get("imageUrl") ?? "").trim();
 
     const product = await createProductOnErpAndWoo({
       name,
@@ -72,7 +57,7 @@ export async function POST(request: Request) {
           ? bundleMultiplier
           : null,
       categoryId,
-      image,
+      imageUrl: imageUrlRaw || null,
     });
 
     return NextResponse.json({
