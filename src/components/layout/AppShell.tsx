@@ -9,7 +9,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isPos = pathname === "/pos";
   const isLogin = pathname === "/login";
-  const isDashboard = pathname.startsWith("/dashboard");
+  const isDashboard =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
   const isPriceChecker = pathname.startsWith("/price-checker");
 
   // Bare layouts — no legacy AppShell chrome
