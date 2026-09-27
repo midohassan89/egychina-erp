@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Shuffle, ScanLine } from "lucide-react";
 import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
+import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
@@ -39,7 +40,6 @@ function NewProductForm() {
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
   const [categoryId, setCategoryId] = useState("");
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [imageUrl, setImageUrl] = useState("");
 
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
@@ -49,17 +49,6 @@ function NewProductForm() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/categories");
-      if (!res.ok) return;
-      const body = (await res.json()) as {
-        categories?: { id: string; name: string }[];
-      };
-      setCategories(body.categories ?? []);
-    })();
-  }, []);
 
   const regular = useMemo(() => parseFloat(price), [price]);
   const sale = useMemo(() => {
@@ -268,18 +257,7 @@ function NewProductForm() {
 
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-slate-700">Category</span>
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-          >
-            <option value="">No category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+          <CategorySelect value={categoryId} onChange={setCategoryId} />
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">

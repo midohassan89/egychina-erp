@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
+import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 
 interface ProductEditModalProps {
@@ -45,7 +46,6 @@ export function ProductEditModal({
   );
   const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
   const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,22 +63,6 @@ export function ProductEditModal({
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [open, product.id]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    void (async () => {
-      const res = await fetch("/api/categories");
-      if (!res.ok || cancelled) return;
-      const body = (await res.json()) as {
-        categories?: { id: string; name: string }[];
-      };
-      if (!cancelled) setCategories(body.categories ?? []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   if (!open) return null;
 
@@ -184,18 +168,7 @@ export function ProductEditModal({
           </div>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Category</span>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="">No category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <CategorySelect value={categoryId} onChange={setCategoryId} />
           </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Barcode</span>

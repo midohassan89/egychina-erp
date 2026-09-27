@@ -8,6 +8,8 @@ const corsHeaders = {
 };
 
 /** GET /api/store/categories — public department list for the storefront. */
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({

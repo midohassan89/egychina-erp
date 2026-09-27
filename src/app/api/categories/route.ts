@@ -35,22 +35,32 @@ function slugOk(slug: string) {
 }
 
 /** GET /api/categories — departments with product counts. */
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    include: { _count: { select: { products: true } } },
-  });
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { products: true } } },
+    });
 
-  return NextResponse.json({
-    categories: categories.map((category) =>
-      serializeCategory(category, category._count.products),
-    ),
-  });
+    return NextResponse.json({
+      categories: categories.map((category) =>
+        serializeCategory(category, category._count.products),
+      ),
+    });
+  } catch (error) {
+    console.error("[api/categories]", error);
+    return NextResponse.json(
+      { error: "Could not load categories" },
+      { status: 500 },
+    );
+  }
 }
 
 /** POST /api/categories — create a department. */

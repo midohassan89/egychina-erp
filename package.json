@@ -20,6 +20,7 @@
     "bcryptjs": "^3.0.3",
     "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
+    "google-translate-api-x": "^10.7.3",
     "html5-qrcode": "^2.3.8",
     "idb": "^8.0.2",
     "lucide-react": "^0.469.0",

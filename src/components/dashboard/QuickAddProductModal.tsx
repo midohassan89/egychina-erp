@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
+import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 
 export interface QuickAddedProduct {
@@ -37,6 +38,7 @@ export function QuickAddProductModal({
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nameZh, setNameZh] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [isVirtual, setIsVirtual] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
@@ -57,6 +59,7 @@ export function QuickAddProductModal({
     }
     setNameEn("");
     setNameZh("");
+    setCategoryId("");
     setIsVirtual(false);
     setLinkedProductId("");
     setBundleMultiplier("3");
@@ -98,6 +101,7 @@ export function QuickAddProductModal({
       form.set("name", name.trim());
       form.set("nameEn", nameEn.trim());
       form.set("nameZh", nameZh.trim());
+      if (categoryId) form.set("categoryId", categoryId);
       form.set("barcode", barcode.trim());
       // Prices are set later with the invoice line's inline editors.
       form.set("price", "0");
@@ -198,6 +202,17 @@ export function QuickAddProductModal({
             <input
               value={nameZh}
               onChange={(e) => setNameZh(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              القسم
+            </span>
+            <CategorySelect
+              value={categoryId}
+              onChange={setCategoryId}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
