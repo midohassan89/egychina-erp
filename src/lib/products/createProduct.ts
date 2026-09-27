@@ -13,6 +13,8 @@ export class CreateProductError extends Error {
 
 export interface CreateProductInput {
   name: string;
+  nameEn?: string | null;
+  nameZh?: string | null;
   price: number;
   salePrice?: number | null;
   barcode: string;
@@ -157,6 +159,8 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     data: {
       wcId,
       name,
+      nameEn: input.nameEn?.trim() || null,
+      nameZh: input.nameZh?.trim() || null,
       barcode,
       price: input.price,
       salePrice,

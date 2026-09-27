@@ -5,6 +5,8 @@ export type StockStatus = "instock" | "outofstock";
 
 export interface ProductUpdateInput {
   name?: string;
+  nameEn?: string | null;
+  nameZh?: string | null;
   sku?: string | null;
   barcode?: string | null;
   price?: number;
@@ -22,6 +24,8 @@ function serializeAdminProduct(p: Product) {
     id: p.id,
     wcId: p.wcId,
     name: p.name,
+    nameEn: p.nameEn,
+    nameZh: p.nameZh,
     sku: p.sku,
     barcode: p.barcode,
     price: p.price,
@@ -66,6 +70,8 @@ export async function updateProductAndSync(
 
   const data: {
     name?: string;
+    nameEn?: string | null;
+    nameZh?: string | null;
     sku?: string | null;
     barcode?: string | null;
     price?: number;
@@ -82,6 +88,12 @@ export async function updateProductAndSync(
     const name = input.name.trim();
     if (!name) throw new ProductServiceError("Name is required", 400);
     data.name = name;
+  }
+  if (input.nameEn !== undefined) {
+    data.nameEn = input.nameEn?.trim() || null;
+  }
+  if (input.nameZh !== undefined) {
+    data.nameZh = input.nameZh?.trim() || null;
   }
   if (input.sku !== undefined) {
     data.sku = input.sku?.trim() ? input.sku.trim() : null;

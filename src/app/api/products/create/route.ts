@@ -26,6 +26,8 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData();
     const name = String(form.get("name") ?? "");
+    const nameEn = String(form.get("nameEn") ?? "");
+    const nameZh = String(form.get("nameZh") ?? "");
     const price = parseFloat(String(form.get("price") ?? ""));
     const saleRaw = String(form.get("salePrice") ?? "").trim();
     const salePrice =
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
 
     const product = await createProductOnErpAndWoo({
       name,
+      nameEn,
+      nameZh,
       price,
       salePrice: Number.isFinite(salePrice as number) ? salePrice : null,
       barcode,

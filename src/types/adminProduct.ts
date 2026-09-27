@@ -2,6 +2,8 @@ export interface AdminProductRow {
   id: string;
   wcId: number;
   name: string;
+  nameEn: string | null;
+  nameZh: string | null;
   sku: string | null;
   barcode: string | null;
   price: number;

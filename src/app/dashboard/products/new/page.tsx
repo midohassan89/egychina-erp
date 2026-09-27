@@ -27,6 +27,8 @@ function NewProductForm() {
   const { toast } = useToast();
 
   const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [nameZh, setNameZh] = useState("");
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [barcode, setBarcode] = useState("");
@@ -168,6 +170,8 @@ function NewProductForm() {
     try {
       const form = new FormData();
       form.set("name", name.trim());
+      form.set("nameEn", nameEn.trim());
+      form.set("nameZh", nameZh.trim());
       form.set("price", String(regular));
       if (sale != null && sale > 0) form.set("salePrice", String(sale));
       form.set("barcode", barcode.trim());
@@ -238,6 +242,29 @@ function NewProductForm() {
             placeholder="e.g. Olive Oil 1L"
           />
         </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              الاسم (English)
+            </span>
+            <input
+              value={nameEn}
+              onChange={(e) => setNameEn(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              الاسم (中文)
+            </span>
+            <input
+              value={nameZh}
+              onChange={(e) => setNameZh(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+          </label>
+        </div>
 
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-slate-700">Category</span>

@@ -19,6 +19,8 @@ interface ProductEditModalProps {
     bundleMultiplier: number | null;
     categoryId: string | null;
     imageUrl: string;
+    nameEn: string;
+    nameZh: string;
   }) => Promise<void>;
 }
 
@@ -30,6 +32,8 @@ export function ProductEditModal({
   onSave,
 }: ProductEditModalProps) {
   const [name, setName] = useState(product.name);
+  const [nameEn, setNameEn] = useState(product.nameEn ?? "");
+  const [nameZh, setNameZh] = useState(product.nameZh ?? "");
   const [sku, setSku] = useState(product.sku ?? "");
   const [barcode, setBarcode] = useState(product.barcode ?? "");
   const [isBundle, setIsBundle] = useState(Boolean(product.linkedProductId));
@@ -46,6 +50,8 @@ export function ProductEditModal({
   useEffect(() => {
     if (!open) return;
     setName(product.name);
+    setNameEn(product.nameEn ?? "");
+    setNameZh(product.nameZh ?? "");
     setSku(product.sku ?? "");
     setBarcode(product.barcode ?? "");
     setIsBundle(Boolean(product.linkedProductId));
@@ -119,6 +125,8 @@ export function ProductEditModal({
                 bundleMultiplier: mult,
                 categoryId: categoryId || null,
                 imageUrl,
+                nameEn,
+                nameZh,
               });
               return;
             }
@@ -130,6 +138,8 @@ export function ProductEditModal({
               bundleMultiplier: null,
               categoryId: categoryId || null,
               imageUrl,
+              nameEn,
+              nameZh,
             });
           }}
         >
@@ -150,6 +160,28 @@ export function ProductEditModal({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">
+                الاسم (English)
+              </span>
+              <input
+                value={nameEn}
+                onChange={(e) => setNameEn(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">
+                الاسم (中文)
+              </span>
+              <input
+                value={nameZh}
+                onChange={(e) => setNameZh(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              />
+            </label>
+          </div>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Category</span>
             <select

@@ -56,6 +56,8 @@ export async function PATCH(
   try {
     const body = (await request.json()) as {
       name?: string;
+      nameEn?: string | null;
+      nameZh?: string | null;
       sku?: string | null;
       barcode?: string | null;
       price?: number;
@@ -109,6 +111,8 @@ export async function PATCH(
 
     const product = await updateProductAndSync(id, {
       name: body.name,
+      nameEn: body.nameEn,
+      nameZh: body.nameZh,
       sku: body.sku,
       barcode: body.barcode,
       price: body.price,

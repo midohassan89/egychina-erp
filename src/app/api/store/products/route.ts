@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           name: true,
+          nameEn: true,
+          nameZh: true,
           price: true,
           imageUrl: true,
           categoryId: true,
@@ -46,6 +48,8 @@ export async function GET(req: NextRequest) {
     const products = rows.map((product) => ({
       id: product.id,
       name: product.name,
+      nameEn: product.nameEn,
+      nameZh: product.nameZh,
       price: product.price,
       image: product.imageUrl,
       categoryId: product.categoryId,

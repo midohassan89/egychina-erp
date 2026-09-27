@@ -382,6 +382,8 @@ function ProductsManagement() {
     bundleMultiplier: number | null;
     categoryId: string | null;
     imageUrl: string;
+    nameEn: string;
+    nameZh: string;
   }) {
     if (!editProduct) return;
     setIsEditSaving(true);
@@ -397,6 +399,8 @@ function ProductsManagement() {
           bundleMultiplier: values.bundleMultiplier,
           categoryId: values.categoryId,
           imageUrl: values.imageUrl || null,
+          nameEn: values.nameEn,
+          nameZh: values.nameZh,
         }),
       });
       const data = (await res.json()) as {

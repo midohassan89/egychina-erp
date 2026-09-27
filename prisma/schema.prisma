@@ -53,6 +53,8 @@ model Product {
   id            String   @id @default(cuid())
   wcId          Int      @unique
   name          String
+  nameEn        String?
+  nameZh        String?
   sku           String?
   barcode       String?
   price         Float
@@ -457,6 +459,8 @@ model Category {
   id          String    @id @default(cuid())
   /** Arabic department name (مثل: مكرونات، جبن، عصائر). */
   name        String    @unique
+  nameEn      String?
+  nameZh      String?
   /** English website slug (مثل: pastas). */
   slug        String    @unique
   description String?

@@ -14,6 +14,8 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        nameEn: true,
+        nameZh: true,
         slug: true,
       },
       orderBy: { name: "asc" },

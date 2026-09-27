@@ -3,6 +3,33 @@ import { auth } from "@/auth";
 import { isEditor } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 
+function blankToNull(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed || null;
+}
+
+function serializeCategory(
+  category: {
+    id: string;
+    name: string;
+    nameEn: string | null;
+    nameZh: string | null;
+    slug: string;
+    description: string | null;
+  },
+  productCount = 0,
+) {
+  return {
+    id: category.id,
+    name: category.name,
+    nameEn: category.nameEn,
+    nameZh: category.nameZh,
+    slug: category.slug,
+    description: category.description,
+    productCount,
+  };
+}
+
 function slugOk(slug: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
@@ -20,13 +47,9 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    categories: categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description,
-      productCount: category._count.products,
-    })),
+    categories: categories.map((category) =>
+      serializeCategory(category, category._count.products),
+    ),
   });
 }
 
@@ -40,7 +63,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { name?: string; slug?: string; description?: string };
+  let body: {
+    name?: string;
+    nameEn?: string;
+    nameZh?: string;
+    slug?: string;
+    description?: string;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -63,18 +92,14 @@ export async function POST(request: Request) {
     const category = await prisma.category.create({
       data: {
         name,
+        nameEn: blankToNull(body.nameEn),
+        nameZh: blankToNull(body.nameZh),
         slug,
         description: body.description?.trim() || null,
       },
     });
     return NextResponse.json({
-      category: {
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        description: category.description,
-        productCount: 0,
-      },
+      category: serializeCategory(category),
     });
   } catch {
     return NextResponse.json(
