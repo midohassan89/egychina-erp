@@ -23,6 +23,7 @@ import {
   ClipboardList,
   ShieldAlert,
   ShoppingCart,
+  Images,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { signOut } from "next-auth/react";
@@ -40,6 +41,7 @@ const NAV_ITEMS: {
 }[] = [
   { key: "overview", href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { key: "products", href: "/dashboard/products", label: "Products", icon: Tags },
+  { key: "autoImages", href: "/admin/auto-images", label: "أداة جلب الصور", icon: Images },
   { key: "categories", href: "/dashboard/categories", label: "الأقسام", icon: FolderTree },
   { key: "suppliers", href: "/dashboard/suppliers", label: "Suppliers", icon: Truck },
   { key: "purchases", href: "/dashboard/purchases", label: "Purchases", icon: ShoppingBag },

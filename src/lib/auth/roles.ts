@@ -48,6 +48,7 @@ export function homeForRole(role?: string | null): string {
 export type NavAccess =
   | "overview"
   | "products"
+  | "autoImages"
   | "categories"
   | "suppliers"
   | "purchases"
@@ -77,6 +78,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
   MANAGER: [
     "overview",
     "products",
+    "autoImages",
     "categories",
     "suppliers",
     "purchases",
@@ -94,6 +96,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
   ADMIN: [
     "overview",
     "products",
+    "autoImages",
     "categories",
     "suppliers",
     "purchases",

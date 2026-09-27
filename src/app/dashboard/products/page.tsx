@@ -483,7 +483,7 @@ function ProductsManagement() {
                 : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
             )}
           >
-            Products
+            المنتجات النشطة
           </button>
           <button
             type="button"
@@ -496,7 +496,7 @@ function ProductsManagement() {
             )}
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Trash
+            سلة المهملات
           </button>
         </div>
 
