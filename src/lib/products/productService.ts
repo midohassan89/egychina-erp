@@ -14,6 +14,7 @@ export interface ProductUpdateInput {
   linkedProductId?: string | null;
   bundleMultiplier?: number | null;
   categoryId?: string | null;
+  imageUrl?: string | null;
 }
 
 function serializeAdminProduct(p: Product) {
@@ -74,6 +75,7 @@ export async function updateProductAndSync(
     linkedProductId?: string | null;
     bundleMultiplier?: number | null;
     categoryId?: string | null;
+    imageUrl?: string | null;
   } = {};
 
   if (input.name !== undefined) {
@@ -171,6 +173,22 @@ export async function updateProductAndSync(
       );
     }
     data.bundleMultiplier = mult;
+  }
+
+  if (input.imageUrl !== undefined) {
+    const imageUrl = input.imageUrl?.trim() ?? "";
+    if (!imageUrl) {
+      data.imageUrl = null;
+    } else if (
+      imageUrl.startsWith("/uploads/products/") &&
+      !imageUrl.includes("..")
+    ) {
+      data.imageUrl = imageUrl;
+    } else if (imageUrl === existing.imageUrl) {
+      data.imageUrl = existing.imageUrl;
+    } else {
+      throw new ProductServiceError("Image must be a local upload path", 400);
+    }
   }
 
   if (input.categoryId !== undefined) {

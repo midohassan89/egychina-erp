@@ -3,22 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Camera,
-  ImagePlus,
-  Loader2,
-  Shuffle,
-  ScanLine,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Shuffle, ScanLine } from "lucide-react";
 import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
+import { ImagePicker } from "@/components/ui/ImagePicker";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   checkBarcodeAvailable,
   generateUniqueErpBarcode,
 } from "@/lib/products/barcode";
-import imageCompression from "browser-image-compression";
 import { clsx } from "clsx";
 
 export default function NewProductPage() {
@@ -45,9 +38,7 @@ function NewProductForm() {
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
 
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
   const [barcodeChecking, setBarcodeChecking] = useState(false);
@@ -55,7 +46,6 @@ function NewProductForm() {
   const [saleError, setSaleError] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [compressing, setCompressing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -68,16 +58,6 @@ function NewProductForm() {
       setCategories(body.categories ?? []);
     })();
   }, []);
-
-  useEffect(() => {
-    if (!imageFile) {
-      setImagePreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(imageFile);
-    setImagePreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
 
   const regular = useMemo(() => parseFloat(price), [price]);
   const sale = useMemo(() => {
@@ -201,48 +181,7 @@ function NewProductForm() {
       form.set("stockQuantity", "0");
       if (categoryId) form.set("categoryId", categoryId);
 
-      let savedImageUrl = imageUrl;
-      if (imageFile) {
-        setCompressing(true);
-        try {
-          const compressed = await imageCompression(imageFile, {
-            maxSizeMB: 0.05,
-            maxWidthOrHeight: 800,
-            useWebWorker: true,
-            fileType: "image/jpeg",
-          });
-          const uploadFile =
-            compressed instanceof File
-              ? compressed
-              : new File(
-                  [compressed],
-                  imageFile.name.replace(/\.\w+$/, "") + ".jpg",
-                  { type: "image/jpeg" },
-                );
-          const uploadBody = new FormData();
-          uploadBody.set("image", uploadFile);
-          const uploadRes = await fetch("/api/admin/upload", {
-            method: "POST",
-            body: uploadBody,
-          });
-          const uploadData = (await uploadRes.json()) as {
-            url?: string;
-            error?: string;
-          };
-          if (!uploadRes.ok || !uploadData.url) {
-            throw new Error(uploadData.error ?? "Image upload failed");
-          }
-          savedImageUrl = uploadData.url;
-          setImageUrl(uploadData.url);
-        } catch (err) {
-          throw new Error(
-            err instanceof Error ? err.message : "Image upload failed",
-          );
-        } finally {
-          setCompressing(false);
-        }
-      }
-      if (savedImageUrl) form.set("imageUrl", savedImageUrl);
+      if (imageUrl) form.set("imageUrl", imageUrl);
 
       const res = await fetch("/api/products/create", {
         method: "POST",
@@ -259,7 +198,6 @@ function NewProductForm() {
     } catch (err) {
       toast(err instanceof Error ? err.message : "Create failed", "error");
     } finally {
-      setCompressing(false);
       setSubmitting(false);
     }
   }
@@ -482,52 +420,11 @@ function NewProductForm() {
           <span className="text-sm font-medium text-slate-700">
             Product Image
           </span>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center hover:border-brand-400 hover:bg-brand-50/40 sm:min-w-[200px]">
-              <Camera className="h-6 w-6 text-slate-400" />
-              <span className="text-sm font-medium text-slate-700">
-                Take photo / choose file
-              </span>
-              <span className="text-xs text-slate-400">
-                Uses rear camera on mobile
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setImageFile(file);
-                  setImageUrl(null);
-                }}
-              />
-            </label>
-            {imagePreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="h-40 w-40 rounded-xl border border-slate-200 object-cover"
-              />
-            ) : (
-              <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-slate-200 text-slate-300">
-                <ImagePlus className="h-8 w-8" />
-              </div>
-            )}
-          </div>
-          {imageFile && (
-            <button
-              type="button"
-              className="text-xs text-slate-500 underline hover:text-slate-800"
-              onClick={() => {
-                setImageFile(null);
-                setImageUrl(null);
-              }}
-            >
-              Remove image
-            </button>
-          )}
+          <ImagePicker
+            value={imageUrl}
+            productName={name}
+            onChange={setImageUrl}
+          />
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
@@ -540,21 +437,12 @@ function NewProductForm() {
           <button
             type="submit"
             disabled={
-              submitting ||
-              compressing ||
-              Boolean(saleError) ||
-              Boolean(barcodeError)
+              submitting || Boolean(saleError) || Boolean(barcodeError)
             }
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            {(submitting || compressing) && (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            )}
-            {compressing
-              ? "Compressing image…"
-              : submitting
-                ? "Creating…"
-                : "Create Product"}
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? "Creating…" : "Create Product"}
           </button>
         </div>
       </form>

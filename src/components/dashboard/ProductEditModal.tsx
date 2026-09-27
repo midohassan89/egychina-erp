@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
-import {
-  VirtualBundleLinkFields,
-} from "@/components/dashboard/VirtualBundleLinkFields";
+import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
+import { ImagePicker } from "@/components/ui/ImagePicker";
 
 interface ProductEditModalProps {
   product: AdminProductRow;
@@ -19,6 +18,7 @@ interface ProductEditModalProps {
     linkedProductId: string | null;
     bundleMultiplier: number | null;
     categoryId: string | null;
+    imageUrl: string;
   }) => Promise<void>;
 }
 
@@ -40,6 +40,7 @@ export function ProductEditModal({
     String(product.bundleMultiplier ?? 3),
   );
   const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
+  const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function ProductEditModal({
     setLinkedProductId(product.linkedProductId ?? "");
     setBundleMultiplier(String(product.bundleMultiplier ?? 3));
     setCategoryId(product.categoryId ?? "");
+    setImageUrl(product.imageUrl ?? "");
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
@@ -116,6 +118,7 @@ export function ProductEditModal({
                 linkedProductId,
                 bundleMultiplier: mult,
                 categoryId: categoryId || null,
+                imageUrl,
               });
               return;
             }
@@ -126,9 +129,18 @@ export function ProductEditModal({
               linkedProductId: null,
               bundleMultiplier: null,
               categoryId: categoryId || null,
+              imageUrl,
             });
           }}
         >
+          <div className="space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Image</span>
+            <ImagePicker
+              value={imageUrl}
+              productName={name}
+              onChange={setImageUrl}
+            />
+          </div>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Name</span>
             <input

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
+import { ImagePicker } from "@/components/ui/ImagePicker";
 
 export interface QuickAddedProduct {
   id: string;
@@ -38,6 +39,7 @@ export function QuickAddProductModal({
   const [isVirtual, setIsVirtual] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
+  const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,6 +56,7 @@ export function QuickAddProductModal({
     setIsVirtual(false);
     setLinkedProductId("");
     setBundleMultiplier("3");
+    setImageUrl("");
     setError(null);
     setSubmitting(false);
   }, [open, searchQuery]);
@@ -94,6 +97,7 @@ export function QuickAddProductModal({
       form.set("price", "0");
       form.set("stockQuantity", "0");
       form.set("stockStatus", "instock");
+      if (imageUrl) form.set("imageUrl", imageUrl);
       if (isVirtual) {
         form.set("linkedProductId", linkedProductId);
         form.set(
@@ -147,6 +151,17 @@ export function QuickAddProductModal({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <div>
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Image
+            </span>
+            <ImagePicker
+              value={imageUrl}
+              productName={name}
+              onChange={setImageUrl}
+            />
+          </div>
+
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
               Product name
