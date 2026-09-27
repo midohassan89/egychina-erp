@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { isEditor } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 function blankToNull(value: string | null | undefined) {
   const trimmed = value?.trim() ?? "";
   return trimmed || null;
@@ -35,8 +37,6 @@ function slugOk(slug: string) {
 }
 
 /** GET /api/categories — departments with product counts. */
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -49,11 +49,14 @@ export async function GET() {
       include: { _count: { select: { products: true } } },
     });
 
-    return NextResponse.json({
-      categories: categories.map((category) =>
-        serializeCategory(category, category._count.products),
-      ),
-    });
+    return NextResponse.json(
+      {
+        categories: categories.map((category) =>
+          serializeCategory(category, category._count.products),
+        ),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     console.error("[api/categories]", error);
     return NextResponse.json(

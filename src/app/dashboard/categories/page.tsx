@@ -28,7 +28,7 @@ export default function CategoriesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/categories");
+      const res = await fetch("/api/categories", { cache: "no-store" });
       const body = (await res.json()) as {
         categories?: CategoryRow[];
         error?: string;

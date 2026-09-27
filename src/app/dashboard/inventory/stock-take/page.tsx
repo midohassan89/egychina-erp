@@ -34,7 +34,7 @@ export default function StockTakePage() {
 
   const loadCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/categories");
+      const res = await fetch("/api/categories", { cache: "no-store" });
       if (!res.ok) return;
       const body = (await res.json()) as {
         categories?: CategoryOption[];
