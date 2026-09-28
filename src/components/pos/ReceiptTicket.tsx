@@ -13,6 +13,12 @@ import {
 const STORE_NAME = "سوق العبور العين السخنة - ايجي شاينا جروب";
 const STORE_PHONE = "01009972972";
 
+function maskLoyaltyPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 6) return phone;
+  return `${digits.slice(0, 3)}****${digits.slice(-3)}`;
+}
+
 interface ReceiptTicketProps {
   sale: LocalSale | null;
 }
@@ -144,7 +150,9 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
             {formatEGP(
               isStaffMealPayment(sale.paymentMethod)
                 ? sale.lines.reduce((sum, line) => sum + Math.abs(line.lineTotal), 0)
-                : Math.abs(sale.total),
+                : sale.loyalty && sale.loyalty.discountAmount > 0
+                  ? sale.lines.reduce((sum, line) => sum + line.lineTotal, 0)
+                  : Math.abs(sale.total),
             )}
           </span>
         </div>
@@ -187,6 +195,32 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
           </div>
         )}
       </div>
+
+      {sale.loyalty ? (
+        <div className="receipt-totals">
+          <div className="receipt-total-row receipt-total-final">
+            <span>برنامج الولاء</span>
+            <span />
+          </div>
+          <div className="receipt-total-row">
+            <span>رقم العميل: {maskLoyaltyPhone(sale.loyalty.phone)}</span>
+          </div>
+          <div className="receipt-total-row">
+            <span>النقاط المكتسبة: {sale.loyalty.pointsEarned}</span>
+          </div>
+          {sale.loyalty.pointsRedeemed > 0 ? (
+            <div className="receipt-total-row">
+              <span>
+                تم استبدال: {sale.loyalty.pointsRedeemed} نقطة (خصم{" "}
+                {sale.loyalty.discountAmount} ج.م)
+              </span>
+            </div>
+          ) : null}
+          <div className="receipt-total-row">
+            <span>رصيد النقاط الحالي: {sale.loyalty.pointsBalance}</span>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className="receipt-barcode"

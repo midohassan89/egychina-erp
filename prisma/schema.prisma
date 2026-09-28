@@ -509,8 +509,8 @@ model Order {
   status         String      @default("PENDING")
   customerId     String?
   customer       Customer?   @relation(fields: [customerId], references: [id])
-  pointsEarned   Int         @default(0)
-  pointsRedeemed Int         @default(0)
+  pointsEarned   Int?
+  pointsRedeemed Int?
   createdAt      DateTime    @default(now())
   items          OrderItem[]
 

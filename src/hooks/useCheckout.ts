@@ -36,6 +36,11 @@ interface CompleteSaleInput {
   cashierName?: string | null;
   managerId?: string | null;
   managerName?: string | null;
+  loyaltyCustomerId?: string | null;
+  loyaltyPhone?: string | null;
+  loyaltyBalance?: number;
+  pointsEarned?: number;
+  pointsRedeemed?: number;
 }
 
 async function restockReturnedItems(
@@ -91,6 +96,11 @@ export function useCheckout() {
         cashierName = null,
         managerId = null,
         managerName = null,
+        loyaltyCustomerId = null,
+        loyaltyPhone = null,
+        loyaltyBalance = 0,
+        pointsEarned = 0,
+        pointsRedeemed = 0,
       } = input;
 
       if (lines.length === 0) return null;
@@ -146,6 +156,19 @@ export function useCheckout() {
         managerName,
       };
 
+      if (loyaltyCustomerId && loyaltyPhone) {
+        sale.loyalty = {
+          phone: loyaltyPhone,
+          pointsEarned,
+          pointsRedeemed,
+          discountAmount: pointsRedeemed / 1000,
+          pointsBalance: Math.max(
+            0,
+            loyaltyBalance - pointsRedeemed + pointsEarned,
+          ),
+        };
+      }
+
       await saveSale(sale);
 
       if (!isOnline) {
@@ -170,6 +193,9 @@ export function useCheckout() {
             createdAt: sale.createdAt,
             customerName: sale.customerName,
             employeeId: sale.employeeId ?? null,
+            customerId: loyaltyCustomerId,
+            pointsEarned,
+            pointsRedeemed,
             lines: saleLines.map((line) => ({
               productId: line.productId,
               name: line.name,
@@ -192,6 +218,24 @@ export function useCheckout() {
           setLastSale(queued);
           setIsSubmitting(false);
           return queued;
+        }
+        const saved = (await checkoutRes.json()) as {
+          customer?: {
+            phone?: string;
+            pointsBalance?: number;
+          } | null;
+        };
+        if (loyaltyCustomerId && loyaltyPhone) {
+          sale.loyalty = {
+            phone: saved.customer?.phone || loyaltyPhone,
+            pointsEarned,
+            pointsRedeemed,
+            discountAmount: pointsRedeemed / 1000,
+            pointsBalance:
+              typeof saved.customer?.pointsBalance === "number"
+                ? saved.customer.pointsBalance
+                : Math.max(0, loyaltyBalance - pointsRedeemed + pointsEarned),
+          };
         }
       } catch (err) {
         console.warn("[checkout] sale persist error", err);

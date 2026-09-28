@@ -41,6 +41,16 @@ interface CartPanelProps {
   /** Open list of suspended invoices. */
   onOpenHeldCarts?: () => void;
   heldCartCount?: number;
+  loyaltyCustomer?: {
+    id: string;
+    name: string | null;
+    phone: string;
+    pointsBalance: number;
+  } | null;
+  onClearLoyaltyCustomer?: () => void;
+  redeemPoints?: boolean;
+  onToggleRedeem?: (redeem: boolean) => void;
+  pointsDiscount?: number;
 }
 
 export function CartPanel({
@@ -60,6 +70,11 @@ export function CartPanel({
   onHoldCart,
   onOpenHeldCarts,
   heldCartCount = 0,
+  loyaltyCustomer = null,
+  onClearLoyaltyCustomer,
+  redeemPoints = false,
+  onToggleRedeem,
+  pointsDiscount = 0,
 }: CartPanelProps) {
   const [editLine, setEditLine] = useState<CartLine | null>(null);
 
@@ -141,6 +156,44 @@ export function CartPanel({
           )}
         </div>
       </div>
+
+      {loyaltyCustomer && (
+        <div className="flex items-center justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-2">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-emerald-800">عميل الولاء</p>
+            <p className="truncate text-sm font-semibold text-emerald-950">
+              {loyaltyCustomer.phone}
+            </p>
+            <p className="text-xs text-emerald-800">
+              {loyaltyCustomer.pointsBalance.toLocaleString()} نقطة
+            </p>
+            {loyaltyCustomer.pointsBalance >= 1000 && onToggleRedeem && !returnMode && (
+              <label className="mt-1 flex items-center gap-2 text-xs font-semibold text-emerald-950">
+                <input
+                  type="checkbox"
+                  checked={redeemPoints}
+                  onChange={(e) => onToggleRedeem(e.target.checked)}
+                  className="h-4 w-4 rounded border-emerald-400"
+                />
+                استبدال النقاط
+                {redeemPoints && pointsDiscount > 0 ? (
+                  <span className="font-medium text-emerald-800">
+                    خصم {pointsDiscount} ج.م
+                  </span>
+                ) : null}
+              </label>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClearLoyaltyCustomer}
+            className="rounded-lg px-2 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-100"
+            aria-label="Remove customer"
+          >
+            X
+          </button>
+        </div>
+      )}
 
       <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
         {lines.length === 0 ? (
@@ -340,6 +393,11 @@ export function CartPanel({
             {formatEGP(total)}
           </span>
         </div>
+        {pointsDiscount > 0 && (
+          <p className="mt-1 text-xs font-medium text-emerald-800">
+            خصم النقاط {pointsDiscount} ج.م
+          </p>
+        )}
         <button
           type="button"
           disabled={lines.length === 0 || isCheckingOut}

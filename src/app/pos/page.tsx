@@ -12,6 +12,7 @@ import { useShift } from "@/hooks/useShift";
 import { builtInQuickTapProducts } from "@/lib/pos/scaleCatalog";
 import { getOpBarcodes } from "@/lib/pos/opBarcode";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
+import { isCustomerLoyaltyScan, normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { formatEGP } from "@/lib/pos/money";
 import { CartPanel, cartItemDomId } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
@@ -32,7 +33,7 @@ import { ZReportModal } from "@/components/pos/ZReportModal";
 import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboardContext";
 import { PosTouchKeyboardHost } from "@/components/pos/PosTouchKeyboard";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
-import { playErrorBeep } from "@/lib/pos/errorBeep";
+import { playErrorBeep, playSuccessBeep } from "@/lib/pos/errorBeep";
 import {
   createHeldCart,
   loadHeldCarts,
@@ -85,6 +86,13 @@ function POSPageInner() {
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: string;
+    name: string | null;
+    phone: string;
+    pointsBalance: number;
+  } | null>(null);
+  const [redeemPoints, setRedeemPoints] = useState(false);
   /** Blocking not-found interrupt — must dismiss before next scan. */
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [priceCheckOpen, setPriceCheckOpen] = useState(false);
@@ -273,6 +281,49 @@ function POSPageInner() {
     (rawInput: string): boolean => {
       if (shiftLocked || notFoundBarcode || priceCheckOpen) return false;
 
+      const scanned = rawInput.trim();
+      const cleanPhone = normalizeLoyaltyPhone(scanned);
+      if (isCustomerLoyaltyScan(cleanPhone)) {
+        void (async () => {
+          try {
+            const res = await fetch(
+              `/api/admin/customers/search?phone=${encodeURIComponent(cleanPhone)}`,
+              { cache: "no-store" },
+            );
+            const body = (await res.json()) as {
+              error?: string;
+              customer?: {
+                id: string;
+                name: string | null;
+                phone: string;
+                pointsBalance: number;
+              };
+            };
+            if (!res.ok || !body.customer) {
+              setSelectedCustomer(null);
+              setRedeemPoints(false);
+              setScanMessage(null);
+              setScanError(body.error ?? "عميل غير موجود");
+              playErrorBeep();
+              return;
+            }
+            setSelectedCustomer(body.customer);
+            setRedeemPoints(false);
+            setScanError(null);
+            const label = body.customer.name?.trim() || body.customer.phone;
+            setScanMessage(
+              `${label} · ${body.customer.pointsBalance.toLocaleString()} نقطة`,
+            );
+            playSuccessBeep();
+          } catch {
+            setScanError("Could not look up customer");
+            playErrorBeep();
+          }
+        })();
+        closeKeyboard();
+        return true;
+      }
+
       const result = resolveScannedBarcode(rawInput, catalog);
 
       if ("error" in result) {
@@ -329,6 +380,79 @@ function POSPageInner() {
       closeKeyboard,
     ],
   );
+
+  useEffect(() => {
+    let scanBuffer = "";
+    let lastKeyAt = 0;
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "F4") return;
+      if (
+        shiftLocked ||
+        notFoundBarcode ||
+        priceCheckOpen ||
+        checkoutOpen ||
+        zReportOpen ||
+        pendingPin
+      ) {
+        return;
+      }
+
+      const now = Date.now();
+      if (event.key === "Enter") {
+        const code = scanBuffer.trim();
+        const fromScanner = code.length > 0 && lastKeyAt > 0 && now - lastKeyAt < 50;
+        if (!fromScanner) {
+          scanBuffer = "";
+          lastKeyAt = 0;
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          const prototype =
+            target instanceof HTMLTextAreaElement
+              ? HTMLTextAreaElement.prototype
+              : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+          setter?.call(target, "");
+          target.dispatchEvent(new Event("input", { bubbles: true }));
+          target.blur();
+        }
+        productGridRef.current?.clearSearch();
+
+        scanBuffer = "";
+        lastKeyAt = 0;
+        handleBarcodeEnter(code);
+        return;
+      }
+
+      if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      if (!lastKeyAt || now - lastKeyAt >= 50) {
+        scanBuffer = event.key;
+      } else {
+        scanBuffer += event.key;
+      }
+      lastKeyAt = now;
+    }
+
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [
+    handleBarcodeEnter,
+    shiftLocked,
+    notFoundBarcode,
+    priceCheckOpen,
+    checkoutOpen,
+    zReportOpen,
+    pendingPin,
+  ]);
 
   const dismissNotFound = useCallback(() => {
     setNotFoundBarcode(null);
@@ -433,6 +557,19 @@ function POSPageInner() {
       : pendingPin?.type === "open_drawer"
         ? "open_drawer"
         : "return_mode";
+
+  const canRedeemPoints =
+    !!selectedCustomer &&
+    !returnMode &&
+    selectedCustomer.pointsBalance >= 1000;
+  const pointsDiscount =
+    canRedeemPoints && redeemPoints
+      ? Math.min(
+          Math.floor(selectedCustomer.pointsBalance / 1000),
+          Math.floor(Math.max(0, cart.total)),
+        )
+      : 0;
+  const payableTotal = Math.max(0, cart.total - pointsDiscount);
 
   return (
     <>
@@ -552,17 +689,27 @@ function POSPageInner() {
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <CartPanel
             lines={cart.lines}
-            total={cart.total}
+            total={payableTotal}
             itemCount={cart.itemCount}
             returnMode={returnMode}
             highlightedItemId={highlightedItemId}
             listRef={cartListRef}
+            loyaltyCustomer={selectedCustomer}
+            redeemPoints={redeemPoints && !returnMode}
+            onToggleRedeem={setRedeemPoints}
+            pointsDiscount={pointsDiscount}
+            onClearLoyaltyCustomer={() => {
+              setSelectedCustomer(null);
+              setRedeemPoints(false);
+            }}
             onIncrement={cart.increment}
             onDecrement={cart.decrement}
             onRemove={handleRemoveLine}
             onUpdateLine={cart.updateLine}
             onClear={() => {
               cart.clear();
+              setSelectedCustomer(null);
+              setRedeemPoints(false);
               focusBarcodeSearch();
             }}
             onCheckout={() => setCheckoutOpen(true)}
@@ -597,7 +744,7 @@ function POSPageInner() {
 
         <CheckoutDialog
           open={checkoutOpen}
-          total={cart.total}
+          total={payableTotal}
           isOnline={isOnline}
           isSubmitting={checkout.isSubmitting}
           error={checkout.error}
@@ -618,9 +765,11 @@ function POSPageInner() {
               setPendingPin({ type: "return_mode" });
               return;
             }
+            const staffMeal = paymentMethod === "STAFF_MEAL";
+            const applyLoyalty = !!selectedCustomer && !returnMode && !staffMeal;
             const sale = await checkout.completeSale({
               lines: cart.lines,
-              total: cart.total,
+              total: applyLoyalty ? payableTotal : cart.total,
               paymentMethod,
               customer,
               tendered,
@@ -633,6 +782,11 @@ function POSPageInner() {
               cashierName: session?.user?.name ?? null,
               managerId: managerAuth?.managerId ?? null,
               managerName: managerAuth?.managerName ?? null,
+              loyaltyCustomerId: applyLoyalty ? selectedCustomer.id : null,
+              loyaltyPhone: applyLoyalty ? selectedCustomer.phone : null,
+              loyaltyBalance: applyLoyalty ? selectedCustomer.pointsBalance : 0,
+              pointsEarned: applyLoyalty ? Math.floor(payableTotal * 10) : 0,
+              pointsRedeemed: applyLoyalty ? pointsDiscount * 1000 : 0,
             });
             if (sale) {
               await shiftApi.refresh();
@@ -654,6 +808,8 @@ function POSPageInner() {
                     ? " · queued offline"
                     : "";
               cart.clear();
+              setSelectedCustomer(null);
+              setRedeemPoints(false);
               setCheckoutOpen(false);
               if (sale.isReturn) {
                 disableReturnMode();

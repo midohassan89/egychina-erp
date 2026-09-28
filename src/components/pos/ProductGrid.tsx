@@ -17,6 +17,7 @@ import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
 
 export interface ProductGridHandle {
   focusSearch: () => void;
+  clearSearch: () => void;
 }
 
 interface ProductGridProps {
@@ -56,6 +57,11 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
         if (!input) return;
         input.focus();
         input.select();
+      },
+      clearSearch: () => {
+        setQuery("");
+        const input = searchInputRef.current;
+        if (input) input.value = "";
       },
     }));
 

@@ -161,6 +161,14 @@ export interface LocalSale {
   /** Manager who authorized return mode (PIN). */
   managerId?: string | null;
   managerName?: string | null;
+  /** Printed loyalty block. Balance is the customer's balance after this sale. */
+  loyalty?: {
+    phone: string;
+    pointsEarned: number;
+    pointsRedeemed: number;
+    discountAmount: number;
+    pointsBalance: number;
+  } | null;
 }
 
 export type ShiftStatus = "open" | "closed";

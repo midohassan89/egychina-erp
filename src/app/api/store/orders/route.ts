@@ -7,6 +7,10 @@ import {
 } from "@/lib/pos/applySaleStock";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
 
+const POINTS_PER_EGP = 10;
+const POINTS_FOR_ONE_EGP = 1000;
+const SHIPPING_FEES = new Set([0, 50, 60, 80]);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -67,6 +71,9 @@ export async function POST(request: Request) {
       address?: unknown;
       notes?: unknown;
       totalAmount?: unknown;
+      shippingFee?: unknown;
+      customerId?: unknown;
+      pointsRedeemed?: unknown;
       items?: unknown;
     };
 
@@ -127,6 +134,28 @@ export async function POST(request: Request) {
       );
     }
 
+    const customerId = typeof body.customerId === "string" ? body.customerId.trim() : "";
+    const isGuest = customerId.length === 0;
+    const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
+    const shippingFee = Number(body.shippingFee ?? 0);
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const discount = isGuest ? 0 : pointsRedeemed / POINTS_FOR_ONE_EGP;
+    const paidGoods = Math.max(0, subtotal - discount);
+    const pointsEarned = isGuest ? null : Math.floor(paidGoods * POINTS_PER_EGP);
+
+    if (
+      !Number.isInteger(pointsRedeemed) ||
+      pointsRedeemed < 0 ||
+      !SHIPPING_FEES.has(shippingFee) ||
+      (!isGuest && discount - subtotal > 0.001) ||
+      Math.abs((isGuest ? subtotal : paidGoods) + shippingFee - totalAmount) > 0.02
+    ) {
+      return NextResponse.json(
+        { error: "Order total does not match the calculated amount" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
     const products = await prisma.product.findMany({
       where: { id: { in: items.map((item) => item.productId) }, isDeleted: false },
       select: { id: true, wcId: true, name: true },
@@ -151,24 +180,79 @@ export async function POST(request: Request) {
     });
 
     let wooRows: { wcId: number; stockQuantity: number }[] = [];
+    const orderItems = items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+    }));
     const order = await prisma.$transaction(async (tx) => {
-      const created = await tx.order.create({
-        data: {
-          customerName,
-          phone,
-          address,
-          notes,
-          totalAmount,
-          items: {
-            create: items.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.price,
-            })),
+      if (!isGuest) {
+        const customer = await tx.customer.findUnique({
+          where: { id: customerId },
+          select: { id: true, pointsBalance: true },
+        });
+
+        if (!customer) {
+          throw new Error("Customer not found");
+        }
+
+        if (pointsRedeemed > customer.pointsBalance) {
+          throw new Error("Insufficient points");
+        }
+
+        await tx.customer.update({
+          where: { id: customer.id },
+          data: {
+            pointsBalance: customer.pointsBalance - pointsRedeemed + (pointsEarned ?? 0),
           },
-        },
+        });
+      }
+
+      const created = await tx.order.create({
+        data: isGuest
+          ? {
+              customerName,
+              phone,
+              address,
+              notes,
+              totalAmount,
+              items: { create: orderItems },
+            }
+          : {
+              customerName,
+              phone,
+              address,
+              notes,
+              totalAmount,
+              customerId,
+              pointsEarned,
+              pointsRedeemed,
+              items: { create: orderItems },
+            },
         include: { items: true },
       });
+
+      if (!isGuest && pointsRedeemed > 0) {
+        await tx.pointsTransaction.create({
+          data: {
+            customerId,
+            points: -pointsRedeemed,
+            type: "REDEEM",
+            description: `Order ${created.id}`,
+          },
+        });
+      }
+
+      if (!isGuest && pointsEarned != null && pointsEarned > 0) {
+        await tx.pointsTransaction.create({
+          data: {
+            customerId,
+            points: pointsEarned,
+            type: "EARN",
+            description: `Order ${created.id}`,
+          },
+        });
+      }
 
       const stockResult = await applySaleStockChanges({
         lines: saleLines.map((line) => ({
@@ -222,9 +306,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json(order, { status: 201, headers: corsHeaders });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create order";
+
+    if (message === "Customer not found" || message === "Insufficient points") {
+      return NextResponse.json({ error: message }, { status: 400, headers: corsHeaders });
+    }
+
     console.error("[api/store/orders]", error);
     return NextResponse.json(
-      { error: "Could not create order" },
+      { error: message },
       { status: 500, headers: corsHeaders },
     );
   }

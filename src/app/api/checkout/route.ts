@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     total?: number;
     customerName?: string | null;
     employeeId?: number | null;
+    customerId?: string | null;
+    pointsEarned?: number;
+    pointsRedeemed?: number;
     createdAt?: string | null;
     wooOrderId?: number | null;
     lines?: {
@@ -201,6 +204,12 @@ export async function POST(request: Request) {
 
   let updatedShift = shift;
   let saleId: string | null = null;
+  let updatedCustomer: {
+    id: string;
+    name: string | null;
+    phone: string;
+    pointsBalance: number;
+  } | null = null;
   let savedRequiresAudit = requiresAudit;
   let savedAuditReason = auditReason;
   let deferredWoo: { wcId: number; stockQuantity: number }[] = [];
@@ -259,6 +268,58 @@ export async function POST(request: Request) {
         tx,
       );
 
+      const loyaltyId = String(body.customerId ?? "").trim();
+      const pointsEarned = Math.max(0, Math.floor(Number(body.pointsEarned) || 0));
+      const pointsRedeemed = Math.max(
+        0,
+        Math.floor(Number(body.pointsRedeemed) || 0),
+      );
+      let updatedLoyalty: {
+        id: string;
+        name: string | null;
+        phone: string;
+        pointsBalance: number;
+      } | null = null;
+      if (loyaltyId && !isReturn && !isStaffMeal) {
+        const loyaltyCustomer = await tx.customer.findUnique({
+          where: { id: loyaltyId },
+          select: { id: true, name: true, phone: true, pointsBalance: true },
+        });
+        if (loyaltyCustomer && (pointsEarned > 0 || pointsRedeemed > 0)) {
+          const nextBalance =
+            loyaltyCustomer.pointsBalance + pointsEarned - pointsRedeemed;
+          if (nextBalance >= 0) {
+            updatedLoyalty = await tx.customer.update({
+              where: { id: loyaltyCustomer.id },
+              data: { pointsBalance: nextBalance },
+              select: { id: true, name: true, phone: true, pointsBalance: true },
+            });
+            if (pointsEarned > 0) {
+              await tx.pointsTransaction.create({
+                data: {
+                  customerId: loyaltyCustomer.id,
+                  points: pointsEarned,
+                  type: "EARN",
+                  description: `POS sale ${sale.id}`,
+                },
+              });
+            }
+            if (pointsRedeemed > 0) {
+              await tx.pointsTransaction.create({
+                data: {
+                  customerId: loyaltyCustomer.id,
+                  points: -pointsRedeemed,
+                  type: "REDEEM",
+                  description: `POS sale ${sale.id}`,
+                },
+              });
+            }
+          }
+        } else if (loyaltyCustomer) {
+          updatedLoyalty = loyaltyCustomer;
+        }
+      }
+
       if (isStaffMeal && staffEmployee) {
         const cost = await staffMealExpenseAmount(tx, saleLines);
         await recordStaffMealExpense(tx, {
@@ -269,11 +330,12 @@ export async function POST(request: Request) {
         });
       }
 
-      return sale;
+      return { sale, customer: updatedLoyalty };
     });
-    saleId = saved.id;
-    savedRequiresAudit = saved.requiresAudit;
-    savedAuditReason = saved.auditReason;
+    saleId = saved.sale.id;
+    savedRequiresAudit = saved.sale.requiresAudit;
+    savedAuditReason = saved.sale.auditReason;
+    updatedCustomer = saved.customer;
 
     if (deferredWoo.length > 0) {
       const synced = await syncSaleStockRows(deferredWoo);
@@ -292,6 +354,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    order: { id: saleId, pointsEarned: body.pointsEarned ?? 0, pointsRedeemed: body.pointsRedeemed ?? 0 },
+    customer: updatedCustomer,
     shift: updatedShift ? mapShiftToCashierShift(updatedShift) : null,
     salesField,
     salesDelta: delta,
