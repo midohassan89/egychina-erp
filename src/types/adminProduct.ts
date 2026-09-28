@@ -17,5 +17,7 @@ export interface AdminProductRow {
   bundleMultiplier: number | null;
   categoryId: string | null;
   brandId: string | null;
+  categoryName: string | null;
+  brandName: string | null;
   updatedAt: string;
 }

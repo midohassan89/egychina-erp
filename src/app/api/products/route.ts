@@ -108,7 +108,7 @@ export async function GET(request: Request) {
         orderBy: { name: "asc" },
         skip: (page - 1) * perPage,
         take: perPage,
-        select: productSelect,
+        include: { brand: true, category: true },
       }),
     ]);
 
@@ -133,6 +133,8 @@ export async function GET(request: Request) {
       bundleMultiplier: p.bundleMultiplier,
       categoryId: p.categoryId,
       brandId: p.brandId,
+      categoryName: p.category?.name ?? null,
+      brandName: p.brand?.name ?? null,
       updatedAt: p.updatedAt.toISOString(),
     }));
 

@@ -4,25 +4,27 @@ import type { BulkProductRow } from "@/lib/products/bulkUpdate";
 
 export const EXCEL_COLUMNS = [
   "Local_ID",
-  "WooCommerce_ID",
   "Name",
   "Barcode",
   "Price",
   "Sale_Price",
   "Stock_Quantity",
   "Stock_Status",
+  "Brand",
+  "Category",
 ] as const;
 
 export function productsToExcelRows(products: AdminProductRow[]) {
   return products.map((p) => ({
     Local_ID: p.id,
-    WooCommerce_ID: p.wcId,
     Name: p.name,
     Barcode: p.barcode ?? "",
     Price: p.price,
     Sale_Price: p.salePrice ?? "",
     Stock_Quantity: p.stockQuantity,
     Stock_Status: p.stockStatus,
+    Brand: p.brandName ?? "",
+    Category: p.categoryName ?? "",
   }));
 }
 
@@ -47,8 +49,17 @@ function cell(row: Record<string, unknown>, key: string): unknown {
   return found ? row[found] : undefined;
 }
 
+function columnPresent(row: Record<string, unknown>, key: string): boolean {
+  if (key in row) return true;
+  return Object.keys(row).some(
+    (k) => k.trim().toLowerCase() === key.toLowerCase(),
+  );
+}
+
 /**
  * Parse an uploaded .xlsx/.xls/.csv into bulk-update rows.
+ * Brand and Category are omitted when those columns are not in the file,
+ * so an older sheet does not clear existing assignments.
  */
 export function parseProductsExcel(fileBuffer: ArrayBuffer): BulkProductRow[] {
   const workbook = XLSX.read(fileBuffer, { type: "array" });
@@ -67,7 +78,6 @@ export function parseProductsExcel(fileBuffer: ArrayBuffer): BulkProductRow[] {
 
   return raw.map((row, index) => {
     const localId = String(cell(row, "Local_ID") ?? "").trim();
-    const wcId = Number(cell(row, "WooCommerce_ID"));
     const name = String(cell(row, "Name") ?? "").trim();
     const barcodeRaw = cell(row, "Barcode");
     const barcode =
@@ -84,13 +94,9 @@ export function parseProductsExcel(fileBuffer: ArrayBuffer): BulkProductRow[] {
     if (!localId) {
       throw new Error(`Row ${index + 2}: missing Local_ID`);
     }
-    if (!Number.isFinite(wcId)) {
-      throw new Error(`Row ${index + 2}: invalid WooCommerce_ID`);
-    }
 
-    return {
+    const parsed: BulkProductRow = {
       Local_ID: localId,
-      WooCommerce_ID: wcId,
       Name: name,
       Barcode: barcode,
       Price: price,
@@ -98,5 +104,14 @@ export function parseProductsExcel(fileBuffer: ArrayBuffer): BulkProductRow[] {
       Stock_Quantity: stockQuantity,
       Stock_Status: stockStatus,
     };
+
+    if (columnPresent(row, "Brand")) {
+      parsed.Brand = String(cell(row, "Brand") ?? "").trim();
+    }
+    if (columnPresent(row, "Category")) {
+      parsed.Category = String(cell(row, "Category") ?? "").trim();
+    }
+
+    return parsed;
   });
 }

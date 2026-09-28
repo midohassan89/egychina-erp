@@ -41,6 +41,8 @@ function serializeAdminProduct(p: Product) {
     bundleMultiplier: p.bundleMultiplier,
     categoryId: p.categoryId,
     brandId: p.brandId,
+    categoryName: null,
+    brandName: null,
     updatedAt: p.updatedAt.toISOString(),
   };
 }

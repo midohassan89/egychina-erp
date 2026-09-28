@@ -5,7 +5,6 @@ import {
   BulkUpdateError,
   type BulkProductRow,
 } from "@/lib/products/bulkUpdate";
-import { WooCommerceError } from "@/lib/woocommerce/client";
 
 function requireEditor(role: string | undefined) {
   return role === "MANAGER" || role === "ACCOUNTANT" || role === "ADMIN";
@@ -13,7 +12,7 @@ function requireEditor(role: string | undefined) {
 
 /**
  * POST { products: BulkProductRow[] }
- * Updates Prisma in a transaction, then WooCommerce products/batch.
+ * Updates products locally, creating missing brands and categories by name.
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
     const result = await bulkUpdateProducts(body.products ?? []);
     return NextResponse.json({
       ok: true,
-      message: `Updated ${result.updated} products on ERP & WooCommerce`,
+      message: `Updated ${result.updated} products`,
       ...result,
     });
   } catch (error) {
@@ -37,12 +36,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: error.message },
         { status: error.statusCode },
-      );
-    }
-    if (error instanceof WooCommerceError) {
-      return NextResponse.json(
-        { error: error.message, endpoint: error.endpoint },
-        { status: error.statusCode ?? 502 },
       );
     }
     // Prisma record not found, etc.
