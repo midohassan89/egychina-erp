@@ -30,7 +30,6 @@ import {
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   downloadProductsExcel,
-  parseProductsExcel,
 } from "@/lib/products/excel";
 import type { AdminProductRow } from "@/types/adminProduct";
 import { clsx } from "clsx";
@@ -194,35 +193,24 @@ function ProductsManagement() {
 
   async function handleImportExcel(file: File) {
     setBulkBusy(true);
-    setBulkMessage("Parsing Excel…");
+    setBulkMessage("Importing Excel…");
     try {
-      const buffer = await file.arrayBuffer();
-      const rows = parseProductsExcel(buffer);
-      if (rows.length === 0) {
-        throw new Error("No rows found in Excel file");
-      }
-
-      setBulkMessage(
-        `Updating ${rows.length} products…`,
-      );
-      const res = await fetch("/api/products/bulk-update", {
+      const form = new FormData();
+      form.set("file", file);
+      const res = await fetch("/api/admin/products/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products: rows }),
+        body: form,
       });
       const data = (await res.json()) as {
         error?: string;
-        message?: string;
-        updated?: number;
+        success?: boolean;
+        count?: number;
       };
-      if (!res.ok) {
-        throw new Error(data.error ?? "Bulk update failed");
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error ?? "Import failed");
       }
 
-      toast(
-        data.message ?? `Updated ${data.updated ?? rows.length} products`,
-        "success",
-      );
+      toast(`Imported ${data.count ?? 0} products`, "success");
       await loadProducts(1, query, view, stockFilter);
       setPage(1);
     } catch (err) {
