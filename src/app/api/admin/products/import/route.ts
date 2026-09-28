@@ -133,11 +133,8 @@ export async function POST(request: Request) {
           salePrice = sale > 0 ? sale : null;
         }
 
-        const stockRaw = Number(cell(row, "Stock_Quantity"));
-        if (!Number.isFinite(stockRaw) || stockRaw < 0) {
-          throw new Error(`Row ${excelRow} (${name}): invalid Stock_Quantity`);
-        }
-        const stockQuantity = Math.floor(stockRaw);
+        const stock = parseInt(String(cell(row, "Stock_Quantity") ?? ""), 10);
+        const finalStock = Number.isNaN(stock) ? 0 : stock;
         const stockStatus =
           text(cell(row, "Stock_Status")).toLowerCase() === "outofstock"
             ? "outofstock"
@@ -208,7 +205,7 @@ export async function POST(request: Request) {
               name,
               price,
               salePrice,
-              stockQuantity,
+              stockQuantity: finalStock,
               stockStatus,
               categoryId,
               brandId,
@@ -226,7 +223,7 @@ export async function POST(request: Request) {
               barcode: barcode || null,
               price,
               salePrice,
-              stockQuantity,
+              stockQuantity: finalStock,
               stockStatus,
               categoryId,
               brandId,
