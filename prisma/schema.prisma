@@ -470,16 +470,51 @@ model Category {
   updatedAt   DateTime  @updatedAt
 }
 
+model Customer {
+  id            String   @id @default(uuid())
+  /** Primary login identifier. */
+  phone         String   @unique
+  name          String?
+  /** Optional password for standard login. */
+  password      String?
+  pointsBalance Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pointsTransactions PointsTransaction[]
+  orders             Order[]
+}
+
+model PointsTransaction {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  /** Positive when earning, negative when redeeming. */
+  points      Int
+  /** EARN | REDEEM */
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([customerId])
+}
+
 model Order {
-  id           String      @id @default(cuid())
-  customerName String
-  phone        String
-  address      String
-  notes        String?
-  totalAmount  Float
-  status       String      @default("PENDING")
-  createdAt    DateTime    @default(now())
-  items        OrderItem[]
+  id             String      @id @default(cuid())
+  customerName   String
+  phone          String
+  address        String
+  notes          String?
+  totalAmount    Float
+  status         String      @default("PENDING")
+  customerId     String?
+  customer       Customer?   @relation(fields: [customerId], references: [id])
+  pointsEarned   Int         @default(0)
+  pointsRedeemed Int         @default(0)
+  createdAt      DateTime    @default(now())
+  items          OrderItem[]
+
+  @@index([customerId])
 }
 
 model OrderItem {

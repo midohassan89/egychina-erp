@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
+import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 
 export interface QuickAddedProduct {
@@ -38,6 +39,12 @@ export function QuickAddProductModal({
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nameZh, setNameZh] = useState("");
+  const { translating, onArabicNameBlur } = useArabicNameTranslation(
+    nameEn,
+    nameZh,
+    setNameEn,
+    setNameZh,
+  );
   const [categoryId, setCategoryId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [isVirtual, setIsVirtual] = useState(false);
@@ -179,11 +186,16 @@ export function QuickAddProductModal({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => void onArabicNameBlur(name)}
               required
               autoFocus
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
+
+          {translating && (
+            <p className="text-xs text-slate-500">جاري الترجمة... ⏳</p>
+          )}
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
@@ -192,7 +204,8 @@ export function QuickAddProductModal({
             <input
               value={nameEn}
               onChange={(e) => setNameEn(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              disabled={translating}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
             />
           </label>
           <label className="block">
@@ -202,7 +215,8 @@ export function QuickAddProductModal({
             <input
               value={nameZh}
               onChange={(e) => setNameZh(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              disabled={translating}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
             />
           </label>
 
