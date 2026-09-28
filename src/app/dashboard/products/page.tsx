@@ -381,6 +381,7 @@ function ProductsManagement() {
     linkedProductId: string | null;
     bundleMultiplier: number | null;
     categoryId: string | null;
+    brandId: string | null;
     imageUrl: string;
     nameEn: string;
     nameZh: string;
@@ -398,6 +399,7 @@ function ProductsManagement() {
           linkedProductId: values.linkedProductId,
           bundleMultiplier: values.bundleMultiplier,
           categoryId: values.categoryId,
+          brandId: values.brandId,
           imageUrl: values.imageUrl || null,
           nameEn: values.nameEn,
           nameZh: values.nameZh,

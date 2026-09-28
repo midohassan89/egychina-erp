@@ -67,6 +67,7 @@ export async function PATCH(
       linkedProductId?: string | null;
       bundleMultiplier?: number | null;
       categoryId?: string | null;
+      brandId?: string | null;
       imageUrl?: string | null;
       isDeleted?: boolean;
       isFavorite?: boolean;
@@ -121,6 +122,7 @@ export async function PATCH(
       linkedProductId: body.linkedProductId,
       bundleMultiplier: body.bundleMultiplier,
       categoryId: body.categoryId,
+      brandId: body.brandId,
       imageUrl: body.imageUrl,
     });
 
@@ -136,6 +138,7 @@ export async function PATCH(
         linkedProductId: body.linkedProductId,
         bundleMultiplier: body.bundleMultiplier,
         categoryId: body.categoryId,
+        brandId: body.brandId,
       },
     });
 

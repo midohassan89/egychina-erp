@@ -25,6 +25,7 @@ export interface CreateProductInput {
   /** Units of the base product consumed per bundle sold. */
   bundleMultiplier?: number | null;
   categoryId?: string | null;
+  brandId?: string | null;
   /** Local path returned by /api/admin/upload, e.g. /uploads/products/file.jpg */
   imageUrl?: string | null;
 }
@@ -130,6 +131,19 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     categoryId = category.id;
   }
 
+  let brandId: string | null = null;
+  const brandRaw = input.brandId?.trim() ?? "";
+  if (brandRaw) {
+    const brand = await prisma.brand.findUnique({
+      where: { id: brandRaw },
+      select: { id: true },
+    });
+    if (!brand) {
+      throw new CreateProductError("Brand not found", 400);
+    }
+    brandId = brand.id;
+  }
+
   const imageUrl = localProductImagePath(input.imageUrl);
 
   // Virtual bundles never hold their own inventory
@@ -171,6 +185,7 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
       linkedProductId,
       bundleMultiplier,
       categoryId,
+      brandId,
     },
   });
 

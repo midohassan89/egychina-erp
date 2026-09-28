@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
+import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 
@@ -46,6 +47,7 @@ export function QuickAddProductModal({
     setNameZh,
   );
   const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [isVirtual, setIsVirtual] = useState(false);
   const [linkedProductId, setLinkedProductId] = useState("");
@@ -109,6 +111,7 @@ export function QuickAddProductModal({
       form.set("nameEn", nameEn.trim());
       form.set("nameZh", nameZh.trim());
       if (categoryId) form.set("categoryId", categoryId);
+      if (brandId) form.set("brandId", brandId);
       form.set("barcode", barcode.trim());
       // Prices are set later with the invoice line's inline editors.
       form.set("price", "0");
@@ -227,6 +230,17 @@ export function QuickAddProductModal({
             <CategorySelect
               value={categoryId}
               onChange={setCategoryId}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              العلامة التجارية
+            </span>
+            <BrandSelect
+              value={brandId}
+              onChange={setBrandId}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>

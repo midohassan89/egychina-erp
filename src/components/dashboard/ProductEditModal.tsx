@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
+import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 
@@ -20,6 +21,7 @@ interface ProductEditModalProps {
     linkedProductId: string | null;
     bundleMultiplier: number | null;
     categoryId: string | null;
+    brandId: string | null;
     imageUrl: string;
     nameEn: string;
     nameZh: string;
@@ -52,6 +54,7 @@ export function ProductEditModal({
     String(product.bundleMultiplier ?? 3),
   );
   const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
+  const [brandId, setBrandId] = useState(product.brandId ?? "");
   const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export function ProductEditModal({
     setLinkedProductId(product.linkedProductId ?? "");
     setBundleMultiplier(String(product.bundleMultiplier ?? 3));
     setCategoryId(product.categoryId ?? "");
+    setBrandId(product.brandId ?? "");
     setImageUrl(product.imageUrl ?? "");
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
@@ -115,6 +119,7 @@ export function ProductEditModal({
                 linkedProductId,
                 bundleMultiplier: mult,
                 categoryId: categoryId || null,
+                brandId: brandId || null,
                 imageUrl,
                 nameEn,
                 nameZh,
@@ -128,6 +133,7 @@ export function ProductEditModal({
               linkedProductId: null,
               bundleMultiplier: null,
               categoryId: categoryId || null,
+              brandId: brandId || null,
               imageUrl,
               nameEn,
               nameZh,
@@ -182,6 +188,12 @@ export function ProductEditModal({
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Category</span>
             <CategorySelect value={categoryId} onChange={setCategoryId} />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              العلامة التجارية
+            </span>
+            <BrandSelect value={brandId} onChange={setBrandId} />
           </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Barcode</span>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Shuffle, ScanLine } from "lucide-react";
 import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
+import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
 import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { ImagePicker } from "@/components/ui/ImagePicker";
@@ -47,6 +48,7 @@ function NewProductForm() {
   const [linkedProductId, setLinkedProductId] = useState("");
   const [bundleMultiplier, setBundleMultiplier] = useState("3");
   const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
@@ -180,6 +182,7 @@ function NewProductForm() {
       }
       form.set("stockQuantity", "0");
       if (categoryId) form.set("categoryId", categoryId);
+      if (brandId) form.set("brandId", brandId);
 
       if (imageUrl) form.set("imageUrl", imageUrl);
 
@@ -272,6 +275,13 @@ function NewProductForm() {
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-slate-700">Category</span>
           <CategorySelect value={categoryId} onChange={setCategoryId} />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            العلامة التجارية
+          </span>
+          <BrandSelect value={brandId} onChange={setBrandId} />
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">

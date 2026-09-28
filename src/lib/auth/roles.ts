@@ -51,6 +51,7 @@ export type NavAccess =
   | "autoImages"
   | "autoTranslate"
   | "categories"
+  | "brands"
   | "suppliers"
   | "purchases"
   | "sales"
@@ -82,6 +83,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "autoImages",
     "autoTranslate",
     "categories",
+    "brands",
     "suppliers",
     "purchases",
     "sales",
@@ -101,6 +103,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "autoImages",
     "autoTranslate",
     "categories",
+    "brands",
     "suppliers",
     "purchases",
     "sales",

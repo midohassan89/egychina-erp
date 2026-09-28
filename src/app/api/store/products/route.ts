@@ -11,6 +11,7 @@ const corsHeaders = {
 export async function GET(req: NextRequest) {
   try {
     const categoryId = req.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
+    const brandId = req.nextUrl.searchParams.get("brandId")?.trim() ?? "";
     const search = req.nextUrl.searchParams.get("search")?.trim() ?? "";
     const pageRaw = Number(req.nextUrl.searchParams.get("page") ?? "1");
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? "20");
@@ -22,22 +23,14 @@ export async function GET(req: NextRequest) {
     const where = {
       isDeleted: false,
       ...(categoryId ? { categoryId } : {}),
+      ...(brandId ? { brandId } : {}),
       ...(search ? { name: { contains: search } } : {}),
     };
 
     const [rows, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        select: {
-          id: true,
-          name: true,
-          nameEn: true,
-          nameZh: true,
-          price: true,
-          imageUrl: true,
-          categoryId: true,
-          stockQuantity: true,
-        },
+        include: { brand: true },
         orderBy: { id: "desc" },
         skip,
         take: limit,
@@ -54,6 +47,15 @@ export async function GET(req: NextRequest) {
       image: product.imageUrl,
       categoryId: product.categoryId,
       stock: product.stockQuantity,
+      brand: product.brand
+        ? {
+            id: product.brand.id,
+            name: product.brand.name,
+            nameEn: product.brand.nameEn,
+            nameZh: product.brand.nameZh,
+            image: product.brand.image,
+          }
+        : null,
     }));
 
     const totalPages = Math.ceil(total / limit);

@@ -25,6 +25,7 @@ const productSelect = {
   linkedProductId: true,
   bundleMultiplier: true,
   categoryId: true,
+  brandId: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.ProductSelect;
@@ -131,6 +132,7 @@ export async function GET(request: Request) {
       linkedProductId: p.linkedProductId,
       bundleMultiplier: p.bundleMultiplier,
       categoryId: p.categoryId,
+      brandId: p.brandId,
       updatedAt: p.updatedAt.toISOString(),
     }));
 

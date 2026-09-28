@@ -74,10 +74,13 @@ model Product {
   bundleMultiplier Int?
   /** Optional department. Existing products stay uncategorized. */
   categoryId       String?
+  /** Optional brand. Existing products stay unbranded. */
+  brandId          String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   category        Category? @relation(fields: [categoryId], references: [id])
+  brand           Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
   linkedProduct   Product?  @relation("ProductToBundle", fields: [linkedProductId], references: [id])
   virtualBundles  Product[] @relation("ProductToBundle")
 
@@ -95,6 +98,7 @@ model Product {
   @@index([isFavorite])
   @@index([linkedProductId])
   @@index([categoryId])
+  @@index([brandId])
 }
 
 model Supplier {
@@ -453,6 +457,19 @@ model SaleLine {
   @@index([saleId])
   @@index([productId])
   @@index([wcProductId])
+}
+
+model Brand {
+  id        String    @id @default(cuid())
+  /** Arabic brand name. */
+  name      String    @unique
+  nameEn    String?
+  nameZh    String?
+  /** Optional logo URL or local upload path. */
+  image     String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Category {

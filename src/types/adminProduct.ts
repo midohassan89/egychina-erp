@@ -16,5 +16,6 @@ export interface AdminProductRow {
   linkedProductId: string | null;
   bundleMultiplier: number | null;
   categoryId: string | null;
+  brandId: string | null;
   updatedAt: string;
 }

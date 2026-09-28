@@ -43,6 +43,8 @@ export async function POST(request: Request) {
       multRaw === "" ? null : parseInt(multRaw, 10);
     const categoryIdRaw = String(form.get("categoryId") ?? "").trim();
     const categoryId = categoryIdRaw || null;
+    const brandIdRaw = String(form.get("brandId") ?? "").trim();
+    const brandId = brandIdRaw || null;
 
     const imageUrlRaw = String(form.get("imageUrl") ?? "").trim();
 
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
           ? bundleMultiplier
           : null,
       categoryId,
+      brandId,
       imageUrl: imageUrlRaw || null,
     });
 
