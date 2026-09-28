@@ -96,132 +96,164 @@ export async function POST(request: Request) {
 
     const categoryCache = new Map<string, { id: string }>();
     const brandCache = new Map<string, { id: string }>();
-    let processedCount = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    const errors: { row: number; name: string; reason: string }[] = [];
+    let rowIndex = 0;
 
-    for (const [index, row] of rows.entries()) {
-      const rowNumber = index + 2;
-      const name = text(cell(row, "Name"));
-      if (!name) continue;
-
-      const barcode = text(cell(row, "Barcode"));
-      const price = Number(cell(row, "Price"));
-      if (!Number.isFinite(price) || price < 0) {
-        throw new Error(`Row ${rowNumber} (${name}): invalid Price`);
-      }
-
-      const saleRaw = cell(row, "Sale_Price");
-      const saleText = text(saleRaw);
-      let salePrice: number | null = null;
-      if (saleText !== "") {
-        const sale = Number(saleRaw);
-        if (!Number.isFinite(sale) || sale < 0) {
-          throw new Error(`Row ${rowNumber} (${name}): invalid Sale_Price`);
+    for (const row of rows) {
+      const excelRow = rowIndex + 2;
+      try {
+        const name = text(cell(row, "Name"));
+        if (!name) {
+          rowIndex += 1;
+          continue;
         }
-        if (sale > price) {
-          throw new Error(
-            `Row ${rowNumber} (${name}): Sale_Price cannot be greater than Price`,
-          );
+
+        const barcode = text(cell(row, "Barcode"));
+        const price = Number(cell(row, "Price"));
+        if (!Number.isFinite(price) || price < 0) {
+          throw new Error(`Row ${excelRow} (${name}): invalid Price`);
         }
-        salePrice = sale > 0 ? sale : null;
-      }
 
-      const stockRaw = Number(cell(row, "Stock_Quantity"));
-      if (!Number.isFinite(stockRaw) || stockRaw < 0) {
-        throw new Error(`Row ${rowNumber} (${name}): invalid Stock_Quantity`);
-      }
-      const stockQuantity = Math.floor(stockRaw);
-      const stockStatus =
-        text(cell(row, "Stock_Status")).toLowerCase() === "outofstock"
-          ? "outofstock"
-          : "instock";
+        const saleRaw = cell(row, "Sale_Price");
+        const saleText = text(saleRaw);
+        let salePrice: number | null = null;
+        if (saleText !== "") {
+          const sale = Number(saleRaw);
+          if (!Number.isFinite(sale) || sale < 0) {
+            throw new Error(`Row ${excelRow} (${name}): invalid Sale_Price`);
+          }
+          if (sale > price) {
+            throw new Error(
+              `Row ${excelRow} (${name}): Sale_Price cannot be greater than Price`,
+            );
+          }
+          salePrice = sale > 0 ? sale : null;
+        }
 
-      const catName = text(cell(row, "Category")) || "عام";
-      let category = categoryCache.get(catName);
-      if (!category) {
-        const existing = await prisma.category.findFirst({
-          where: { name: catName },
-          select: { id: true },
-        });
-        category =
-          existing ??
-          (await prisma.category.create({
-            data: {
-              name: catName,
-              nameEn: catName,
-              nameZh: catName,
-              slug: await uniqueCategorySlug(catName),
-            },
-            select: { id: true },
-          }));
-        categoryCache.set(catName, category);
-      }
+        const stockRaw = Number(cell(row, "Stock_Quantity"));
+        if (!Number.isFinite(stockRaw) || stockRaw < 0) {
+          throw new Error(`Row ${excelRow} (${name}): invalid Stock_Quantity`);
+        }
+        const stockQuantity = Math.floor(stockRaw);
+        const stockStatus =
+          text(cell(row, "Stock_Status")).toLowerCase() === "outofstock"
+            ? "outofstock"
+            : "instock";
 
-      const brandName = text(cell(row, "Brand")) || "عام";
-      let brand = brandCache.get(brandName);
-      if (!brand) {
-        const existing = await prisma.brand.findFirst({
-          where: { name: brandName },
-          select: { id: true },
-        });
-        brand =
-          existing ??
-          (await prisma.brand.create({
-            data: {
-              name: brandName,
-              nameEn: brandName,
-              nameZh: brandName,
-            },
-            select: { id: true },
-          }));
-        brandCache.set(brandName, brand);
-      }
-
-      const existingProduct = barcode
-        ? await prisma.product.findFirst({
-            where: { barcode },
-            select: { id: true },
-          })
-        : await prisma.product.findFirst({
-            where: { name },
+        const catName = text(cell(row, "Category")) || "عام";
+        let category = categoryCache.get(catName);
+        if (!category) {
+          const existing = await prisma.category.findFirst({
+            where: { name: catName },
             select: { id: true },
           });
+          category =
+            existing ??
+            (await prisma.category.create({
+              data: {
+                name: catName,
+                nameEn: catName,
+                nameZh: catName,
+                slug: await uniqueCategorySlug(catName),
+              },
+              select: { id: true },
+            }));
+          categoryCache.set(catName, category);
+        }
 
-      if (existingProduct) {
-        await prisma.product.update({
-          where: { id: existingProduct.id },
-          data: {
-            name,
-            price,
-            salePrice,
-            stockQuantity,
-            stockStatus,
-            categoryId: category.id,
-            brandId: brand.id,
-            ...(barcode ? { barcode } : {}),
-          },
+        const brandName = text(cell(row, "Brand")) || "عام";
+        let brand = brandCache.get(brandName);
+        if (!brand) {
+          const existing = await prisma.brand.findFirst({
+            where: { name: brandName },
+            select: { id: true },
+          });
+          brand =
+            existing ??
+            (await prisma.brand.create({
+              data: {
+                name: brandName,
+                nameEn: brandName,
+                nameZh: brandName,
+              },
+              select: { id: true },
+            }));
+          brandCache.set(brandName, brand);
+        }
+
+        const categoryId = category.id;
+        const brandId = brand.id;
+
+        let existingProduct: { id: string } | null = null;
+        if (barcode) {
+          existingProduct = await prisma.product.findFirst({
+            where: { barcode: String(barcode) },
+            select: { id: true },
+          });
+        }
+        if (!existingProduct && name) {
+          existingProduct = await prisma.product.findFirst({
+            where: { name: String(name) },
+            select: { id: true },
+          });
+        }
+
+        if (existingProduct) {
+          await prisma.product.update({
+            where: { id: existingProduct.id },
+            data: {
+              name,
+              price,
+              salePrice,
+              stockQuantity,
+              stockStatus,
+              categoryId,
+              brandId,
+              ...(barcode ? { barcode } : {}),
+            },
+          });
+          updatedCount += 1;
+        } else {
+          const wcId = nextWcId;
+          nextWcId += 1;
+          await prisma.product.create({
+            data: {
+              wcId,
+              name,
+              barcode: barcode || null,
+              price,
+              salePrice,
+              stockQuantity,
+              stockStatus,
+              categoryId,
+              brandId,
+              isDeleted: false,
+            },
+          });
+          createdCount += 1;
+        }
+      } catch (error) {
+        skippedCount += 1;
+        errors.push({
+          row: excelRow,
+          name: text(cell(row, "Name")) || "بدون اسم",
+          reason: error instanceof Error ? error.message : "خطأ غير معروف",
         });
-      } else {
-        await prisma.product.create({
-          data: {
-            wcId: nextWcId,
-            name,
-            barcode: barcode || null,
-            price,
-            salePrice,
-            stockQuantity,
-            stockStatus,
-            categoryId: category.id,
-            brandId: brand.id,
-            isDeleted: false,
-          },
-        });
-        nextWcId += 1;
+        console.error(`[api/admin/products/import] row ${excelRow}`, row, error);
       }
-
-      processedCount += 1;
+      rowIndex += 1;
     }
 
-    return NextResponse.json({ success: true, count: processedCount });
+    return NextResponse.json({
+      success: true,
+      createdCount,
+      updatedCount,
+      skippedCount,
+      errors,
+    });
   } catch (error) {
     console.error("[api/admin/products/import]", error);
     const message =

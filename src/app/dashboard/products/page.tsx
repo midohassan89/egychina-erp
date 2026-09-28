@@ -36,6 +36,19 @@ import { clsx } from "clsx";
 
 const PER_PAGE = 20;
 
+interface ImportErrorRow {
+  row: number;
+  name: string;
+  reason: string;
+}
+
+interface ImportResult {
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errors: ImportErrorRow[];
+}
+
 interface ProductsResponse {
   products: AdminProductRow[];
   total: number;
@@ -85,6 +98,7 @@ function ProductsManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("Working…");
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const loadProducts = useCallback(
     async (
@@ -204,13 +218,21 @@ function ProductsManagement() {
       const data = (await res.json()) as {
         error?: string;
         success?: boolean;
-        count?: number;
+        createdCount?: number;
+        updatedCount?: number;
+        skippedCount?: number;
+        errors?: ImportErrorRow[];
       };
       if (!res.ok || data.success === false) {
         throw new Error(data.error ?? "Import failed");
       }
 
-      toast(`Imported ${data.count ?? 0} products`, "success");
+      setImportResult({
+        createdCount: data.createdCount ?? 0,
+        updatedCount: data.updatedCount ?? 0,
+        skippedCount: data.skippedCount ?? 0,
+        errors: data.errors ?? [],
+      });
       await loadProducts(1, query, view, stockFilter);
       setPage(1);
     } catch (err) {
@@ -718,6 +740,56 @@ function ProductsManagement() {
           onClose={() => !isDeleting && setDeleteProduct(null)}
           onConfirm={() => void permanentDelete()}
         />
+      )}
+
+      {importResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="flex max-h-[min(85dvh,720px)] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-bold text-slate-900">نتيجة الاستيراد</h2>
+              <button
+                type="button"
+                onClick={() => setImportResult(null)}
+                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                إغلاق
+              </button>
+            </div>
+            <div className="space-y-2 px-5 py-4 text-sm font-semibold">
+              <p className="text-emerald-700">
+                🟢 تم إضافة: {importResult.createdCount} صنف جديد
+              </p>
+              <p className="text-blue-700">
+                🔵 تم تعديل: {importResult.updatedCount} صنف موجود
+              </p>
+              <p className="text-red-700">
+                🔴 تم تخطي: {importResult.skippedCount} صنف
+              </p>
+            </div>
+            {importResult.errors.length > 0 && (
+              <div className="min-h-0 flex-1 overflow-y-auto border-t border-slate-200 px-5 py-4">
+                <table className="min-w-full text-right text-sm">
+                  <thead className="sticky top-0 bg-white text-xs font-semibold text-slate-500">
+                    <tr>
+                      <th className="px-2 py-2">رقم الصف</th>
+                      <th className="px-2 py-2">اسم المنتج</th>
+                      <th className="px-2 py-2">سبب الخطأ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {importResult.errors.map((item) => (
+                      <tr key={`${item.row}-${item.name}`}>
+                        <td className="px-2 py-2 tabular-nums text-slate-700">{item.row}</td>
+                        <td className="px-2 py-2 font-medium text-slate-900">{item.name}</td>
+                        <td className="px-2 py-2 text-red-700">{item.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
