@@ -56,14 +56,13 @@ export default function POSPage() {
   return (
     <PosKeyboardProvider>
       <POSPageInner />
-      <PosTouchKeyboardHost />
     </PosKeyboardProvider>
   );
 }
 
 function POSPageInner() {
   const { data: session } = useSession();
-  const { insetStyle, close: closeKeyboard } = usePosKeyboard();
+  const { close: closeKeyboard } = usePosKeyboard();
   const { products, productCount, isLoading, isOnline } = useCatalogSync();
   const { pendingCount, overPendingLimit } = useOfflineSync();
   const [returnMode, setReturnMode] = useState(false);
@@ -722,10 +721,7 @@ function POSPageInner() {
             onOpenHeldCarts={() => setHeldModalOpen(true)}
             heldCartCount={heldCarts.length}
           />
-          <div
-            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
-            style={insetStyle}
-          >
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             <ProductGrid
               ref={productGridRef}
               products={catalog}
@@ -743,6 +739,7 @@ function POSPageInner() {
               }}
               onBarcodeEnter={handleBarcodeEnter}
             />
+            <PosTouchKeyboardHost />
           </div>
         </div>
 

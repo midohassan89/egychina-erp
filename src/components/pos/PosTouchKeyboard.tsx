@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import Keyboard from "react-simple-keyboard";
-import "react-simple-keyboard/build/css/index.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
   usePosKeyboard,
@@ -25,7 +23,6 @@ const AR_LAYOUT = [
   "{space} {close}",
 ];
 
-/** Numbers + backspace / clear / enter / close only. */
 const NUMPAD_LAYOUT = [
   "7 8 9 {bksp}",
   "4 5 6 {clear}",
@@ -67,15 +64,92 @@ function resolveActiveInput(
   return null;
 }
 
+function isModalInput(activeInputName: string): boolean {
+  const input = resolveActiveInput(activeInputName);
+  if (!input) return false;
+  return Boolean(
+    input.closest('[role="dialog"]') ||
+      input.closest("[data-pos-modal]") ||
+      input.closest(".fixed.inset-0"),
+  );
+}
+
 type SelectionSnapshot = {
   start: number;
   end: number;
   value: string;
 };
 
+function keyFlex(button: string): string {
+  if (button === "{space}") return "flex-[3.5]";
+  if (
+    button === "{enter}" ||
+    button === "{bksp}" ||
+    button === "{clear}" ||
+    button === "{close}"
+  ) {
+    return "flex-[1.4]";
+  }
+  if (button === "00") return "flex-[1.2]";
+  return "flex-1";
+}
+
+function KeyButton({
+  button,
+  label,
+  activeKey,
+  setActiveKey,
+  onPress,
+  isEnter,
+  tall,
+}: {
+  button: string;
+  label: string;
+  activeKey: string | null;
+  setActiveKey: (key: string | null) => void;
+  onPress: (button: string) => void;
+  isEnter?: boolean;
+  tall?: boolean;
+}) {
+  const previewLabel = label.length > 4 ? label.slice(0, 3) : label;
+
+  return (
+    <button
+      type="button"
+      className={clsx(
+        "relative select-none rounded-lg border border-gray-300/80 font-extrabold text-gray-900 shadow-sm",
+        "transition-all duration-75 ease-out",
+        "active:scale-95 active:bg-gray-300",
+        tall ? "h-[68px] text-2xl" : "h-[52px] text-xl",
+        keyFlex(button),
+        isEnter
+          ? "bg-green-600 text-white border-green-700 active:bg-green-700"
+          : "bg-white",
+      )}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        setActiveKey(button);
+      }}
+      onPointerUp={() => {
+        setActiveKey(null);
+        onPress(button);
+      }}
+      onPointerLeave={() => setActiveKey(null)}
+      onPointerCancel={() => setActiveKey(null)}
+    >
+      {activeKey === button ? (
+        <div className="pointer-events-none absolute -top-14 left-1/2 z-[60] flex h-16 w-14 -translate-x-1/2 items-center justify-center rounded-lg border border-gray-300 bg-white text-3xl font-bold text-gray-900 shadow-2xl">
+          {previewLabel}
+        </div>
+      ) : null}
+      <span className="pointer-events-none">{label}</span>
+    </button>
+  );
+}
+
 /**
- * POS virtual keyboard — floating on the LEFT so the RTL cart (right)
- * stays fully visible and interactive.
+ * POS virtual keyboard — floating overlay inside the product-grid column.
+ * Does not reserve layout space; sits above the grid with a mobile key preview.
  */
 export function PosTouchKeyboardHost() {
   const {
@@ -89,11 +163,8 @@ export function PosTouchKeyboardHost() {
     close,
   } = usePosKeyboard();
 
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const keyboardApiRef = useRef<{ setInput: (input: string) => void } | null>(
-    null,
-  );
-  /** Last known selection while the bound input was focused (survives blur on key tap). */
   const selectionSnapshotRef = useRef<SelectionSnapshot>({
     start: 0,
     end: 0,
@@ -105,22 +176,38 @@ export function PosTouchKeyboardHost() {
   const isNumpad = keyboardLayout === "numpad";
   const isArabic = keyboardLayout === "arabic";
 
+  const display = useMemo(
+    () =>
+      ({
+        "{bksp}": "⌫",
+        "{enter}": isNumpad ? "OK" : isArabic ? "بحث" : "Enter",
+        "{space}": isArabic ? "مسافة" : "Space",
+        "{close}": "أخفاء",
+        "{clear}": isArabic ? "مسح" : "C",
+      }) as Record<string, string>,
+    [isNumpad, isArabic],
+  );
+
+  const rows = useMemo(
+    () =>
+      layoutRows(keyboardLayout).map((row) =>
+        row.split(" ").filter(Boolean),
+      ),
+    [keyboardLayout],
+  );
+
   const captureSelectionIfFocused = useCallback(() => {
     if (!activeInputName) return;
     const input = resolveActiveInput(activeInputName);
     if (!input) return;
-    // Only refresh while still focused — blur collapses selection to a caret.
     if (document.activeElement !== input) return;
-    const start = input.selectionStart ?? 0;
-    const end = input.selectionEnd ?? 0;
     selectionSnapshotRef.current = {
-      start,
-      end,
+      start: input.selectionStart ?? 0,
+      end: input.selectionEnd ?? 0,
       value: activeValueRef.current,
     };
   }, [activeInputName]);
 
-  // Track selection while the bound input is focused (e.g. select-all on search focus).
   useEffect(() => {
     if (!keyboardOpen || !activeInputName) return;
     const input = resolveActiveInput(activeInputName);
@@ -149,23 +236,14 @@ export function PosTouchKeyboardHost() {
     };
   }, [keyboardOpen, activeInputName, activeValue]);
 
-  // Keep react-simple-keyboard internal buffer aligned without remounting.
-  useEffect(() => {
-    if (!keyboardOpen) return;
-    keyboardApiRef.current?.setInput(activeValue);
-  }, [activeValue, keyboardOpen, activeInputName, keyboardLayout]);
-
-  // Click / touch outside → hide keyboard (keeps padding in sync via close()).
   useEffect(() => {
     if (!keyboardOpen) return;
 
     function handlePointerOutside(event: MouseEvent | TouchEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
-
       if (containerRef.current?.contains(target)) return;
       if (isInputElement(target)) return;
-
       close();
     }
 
@@ -180,11 +258,13 @@ export function PosTouchKeyboardHost() {
     };
   }, [keyboardOpen, close]);
 
+  useEffect(() => {
+    if (!keyboardOpen) setActiveKey(null);
+  }, [keyboardOpen]);
+
   const applyBackspace = useCallback(() => {
     if (!activeInputName) return;
 
-    // Snapshot is taken on pointer-down while the input was still focused
-    // (including full select-all). Do not re-read a collapsed caret after blur.
     const snap = selectionSnapshotRef.current;
     const inputValue = snap.value || activeValueRef.current;
     const start = snap.start;
@@ -202,8 +282,6 @@ export function PosTouchKeyboardHost() {
     }
 
     setFieldValue(next);
-    keyboardApiRef.current?.setInput(next);
-
     selectionSnapshotRef.current = {
       start: caret,
       end: caret,
@@ -227,25 +305,90 @@ export function PosTouchKeyboardHost() {
     }, 0);
   }, [activeInputName, setFieldValue]);
 
-  const display = useMemo(
-    () => ({
-      "{bksp}": "⌫",
-      "{enter}": isNumpad ? "OK" : isArabic ? "بحث" : "Enter",
-      "{space}": isArabic ? "مسافة" : "Space",
-      "{close}": "أخفاء",
-      "{clear}": isArabic ? "مسح" : "C",
-    }),
-    [isNumpad, isArabic],
+  const insertText = useCallback(
+    (text: string) => {
+      const snap = selectionSnapshotRef.current;
+      const current = snap.value || activeValueRef.current;
+      const start = snap.start;
+      const end = snap.end;
+      const next =
+        start !== end
+          ? current.slice(0, start) + text + current.slice(end)
+          : current + text;
+      const caret = (start !== end ? start : current.length) + text.length;
+      setFieldValue(next);
+      selectionSnapshotRef.current = {
+        start: caret,
+        end: caret,
+        value: next,
+      };
+      if (!activeInputName) return;
+      window.setTimeout(() => {
+        const el = resolveActiveInput(activeInputName);
+        if (!el) return;
+        el.focus();
+        try {
+          el.setSelectionRange(caret, caret);
+        } catch {
+          // ignore
+        }
+      }, 0);
+    },
+    [activeInputName, setFieldValue],
+  );
+
+  const handleKeyPress = useCallback(
+    (button: string) => {
+      captureSelectionIfFocused();
+
+      if (button === "{bksp}") {
+        applyBackspace();
+        return;
+      }
+      if (button === "{enter}") {
+        pressEnter();
+        return;
+      }
+      if (button === "{close}") {
+        close();
+        return;
+      }
+      if (button === "{clear}") {
+        setFieldValue("");
+        selectionSnapshotRef.current = { start: 0, end: 0, value: "" };
+        return;
+      }
+      if (button === "{space}") {
+        insertText(" ");
+        return;
+      }
+
+      insertText(button);
+    },
+    [
+      applyBackspace,
+      captureSelectionIfFocused,
+      close,
+      insertText,
+      pressEnter,
+      setFieldValue,
+    ],
   );
 
   if (!keyboardOpen || !activeInputName) return null;
 
+  const modalMode = isModalInput(activeInputName);
+
   return (
     <div
       ref={containerRef}
-      className="pos-no-print fixed z-[9999] left-4 bottom-4 w-[min(100%-2rem,42rem)] max-h-[45vh] overflow-auto rounded-2xl border border-slate-300 bg-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.18)] md:left-8 md:bottom-8"
+      className={clsx(
+        "pos-no-print p-2 sm:p-4",
+        modalMode
+          ? "fixed bottom-0 left-0 right-0 z-[100]"
+          : "absolute bottom-0 left-0 z-50 w-full",
+      )}
       onMouseDown={(e) => {
-        // Snapshot selection before preventDefault/blur side-effects.
         captureSelectionIfFocused();
         e.preventDefault();
       }}
@@ -253,96 +396,79 @@ export function PosTouchKeyboardHost() {
         captureSelectionIfFocused();
       }}
     >
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
-          {isNumpad ? "Numpad" : isArabic ? "لوحة عربية" : "English keyboard"}
-        </p>
-
-        <div className="flex items-center gap-2">
-          {!isNumpad && (
-            <div className="inline-flex overflow-hidden rounded-lg border border-slate-400 bg-white text-sm font-extrabold">
-              <button
-                type="button"
-                onClick={() => setTextLanguage("en")}
-                className={clsx(
-                  "select-none px-3 py-1.5 transition-all duration-75 ease-out active:scale-[0.92] active:bg-gray-300",
-                  keyboardLayout === "default"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-600 hover:bg-slate-100",
-                )}
-              >
-                English
-              </button>
-              <button
-                type="button"
-                onClick={() => setTextLanguage("ar")}
-                className={clsx(
-                  "select-none px-3 py-1.5 transition-all duration-75 ease-out active:scale-[0.92] active:bg-gray-300",
-                  keyboardLayout === "arabic"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-600 hover:bg-slate-100",
-                )}
-              >
-                العربية
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={close}
-            className="select-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-bold text-white transition-all duration-75 ease-out hover:bg-slate-900 active:scale-[0.92] active:bg-gray-300"
-          >
-            أخفاء
-          </button>
-        </div>
-      </div>
-
-      {/* Always LTR so Arabic rows match a physical keyboard (ض on the left). */}
       <div
-        className={clsx("px-2 pb-3", isNumpad && "mx-auto max-w-md")}
-        dir="ltr"
+        className={clsx(
+          "overflow-visible rounded-2xl border border-gray-300/80",
+          "bg-gray-200/90 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] backdrop-blur-md",
+          isNumpad && "mx-auto max-w-md",
+        )}
       >
-        <Keyboard
-          key={`kb-${keyboardLayout}-${activeInputName}`}
-          keyboardRef={(r) => {
-            keyboardApiRef.current = r;
-          }}
-          layoutName="default"
-          theme={clsx(
-            "hg-theme-default hg-layout-default pos-touch-kb",
-            isNumpad && "pos-numpad-kb",
-          )}
-          input={activeValue}
-          preventMouseDownDefault
-          disableCaretPositioning
-          onChange={(input: string) => setFieldValue(input)}
-          onKeyPress={(button: string) => {
-            // Library fires onChange before onKeyPress — overwrite bksp with
-            // selection-aware delete (clears full select-all correctly).
-            if (button === "{bksp}") {
-              applyBackspace();
-              return;
-            }
-            if (button === "{enter}") pressEnter();
-            if (button === "{close}") close();
-            if (button === "{clear}") {
-              setFieldValue("");
-              keyboardApiRef.current?.setInput("");
-              selectionSnapshotRef.current = {
-                start: 0,
-                end: 0,
-                value: "",
-              };
-            }
-          }}
-          display={display}
-          layout={{ default: layoutRows(keyboardLayout) }}
-          buttonTheme={[
-            { class: "hg-enter-key", buttons: "{enter}" },
-            { class: "hg-numpad-wide", buttons: "00" },
-          ]}
-        />
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+            {isNumpad ? "Numpad" : isArabic ? "لوحة عربية" : "English keyboard"}
+          </p>
+
+          <div className="flex items-center gap-2">
+            {!isNumpad && (
+              <div className="inline-flex overflow-hidden rounded-lg border border-slate-400 bg-white text-sm font-extrabold">
+                <button
+                  type="button"
+                  onClick={() => setTextLanguage("en")}
+                  className={clsx(
+                    "select-none px-3 py-1.5 transition-all duration-75 ease-out active:scale-95 active:bg-gray-300",
+                    keyboardLayout === "default"
+                      ? "bg-slate-800 text-white"
+                      : "text-slate-600 hover:bg-slate-100",
+                  )}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTextLanguage("ar")}
+                  className={clsx(
+                    "select-none px-3 py-1.5 transition-all duration-75 ease-out active:scale-95 active:bg-gray-300",
+                    keyboardLayout === "arabic"
+                      ? "bg-slate-800 text-white"
+                      : "text-slate-600 hover:bg-slate-100",
+                  )}
+                >
+                  العربية
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={close}
+              className="select-none rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-bold text-white transition-all duration-75 ease-out hover:bg-slate-900 active:scale-95 active:bg-gray-300"
+            >
+              أخفاء
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={clsx("space-y-1.5 px-2 pb-3", isNumpad && "px-3")}
+          dir="ltr"
+        >
+          {rows.map((row, rowIndex) => (
+            <div key={`row-${rowIndex}`} className="flex gap-1.5">
+              {row.map((button) => (
+                <KeyButton
+                  key={`${rowIndex}-${button}`}
+                  button={button}
+                  label={display[button] ?? button}
+                  activeKey={activeKey}
+                  setActiveKey={setActiveKey}
+                  onPress={handleKeyPress}
+                  isEnter={button === "{enter}"}
+                  tall={isNumpad}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

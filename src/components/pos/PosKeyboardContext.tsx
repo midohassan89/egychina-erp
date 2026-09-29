@@ -122,6 +122,7 @@ export function PosKeyboardProvider({ children }: { children: ReactNode }) {
     setActiveValue("");
   }, []);
 
+  /** Used by modal scroll areas only — main POS grid has no reserved keyboard space. */
   const insetStyle = useMemo<CSSProperties>(
     () => ({
       paddingBottom: keyboardOpen ? POS_KEYBOARD_CLEARANCE_PX : 0,
