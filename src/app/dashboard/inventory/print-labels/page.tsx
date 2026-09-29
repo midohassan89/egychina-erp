@@ -162,14 +162,14 @@ export default function PrintLabelsPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            رجوع
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-slate-900">
-              طباعة باركود · Print Labels
+              طباعة باركود
             </h1>
             <p className="text-sm text-slate-500">
-              Thermal labels for Xprinter — store name, product, price, barcode
+              ملصقات حرارية للطابعة — اسم المتجر والمنتج والسعر والباركود
             </p>
           </div>
           <button
@@ -179,18 +179,18 @@ export default function PrintLabelsPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
           >
             <Printer className="h-4 w-4" />
-            Print Labels ({labels.length})
+            طباعة الملصقات ({labels.length})
           </button>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
             <h2 className="text-sm font-semibold text-slate-800">
-              Select product
+              اختيار المنتج
             </h2>
             <label className="mt-3 block">
               <span className="mb-1 block text-xs font-medium text-slate-500">
-                Copies
+                عدد النسخ
               </span>
               <input
                 type="number"
@@ -212,14 +212,14 @@ export default function PrintLabelsPage() {
                     if (hits[0]) addProduct(hits[0]);
                   }
                 }}
-                placeholder="Search name or barcode…"
+                placeholder="بحث بالاسم أو الباركود…"
                 className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               />
               {(searching || hits.length > 0) && query.trim() && (
                 <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                   {searching && (
                     <li className="px-3 py-2 text-sm text-slate-400">
-                      Searching…
+                      جاري البحث…
                     </li>
                   )}
                   {!searching &&
@@ -234,7 +234,7 @@ export default function PrintLabelsPage() {
                             {p.name}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {p.barcode || p.sku || "No barcode"} ·{" "}
+                            {p.barcode || p.sku || "بدون باركود"} ·{" "}
                             {formatEGP(p.salePrice ?? p.price)}
                           </span>
                         </button>
@@ -252,7 +252,7 @@ export default function PrintLabelsPage() {
 
             <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto">
               {jobs.length === 0 ? (
-                <li className="text-sm text-slate-400">No labels queued</li>
+                <li className="text-sm text-slate-400">لا توجد ملصقات في القائمة</li>
               ) : (
                 jobs.map((job) => (
                   <li
@@ -286,12 +286,12 @@ export default function PrintLabelsPage() {
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <h2 className="text-sm font-semibold text-slate-800">
-              On-screen preview
+              معاينة على الشاشة
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
               {labels.length === 0 ? (
                 <p className="text-sm text-slate-400">
-                  Labels will appear here before printing.
+                  ستظهر الملصقات هنا قبل الطباعة.
                 </p>
               ) : (
                 labels.slice(0, 12).map((label) => (
@@ -324,7 +324,7 @@ export default function PrintLabelsPage() {
               )}
               {labels.length > 12 && (
                 <p className="w-full text-xs text-slate-500">
-                  +{labels.length - 12} more labels in print queue
+                  +{labels.length - 12} ملصق إضافي في قائمة الطباعة
                 </p>
               )}
             </div>

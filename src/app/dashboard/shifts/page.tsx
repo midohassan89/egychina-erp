@@ -102,19 +102,19 @@ export default function ShiftsHistoryPage() {
       {receiptNode}
 
       <div className="flex flex-wrap items-end justify-between gap-3 dashboard-no-print">
-        <div>
+        <div className="text-right">
           <Link
             href="/dashboard/reports"
             className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            Reports
+            التقارير
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">
-            Shifts / Z-Reports
+            سجل الورديات
           </h1>
           <p className="mt-1 text-slate-500">
-            سجل الورديات — historical register closes and Z-Reports
+            تقفيل الكاشير وتقارير Z
           </p>
         </div>
       </div>
@@ -128,15 +128,15 @@ export default function ShiftsHistoryPage() {
       <div className="dashboard-no-print overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Shift ID</th>
-                <th className="px-4 py-3">Cashier</th>
-                <th className="px-4 py-3">Start</th>
-                <th className="px-4 py-3">End</th>
-                <th className="px-4 py-3 text-right">Total Revenue</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">رقم الوردية</th>
+                <th className="px-4 py-3">الكاشير</th>
+                <th className="px-4 py-3">البداية</th>
+                <th className="px-4 py-3">النهاية</th>
+                <th className="px-4 py-3 text-right">إجمالي الإيرادات</th>
+                <th className="px-4 py-3">الحالة</th>
+                <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -185,7 +185,7 @@ export default function ShiftsHistoryPage() {
                             : "bg-emerald-50 text-emerald-800 ring-emerald-200",
                         )}
                       >
-                        {s.status}
+                        {s.status === "CLOSED" ? "مغلق" : s.status === "OPEN" ? "مفتوح" : s.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -195,7 +195,7 @@ export default function ShiftsHistoryPage() {
                         className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-xs font-semibold text-brand-800 hover:bg-brand-100"
                       >
                         <ScrollText className="h-3.5 w-3.5" />
-                        View &amp; Print Z-Report
+                        عرض وطباعة تقرير الوردية
                       </button>
                     </td>
                   </tr>
@@ -233,10 +233,10 @@ export default function ShiftsHistoryPage() {
             >
               <div className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-2">
-                  <Meta label="Start" value={formatDateTime(report.startedAt)} />
-                  <Meta label="End" value={formatDateTime(report.endedAt)} />
-                  <Meta label="Cashier" value={selected.cashierName} />
-                  <Meta label="Tickets" value={String(report.ticketCount)} />
+                  <Meta label="البداية" value={formatDateTime(report.startedAt)} />
+                  <Meta label="النهاية" value={formatDateTime(report.endedAt)} />
+                  <Meta label="الكاشير" value={selected.cashierName} />
+                  <Meta label="عدد الفواتير" value={String(report.ticketCount)} />
                 </div>
 
                 <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">

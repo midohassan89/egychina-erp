@@ -23,6 +23,8 @@ interface CartPanelProps {
   listRef?: RefObject<HTMLDivElement | null>;
   onIncrement: (lineId: string) => void;
   onDecrement: (lineId: string) => void;
+  /** Return focus to barcode search after +/- so scans do not hit qty. */
+  onAfterQtyChange?: () => void;
   onRemove: (lineId: string) => void;
   onUpdateLine: (
     lineId: string,
@@ -62,6 +64,7 @@ export function CartPanel({
   listRef,
   onIncrement,
   onDecrement,
+  onAfterQtyChange,
   onRemove,
   onUpdateLine,
   onClear,
@@ -81,7 +84,7 @@ export function CartPanel({
   return (
     <section
       className={clsx(
-        "flex h-[42vh] min-h-0 w-full shrink-0 flex-col border-b md:h-full md:w-[26rem] md:border-b-0 md:border-r lg:w-[30rem]",
+        "flex h-[42vh] min-h-0 w-full shrink-0 flex-col border-b md:h-full md:w-[26rem] md:border-b-0 md:border-e lg:w-[30rem]",
         returnMode
           ? "border-red-300 bg-red-50/90"
           : "border-slate-200 bg-white",
@@ -100,7 +103,7 @@ export function CartPanel({
               returnMode ? "text-red-900" : "text-slate-900",
             )}
           >
-            {returnMode ? "وضع الاسترجاع · Return" : "Current Order"}
+            {returnMode ? "وضع الاسترجاع" : "الطلب الحالي"}
           </h2>
           <p
             className={clsx(
@@ -109,8 +112,8 @@ export function CartPanel({
             )}
           >
             {returnMode
-              ? `${itemCount} return ${itemCount === 1 ? "item" : "items"} · amounts are negative`
-              : `${itemCount} ${itemCount === 1 ? "item" : "items"} · tap line to edit`}
+              ? `${itemCount} أصناف مرتجعة · المبالغ سالبة`
+              : `${itemCount} أصناف - اضغط للتعديل`}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -118,7 +121,7 @@ export function CartPanel({
             <button
               type="button"
               onClick={onOpenHeldCarts}
-              title="Open held invoices"
+              title="الفواتير المعلقة"
               className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
             >
               <Clock className="h-3.5 w-3.5 shrink-0" />
@@ -131,14 +134,14 @@ export function CartPanel({
             href="/"
             className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-white/70 hover:text-slate-800"
           >
-            Exit
+            خروج
           </Link>
           {onHoldCart && !returnMode && lines.length > 0 && (
             <button
               type="button"
               disabled={isCheckingOut}
               onClick={onHoldCart}
-              title="Save current cart to hold · تعليق الفاتورة"
+              title="تعليق الفاتورة"
               className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               <Pause className="h-3.5 w-3.5 shrink-0" />
@@ -151,7 +154,7 @@ export function CartPanel({
               onClick={onClear}
               className="rounded-lg px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
             >
-              Clear
+              مسح
             </button>
           )}
         </div>
@@ -204,7 +207,7 @@ export function CartPanel({
                 returnMode ? "text-red-700" : "text-slate-500",
               )}
             >
-              {returnMode ? "Scan items to return" : "Cart is empty"}
+              {returnMode ? "امسح أصناف المرتجع" : "السلة فارغة"}
             </p>
             <p
               className={clsx(
@@ -213,8 +216,8 @@ export function CartPanel({
               )}
             >
               {returnMode
-                ? "Each scan adds a negative return line"
-                : "Scan a barcode or tap an item to start the sale"}
+                ? "كل مسح يضيف سطر مرتجع سالب"
+                : "امسح الباركود أو اختر منتجاً لبدء البيع"}
             </p>
           </div>
         ) : (
@@ -311,7 +314,10 @@ export function CartPanel({
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => onDecrement(line.lineId)}
+                          onClick={() => {
+                            onDecrement(line.lineId);
+                            onAfterQtyChange?.();
+                          }}
                           className={clsx(
                             "flex h-11 w-11 items-center justify-center rounded-xl border",
                             returnMode
@@ -338,7 +344,10 @@ export function CartPanel({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onIncrement(line.lineId)}
+                          onClick={() => {
+                            onIncrement(line.lineId);
+                            onAfterQtyChange?.();
+                          }}
                           className={clsx(
                             "flex h-11 w-11 items-center justify-center rounded-xl border",
                             returnMode
@@ -382,7 +391,7 @@ export function CartPanel({
               returnMode ? "text-red-800" : "text-slate-500",
             )}
           >
-            {returnMode ? "المبلغ المرتجع · Refund" : "Total"}
+            {returnMode ? "المبلغ المرتجع" : "الإجمالي"}
           </span>
           <span
             className={clsx(
@@ -412,10 +421,10 @@ export function CartPanel({
           )}
         >
           {isCheckingOut
-            ? "Processing…"
+            ? "جاري المعالجة…"
             : returnMode
-              ? "Complete Return"
-              : "Checkout"}
+              ? "إتمام الاسترجاع"
+              : "الدفع"}
         </button>
       </div>
 

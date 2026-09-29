@@ -104,11 +104,23 @@
     max-width: 72mm;
     margin: 0;
     padding: 2mm 3mm 8mm;
-    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    /* UTF-8 CJK + Arabic: Noto (embedded) then OS CJK fallbacks for Xprinter raster */
+    font-family:
+      var(--font-receipt-ar),
+      var(--font-receipt-zh),
+      "Noto Sans Arabic",
+      "Noto Sans SC",
+      "Microsoft YaHei",
+      "PingFang SC",
+      "Segoe UI",
+      Tahoma,
+      Arial,
+      sans-serif;
     font-size: 11px;
     line-height: 1.35;
     color: #000;
     background: #fff;
+    -webkit-font-smoothing: antialiased;
   }
 
   html.printing-labels .thermal-receipt {
@@ -125,8 +137,22 @@
   .receipt-store-name {
     font-size: 13px;
     font-weight: 700;
-    margin: 0 0 1.5mm;
+    margin: 0 0 0.5mm;
     line-height: 1.4;
+  }
+
+  .receipt-store-name-zh {
+    font-family:
+      var(--font-receipt-zh),
+      "Noto Sans SC",
+      "Microsoft YaHei",
+      "PingFang SC",
+      sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 0 1.5mm;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
   }
 
   .receipt-phone,
@@ -160,6 +186,53 @@
   .receipt-order-id {
     font-weight: 700;
     font-family: ui-monospace, monospace;
+  }
+
+  .receipt-items-list {
+    margin: 2mm 0;
+    border-bottom: 1px dashed #000;
+    padding-bottom: 1mm;
+  }
+
+  .receipt-item-block {
+    padding: 1.2mm 0;
+    border-bottom: 1px dotted #999;
+  }
+
+  .receipt-item-block:last-child {
+    border-bottom: none;
+  }
+
+  .receipt-item-ar {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: right;
+  }
+
+  .receipt-item-zh {
+    margin: 0.4mm 0 0;
+    font-family:
+      var(--font-receipt-zh),
+      "Noto Sans SC",
+      "Microsoft YaHei",
+      "PingFang SC",
+      sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    unicode-bidi: isolate;
+  }
+
+  .receipt-item-math {
+    margin: 0.6mm 0 0;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+    unicode-bidi: isolate;
   }
 
   .receipt-items {
@@ -245,6 +318,20 @@
     font-weight: 700;
     font-size: 11px;
     margin: 2mm 0 0;
+  }
+
+  .receipt-footer-zh {
+    font-family:
+      var(--font-receipt-zh),
+      "Noto Sans SC",
+      "Microsoft YaHei",
+      "PingFang SC",
+      sans-serif;
+    text-align: center;
+    font-weight: 700;
+    font-size: 10px;
+    margin: 0.8mm 0 0;
+    unicode-bidi: isolate;
   }
 
   .receipt-footer-sub {
@@ -436,12 +523,25 @@
   font-weight: 800 !important; /* extrabold */
   border-radius: 8px !important;
   line-height: 1.1 !important;
+  transition: transform 75ms ease-out, background-color 75ms ease-out !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.pos-touch-kb .hg-button:active {
+  transform: scale(0.92) !important;
+  background: #d1d5db !important; /* gray-300 */
 }
 
 .pos-touch-kb .hg-enter-key {
   background: #16a34a !important;
   color: #fff !important;
   font-weight: 800 !important;
+}
+
+.pos-touch-kb .hg-enter-key:active {
+  background: #15803d !important;
+  transform: scale(0.92) !important;
 }
 
 .pos-numpad-kb .hg-button {

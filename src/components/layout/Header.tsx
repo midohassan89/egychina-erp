@@ -15,25 +15,25 @@ export function Header() {
   } = useCatalogSync();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6" dir="rtl">
       <div className="flex min-w-0 items-center gap-4">
         <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
-          Souq El Obour - POS
+          سوق العبور — نقطة البيع
         </h1>
         <div className="flex items-center gap-2 text-sm text-slate-500">
           {isOnline ? (
             <>
               <Wifi className="h-4 w-4 text-brand-500" />
-              <span>Online</span>
+              <span>متصل</span>
             </>
           ) : (
             <>
               <WifiOff className="h-4 w-4 text-amber-500" />
-              <span className="text-amber-600">Offline</span>
+              <span className="text-amber-600">غير متصل</span>
             </>
           )}
-          <span className="ml-4 hidden text-slate-400 sm:inline">
-            Local catalog · {productCount} products
+          <span className="me-4 hidden text-slate-400 sm:inline">
+            الكتالوج المحلي · {productCount} منتج
           </span>
         </div>
       </div>
@@ -41,7 +41,7 @@ export function Header() {
       <div className="flex items-center gap-3">
         {pendingSaleCount > 0 && (
           <span className="hidden rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800 sm:inline">
-            {pendingSaleCount} sale{pendingSaleCount === 1 ? "" : "s"} pending
+            {pendingSaleCount} عملية معلّقة
           </span>
         )}
         {error && (
@@ -61,7 +61,7 @@ export function Header() {
           <RefreshCw
             className={clsx("h-4 w-4", isRefreshing && "animate-spin")}
           />
-          {isRefreshing ? "Loading…" : "Refresh Catalog"}
+          {isRefreshing ? "جاري التحميل…" : "تحديث الكتالوج"}
         </button>
       </div>
     </header>

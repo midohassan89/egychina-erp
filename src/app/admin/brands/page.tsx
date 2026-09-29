@@ -140,7 +140,7 @@ export default function BrandsPage() {
               <th className="px-4 py-3">English</th>
               <th className="px-4 py-3">中文</th>
               <th className="px-4 py-3 text-right">المنتجات</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -23,6 +23,10 @@ export type SaleWithRelations = {
     unitPrice: number;
     unitCost: number;
     lineTotal: number;
+    product?: {
+      nameZh: string | null;
+      sku: string | null;
+    } | null;
   }[];
 };
 
@@ -84,7 +88,8 @@ export function mapSaleToLocalSale(sale: SaleWithRelations): LocalSale {
     lines: sale.lines.map((line) => ({
       productId: line.wcProductId ?? 0,
       name: line.name,
-      sku: "",
+      nameZh: line.product?.nameZh ?? null,
+      sku: line.product?.sku ?? "",
       qty: line.quantity,
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,

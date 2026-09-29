@@ -424,7 +424,7 @@ function OpeningBalanceSheet({
         toast(`WooCommerce sync failed: ${body.wooError}`, "error");
       }
       if (mode === "edit") {
-        toast("Opening balance updated", "success");
+        toast("تم تحديث أرصدة أول المدة", "success");
         return;
       }
       draftClearedRef.current = true;
@@ -451,22 +451,22 @@ function OpeningBalanceSheet({
             className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800"
           >
             <ArrowLeft className="h-4 w-4" />
-            Inventory
+            المخزون
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">
-            {mode === "edit" ? `Opening Balance #${documentId}` : "Opening Balance"}
+            {mode === "edit" ? `أرصدة أول المدة #${documentId}` : "أرصدة أول المدة"}
           </h1>
           <p className="mt-1 text-slate-500">
             {mode === "edit"
-              ? "أرصدة أول المدة — stock changes by the difference from the saved quantities"
-              : "أرصدة أول المدة — adds these pieces to current stock and sets the piece cost"}
+              ? "أرصدة أول المدة — يتغير المخزون بفرق الكميات المحفوظة"
+              : "أرصدة أول المدة — يضيف هذه القطع للمخزون الحالي ويضبط تكلفة القطعة"}
           </p>
         </div>
       </div>
 
       {!ready ? (
         <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-400">
-          Loading opening balance…
+          جاري تحميل أرصدة أول المدة…
         </p>
       ) : (
       <form
@@ -479,7 +479,7 @@ function OpeningBalanceSheet({
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
-              Estimated Margin % for Missing Costs
+              هامش تقديري % للتكاليف الناقصة
             </span>
             <input
               type="number"
@@ -491,7 +491,7 @@ function OpeningBalanceSheet({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Date</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">التاريخ</span>
             <input
               type="date"
               value={date}
@@ -500,11 +500,11 @@ function OpeningBalanceSheet({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Notes</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">ملاحظات</span>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
+              placeholder="اختياري"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
@@ -517,7 +517,7 @@ function OpeningBalanceSheet({
             value={productQuery}
             onChange={(e) => setProductQuery(e.target.value)}
             onKeyDown={(e) => void handleSearchKeyDown(e)}
-            placeholder="Scan barcode or search name / SKU — press Enter to add"
+            placeholder="امسح الباركود أو ابحث بالاسم / كود الصنف — اضغط Enter للإضافة"
             className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             autoComplete="off"
           />
@@ -525,10 +525,10 @@ function OpeningBalanceSheet({
             (searching || lookupQuery === productQuery.trim()) && (
               <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {searching && productHits.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-400">Searching…</li>
+                  <li className="px-3 py-2 text-sm text-slate-400">جاري البحث…</li>
                 ) : productHits.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-500">
-                    No products match “{productQuery.trim()}”
+                    لا توجد منتجات مطابقة لـ «{productQuery.trim()}»
                   </li>
                 ) : (
                   productHits.map((product) => (
@@ -543,7 +543,7 @@ function OpeningBalanceSheet({
                             {product.name}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {product.barcode || product.sku || `WC #${product.wcId}`} · stock{" "}
+                            {product.barcode || product.sku || `WC #${product.wcId}`} · المخزون{" "}
                             {product.stockQuantity}
                           </span>
                         </span>
@@ -560,22 +560,22 @@ function OpeningBalanceSheet({
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
             <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
               <tr>
-                <th className="py-2 pr-3">Product</th>
-                <th className="w-28 py-2 px-2">Pack qty (كراتين)</th>
+                <th className="py-2 pr-3">المنتج</th>
+                <th className="w-28 py-2 px-2">كمية الكراتين</th>
                 <th className="w-28 py-2 px-2">
                   <span className="inline-flex items-center gap-1 text-slate-600">
                     <Boxes className="h-3.5 w-3.5" />
-                    Pack size
+                    حجم الكرتونة
                   </span>
                 </th>
-                <th className="w-28 py-2 px-2 text-violet-700">Loose qty (فرط)</th>
+                <th className="w-28 py-2 px-2 text-violet-700">كمية الفرط</th>
                 <th className="w-36 py-2 px-2">
                   <span className="inline-flex items-center gap-1 text-slate-500">
                     <Wallet className="h-3.5 w-3.5" />
-                    Piece cost
+                    تكلفة القطعة
                   </span>
                 </th>
-                <th className="w-36 py-2 px-2">Total value</th>
+                <th className="w-36 py-2 px-2">القيمة الإجمالية</th>
                 <th className="w-12 py-2" />
               </tr>
             </thead>
@@ -583,7 +583,7 @@ function OpeningBalanceSheet({
               {lines.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-slate-400">
-                    Scan or search and press Enter to add products
+                    امسح أو ابحث واضغط Enter لإضافة المنتجات
                   </td>
                 </tr>
               ) : (
@@ -593,7 +593,7 @@ function OpeningBalanceSheet({
                     <tr key={line.key}>
                       <td className="py-3 pr-3">
                         <p className="font-medium text-slate-900">{line.productName}</p>
-                        <p className="text-xs text-slate-500">{stock} pcs to stock</p>
+                        <p className="text-xs text-slate-500">{stock} قطعة للمخزون</p>
                       </td>
                       <td className="px-2 py-3">
                         <input
@@ -699,7 +699,7 @@ function OpeningBalanceSheet({
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-600">
-            Sheet total{" "}
+            إجمالي الورقة{" "}
             <span className="font-semibold text-slate-900">{formatEGP(sheetTotal)}</span>
           </p>
           <button
@@ -708,7 +708,7 @@ function OpeningBalanceSheet({
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {mode === "edit" ? "Update (تحديث)" : "Save opening balance"}
+            {mode === "edit" ? "تحديث" : "حفظ أرصدة أول المدة"}
           </button>
         </div>
       </form>

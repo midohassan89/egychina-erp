@@ -7,10 +7,11 @@ import { buildCode128Svg, receiptBarcodeValue } from "@/lib/pos/code128";
 import {
   isCashPayment,
   isStaffMealPayment,
-  paymentMethodLabel,
+  paymentMethodLabelArZh,
 } from "@/lib/pos/paymentMethods";
 
-const STORE_NAME = "سوق العبور العين السخنة - ايجي شاينا جروب";
+const STORE_NAME_AR = "ايجي شاينا سوبر ماركت";
+const STORE_NAME_ZH = "埃及中国超市";
 const STORE_PHONE = "01009972972";
 
 function maskLoyaltyPhone(phone: string): string {
@@ -19,12 +20,18 @@ function maskLoyaltyPhone(phone: string): string {
   return `${digits.slice(0, 3)}****${digits.slice(-3)}`;
 }
 
+function qtyLabel(line: LocalSale["lines"][number]): string {
+  if (line.isWeighted) return "1";
+  return Number.isInteger(line.qty) ? String(line.qty) : line.qty.toFixed(3);
+}
+
 interface ReceiptTicketProps {
   sale: LocalSale | null;
 }
 
 /**
- * 80mm thermal receipt — hidden on screen, sole content when printing.
+ * 80mm thermal receipt — bilingual Arabic + Chinese.
+ * Hidden on screen; sole content when printing.
  */
 export function ReceiptTicket({ sale }: ReceiptTicketProps) {
   const barcodeSvg = useMemo(() => {
@@ -54,102 +61,110 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
     second: "2-digit",
   });
 
-  const paymentLabel = paymentMethodLabel(sale.paymentMethod);
+  const paymentLabel = paymentMethodLabelArZh(sale.paymentMethod);
 
   return (
-    <div id="thermal-receipt" className="thermal-receipt" dir="rtl">
+    <div
+      id="thermal-receipt"
+      className="thermal-receipt"
+      dir="rtl"
+      lang="ar"
+    >
       <header className="receipt-header">
-        <h1 className="receipt-store-name">{STORE_NAME}</h1>
-        <p className="receipt-phone">تليفون: {STORE_PHONE}</p>
-        <p className="receipt-phone-en">Tel: {STORE_PHONE}</p>
+        <h1 className="receipt-store-name">{STORE_NAME_AR}</h1>
+        <h2 className="receipt-store-name-zh" lang="zh-CN" dir="ltr">
+          {STORE_NAME_ZH}
+        </h2>
+        <p className="receipt-phone">تليفون / 电话: {STORE_PHONE}</p>
       </header>
 
       <div className="receipt-meta">
         <div className="receipt-meta-row">
-          <span>التاريخ / Date</span>
+          <span>التاريخ / 日期</span>
           <span>
             {dateStr} {timeStr}
           </span>
         </div>
         <div className="receipt-meta-row">
-          <span>رقم الطلب / Order</span>
+          <span>رقم الطلب / 单号</span>
           <span className="receipt-order-id">{orderLabel}</span>
         </div>
         <div className="receipt-meta-row">
-          <span>العميل / Customer</span>
+          <span>العميل / 顾客</span>
           <span>{sale.customerName}</span>
         </div>
+        {sale.cashierName ? (
+          <div className="receipt-meta-row">
+            <span>الكاشير / 收银员</span>
+            <span>{sale.cashierName}</span>
+          </div>
+        ) : null}
         {isStaffMealPayment(sale.paymentMethod) && sale.employeeName ? (
           <div className="receipt-meta-row">
-            <span>الموظف / Employee</span>
+            <span>الموظف / 员工</span>
             <span>{sale.employeeName}</span>
           </div>
         ) : null}
         {sale.isReturn ? (
           <>
             <div className="receipt-meta-row">
-              <span>النوع / Type</span>
-              <span>استرجاع / RETURN</span>
+              <span>النوع / 类型</span>
+              <span>استرجاع / 退货</span>
             </div>
             {sale.managerName ? (
               <div className="receipt-meta-row">
-                <span>مدير / Manager</span>
+                <span>مدير / 经理</span>
                 <span>{sale.managerName}</span>
-              </div>
-            ) : null}
-            {sale.cashierName ? (
-              <div className="receipt-meta-row">
-                <span>كاشير / Cashier</span>
-                <span>{sale.cashierName}</span>
               </div>
             ) : null}
           </>
         ) : null}
       </div>
 
-      <table className="receipt-items">
-        <thead>
-          <tr>
-            <th className="col-name">الصنف</th>
-            <th className="col-qty">الكمية</th>
-            <th className="col-price">السعر</th>
-            <th className="col-total">الإجمالي</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sale.lines.map((line, index) => (
-            <tr key={`${line.productId}-${index}`}>
-              <td className="col-name">
+      <div className="receipt-items-list">
+        {sale.lines.map((line, index) => {
+          const nameZh = line.nameZh?.trim() || "";
+          const sku = line.sku?.trim() || "";
+          const zhOrSku = [nameZh, sku].filter(Boolean).join(" / ");
+          return (
+            <div
+              key={`${line.productId}-${index}`}
+              className="receipt-item-block"
+            >
+              <p className="receipt-item-ar">
                 {line.name}
                 {line.isWeighted ? (
                   <span className="receipt-scale-tag"> ميزان</span>
                 ) : null}
-              </td>
-              <td className="col-qty">
-                {line.isWeighted
-                  ? "1"
-                  : Number.isInteger(line.qty)
-                    ? String(line.qty)
-                    : line.qty.toFixed(3)}
-              </td>
-              <td className="col-price">{formatEGP(line.unitPrice)}</td>
-              <td className="col-total">{formatEGP(line.lineTotal)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </p>
+              {zhOrSku ? (
+                <p className="receipt-item-zh" lang="zh-CN" dir="ltr">
+                  {zhOrSku}
+                </p>
+              ) : null}
+              <p className="receipt-item-math" dir="ltr">
+                {qtyLabel(line)} × {formatEGP(line.unitPrice)} ={" "}
+                {formatEGP(line.lineTotal)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="receipt-totals">
         <div className="receipt-total-row">
           <span>
             {sale.isReturn
-              ? "المبلغ المرتجع / Refund"
-              : "المجموع / Subtotal"}
+              ? "المبلغ المرتجع / 退款小计"
+              : "المجموع / 小计"}
           </span>
           <span>
             {formatEGP(
               isStaffMealPayment(sale.paymentMethod)
-                ? sale.lines.reduce((sum, line) => sum + Math.abs(line.lineTotal), 0)
+                ? sale.lines.reduce(
+                    (sum, line) => sum + Math.abs(line.lineTotal),
+                    0,
+                  )
                 : sale.loyalty && sale.loyalty.discountAmount > 0
                   ? sale.lines.reduce((sum, line) => sum + line.lineTotal, 0)
                   : Math.abs(sale.total),
@@ -159,38 +174,40 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
         <div className="receipt-total-row receipt-total-final">
           <span>
             {sale.isReturn
-              ? "الإجمالي المرتجع / Total refund"
+              ? "الإجمالي المرتجع / 退款总计"
               : isStaffMealPayment(sale.paymentMethod)
-                ? "المحصّل / Collected"
-                : "الإجمالي / Total"}
+                ? "المحصّل / 实收"
+                : "الإجمالي / 总计"}
           </span>
-          <span>{formatEGP(sale.isReturn ? -Math.abs(sale.total) : sale.total)}</span>
+          <span>
+            {formatEGP(sale.isReturn ? -Math.abs(sale.total) : sale.total)}
+          </span>
         </div>
         <div className="receipt-total-row">
-          <span>الدفع / Payment</span>
+          <span>الدفع / 支付</span>
           <span>{paymentLabel}</span>
         </div>
         {isStaffMealPayment(sale.paymentMethod) && (
           <div className="receipt-total-row">
-            <span>نقدي / Cash collected</span>
+            <span>النقدية / 现金</span>
             <span>{formatEGP(0)}</span>
           </div>
         )}
         {isCashPayment(sale.paymentMethod) && !sale.isReturn && (
           <>
             <div className="receipt-total-row">
-              <span>المدفوع / Paid</span>
+              <span>النقدية / 现金</span>
               <span>{formatEGP(sale.tendered)}</span>
             </div>
             <div className="receipt-total-row">
-              <span>الباقي / Change</span>
+              <span>الباقي / 找零</span>
               <span>{formatEGP(sale.change)}</span>
             </div>
           </>
         )}
         {isCashPayment(sale.paymentMethod) && sale.isReturn && (
           <div className="receipt-total-row">
-            <span>نقد مرتجع / Cash out</span>
+            <span>نقد مرتجع / 退现</span>
             <span>{formatEGP(Math.abs(sale.total))}</span>
           </div>
         )}
@@ -199,25 +216,29 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
       {sale.loyalty ? (
         <div className="receipt-totals">
           <div className="receipt-total-row receipt-total-final">
-            <span>برنامج الولاء</span>
+            <span>برنامج الولاء / 积分</span>
             <span />
           </div>
           <div className="receipt-total-row">
-            <span>رقم العميل: {maskLoyaltyPhone(sale.loyalty.phone)}</span>
+            <span>رقم العميل / 会员: {maskLoyaltyPhone(sale.loyalty.phone)}</span>
           </div>
           <div className="receipt-total-row">
-            <span>النقاط المكتسبة: {sale.loyalty.pointsEarned}</span>
+            <span>
+              النقاط المكتسبة / 获得积分: {sale.loyalty.pointsEarned}
+            </span>
           </div>
           {sale.loyalty.pointsRedeemed > 0 ? (
             <div className="receipt-total-row">
               <span>
-                تم استبدال: {sale.loyalty.pointsRedeemed} نقطة (خصم{" "}
+                تم استبدال / 兑换: {sale.loyalty.pointsRedeemed} نقطة (خصم{" "}
                 {sale.loyalty.discountAmount} ج.م)
               </span>
             </div>
           ) : null}
           <div className="receipt-total-row">
-            <span>رصيد النقاط الحالي: {sale.loyalty.pointsBalance}</span>
+            <span>
+              رصيد النقاط / 余额: {sale.loyalty.pointsBalance}
+            </span>
           </div>
         </div>
       ) : null}
@@ -227,8 +248,10 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
         dangerouslySetInnerHTML={{ __html: barcodeSvg }}
       />
 
-      <p className="receipt-footer">شكراً لزيارتكم — Thank you</p>
-      <p className="receipt-footer-sub">Souq El Obour · Ain Sokhna</p>
+      <p className="receipt-footer">شكراً لزيارتكم</p>
+      <p className="receipt-footer-zh" lang="zh-CN" dir="ltr">
+        谢谢惠顾，欢迎再次光临
+      </p>
     </div>
   );
 }

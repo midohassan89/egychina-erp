@@ -76,11 +76,10 @@ export default function SaleAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Sale Audit</h1>
+      <div className="text-right">
+        <h1 className="text-2xl font-bold text-slate-900">مراجعة المبيعات</h1>
         <p className="mt-1 text-slate-500">
-          Orders saved despite a business-rule issue. Review the reason, correct
-          stock if needed, then mark the order as audited.
+          فواتير محفوظة رغم وجود مشكلة. راجع السبب وصحّح المخزون إن لزم، ثم أكّد المراجعة.
         </p>
       </div>
 
@@ -93,14 +92,14 @@ export default function SaleAuditPage() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">Shift</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3">Reason</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className="px-4 py-3">الطلب</th>
+                <th className="px-4 py-3">الوردية</th>
+                <th className="px-4 py-3">الوقت</th>
+                <th className="px-4 py-3 text-right">الإجمالي</th>
+                <th className="px-4 py-3">السبب</th>
+                <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -151,7 +150,7 @@ export default function SaleAuditPage() {
                         onClick={() => void resolve(sale.id)}
                         className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                       >
-                        {resolvingId === sale.id ? "Saving…" : "Mark as Audited"}
+                        {resolvingId === sale.id ? "جاري الحفظ…" : "تأكيد المراجعة"}
                       </button>
                     </td>
                   </tr>

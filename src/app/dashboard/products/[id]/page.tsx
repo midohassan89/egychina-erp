@@ -48,7 +48,7 @@ const BADGE: Record<
     className: "bg-amber-50 text-amber-900 ring-amber-200",
   },
   OPENING: {
-    label: "Opening Balance",
+    label: "أرصدة أول المدة",
     className: "bg-slate-50 text-slate-700 ring-slate-300",
   },
   OPENING_BALANCE: {

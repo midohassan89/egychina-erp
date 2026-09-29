@@ -105,8 +105,8 @@ export default function ExpensesPage() {
   );
   const totalTitle =
     startDate === monthBounds.start && endDate === monthBounds.end
-      ? "Total Expenses (This Month)"
-      : "Total Expenses (Selected Period)";
+      ? "إجمالي المصروفات (هذا الشهر)"
+      : "إجمالي المصروفات (الفترة المحددة)";
 
   useEffect(() => {
     void load();
@@ -169,10 +169,10 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Expenses</h1>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold text-slate-900">المصروفات</h1>
           <p className="mt-1 text-slate-500">
-            Categories and expense logging — debit Cash Safe or a bank account
+            التصنيفات وتسجيل المصروفات — خصم من الخزينة أو حساب بنكي
           </p>
         </div>
         <button
@@ -185,7 +185,7 @@ export default function ExpensesPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
-          Log Expense
+          تسجيل مصروف
         </button>
       </div>
 
@@ -198,7 +198,7 @@ export default function ExpensesPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
           <h2 className="text-sm font-semibold text-slate-800">
-            Expense categories
+            تصنيفات المصروفات
           </h2>
           <form
             onSubmit={(e) => void handleAddCategory(e)}
@@ -208,7 +208,7 @@ export default function ExpensesPage() {
               required
               value={catName}
               onChange={(e) => setCatName(e.target.value)}
-              placeholder="e.g. Salaries"
+              placeholder="مثال: رواتب"
               className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
             <button
@@ -216,7 +216,7 @@ export default function ExpensesPage() {
               disabled={catSaving}
               className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:bg-slate-300"
             >
-              Add
+              إضافة
             </button>
           </form>
           {catError && (
@@ -255,7 +255,7 @@ export default function ExpensesPage() {
               <div className="flex min-w-[240px] flex-1 flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                 <label className="block min-w-[140px] flex-1">
                   <span className="mb-1 block text-xs font-medium text-slate-500">
-                    Start date
+                    من تاريخ
                   </span>
                   <input
                     type="date"
@@ -266,7 +266,7 @@ export default function ExpensesPage() {
                 </label>
                 <label className="block min-w-[140px] flex-1">
                   <span className="mb-1 block text-xs font-medium text-slate-500">
-                    End date
+                    إلى تاريخ
                   </span>
                   <input
                     type="date"
@@ -277,14 +277,14 @@ export default function ExpensesPage() {
                 </label>
                 <label className="block min-w-[160px] flex-1">
                   <span className="mb-1 block text-xs font-medium text-slate-500">
-                    Category
+                    التصنيف
                   </span>
                   <select
                     value={filterCategoryId}
                     onChange={(e) => setFilterCategoryId(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                   >
-                    <option value="">All categories</option>
+                    <option value="">كل التصنيفات</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
@@ -295,18 +295,18 @@ export default function ExpensesPage() {
               </div>
             </div>
             <h2 className="text-sm font-semibold text-slate-800">
-              Recent expenses
+              أحدث المصروفات
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Notes</th>
+                  <th className="px-4 py-3">التاريخ</th>
+                  <th className="px-4 py-3">التصنيف</th>
+                  <th className="px-4 py-3 text-right">المبلغ</th>
+                  <th className="px-4 py-3">المصدر</th>
+                  <th className="px-4 py-3">ملاحظات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -360,7 +360,7 @@ export default function ExpensesPage() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                Log Expense
+                تسجيل مصروف
               </h2>
               <button
                 type="button"
@@ -376,7 +376,7 @@ export default function ExpensesPage() {
             >
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
-                  Category
+                  التصنيف
                 </span>
                 <select
                   required
@@ -384,7 +384,7 @@ export default function ExpensesPage() {
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 >
-                  <option value="">Select…</option>
+                  <option value="">اختر…</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -394,7 +394,7 @@ export default function ExpensesPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
-                  Amount (EGP)
+                  المبلغ (ج.م)
                 </span>
                 <input
                   required
@@ -408,7 +408,7 @@ export default function ExpensesPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
-                  Payment Source
+                  مصدر الدفع
                 </span>
                 <select
                   required
@@ -416,7 +416,7 @@ export default function ExpensesPage() {
                   onChange={(e) => setPaymentSource(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 >
-                  <option value="TREASURY">Cash Safe (Treasury)</option>
+                  <option value="TREASURY">الخزينة (نقدي)</option>
                   {bankAccounts.map((b) => (
                     <option key={b.id} value={String(b.id)}>
                       {b.name} ({formatEGP(b.balance)})
@@ -426,7 +426,7 @@ export default function ExpensesPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
-                  Date
+                  التاريخ
                 </span>
                 <input
                   type="date"
@@ -438,13 +438,13 @@ export default function ExpensesPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
-                  Notes
+                  ملاحظات
                 </span>
                 <input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                  placeholder="Optional"
+                  placeholder="اختياري"
                 />
               </label>
               {formError && (

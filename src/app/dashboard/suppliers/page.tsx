@@ -184,9 +184,9 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Suppliers</h1>
+          <h1 className="text-2xl font-bold text-slate-900">الموردين</h1>
           <p className="mt-1 text-slate-500">
-            Vendor directory, accounts payable, and payment tracking
+            دليل الموردين ومتابعة المديونيات والمدفوعات
           </p>
         </div>
         <button
@@ -195,7 +195,7 @@ export default function SuppliersPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
-          New Supplier
+          إضافة جديد
         </button>
       </div>
 
@@ -210,12 +210,12 @@ export default function SuppliersPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3 text-right">Opening</th>
-                <th className="px-4 py-3 text-right">Balance (A/P)</th>
-                <th className="px-4 py-3">Added</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">الاسم</th>
+                <th className="px-4 py-3">الهاتف</th>
+                <th className="px-4 py-3 text-right">الرصيد الافتتاحي</th>
+                <th className="px-4 py-3 text-right">المديونية</th>
+                <th className="px-4 py-3">تاريخ الإضافة</th>
+                <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -268,7 +268,7 @@ export default function SuppliersPage() {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          Edit
+                          تعديل
                         </button>
                         <button
                           type="button"
@@ -299,7 +299,7 @@ export default function SuppliersPage() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                {editSupplier ? "Edit Supplier" : "New Supplier"}
+                {editSupplier ? "تعديل مورد" : "مورد جديد"}
               </h2>
               <button
                 type="button"
@@ -377,7 +377,7 @@ export default function SuppliersPage() {
                   onClick={closeForm}
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
-                  Cancel
+                  إلغاء
                 </button>
                 <button
                   type="submit"
@@ -385,10 +385,10 @@ export default function SuppliersPage() {
                   className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
                 >
                   {isSaving
-                    ? "Saving…"
+                    ? "جاري الحفظ…"
                     : editSupplier
-                      ? "Save changes"
-                      : "Create"}
+                      ? "حفظ"
+                      : "إضافة جديد"}
                 </button>
               </div>
             </form>

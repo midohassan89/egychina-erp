@@ -145,18 +145,18 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="text-right">
           <h1 className="text-2xl font-bold text-slate-900">
-            Reports & Analytics
+            التقارير والتحليلات
           </h1>
           <p className="mt-1 text-slate-500">
-            Profit & loss, bestsellers, and low-stock alerts
+            الأرباح والخسائر، الأكثر مبيعاً، وتنبيهات النواقص
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              From
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              من
             </span>
             <input
               type="date"
@@ -166,8 +166,8 @@ export default function ReportsPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              To
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              إلى
             </span>
             <input
               type="date"
@@ -181,13 +181,13 @@ export default function ReportsPage() {
             onClick={() => void load()}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
-            Refresh
+            تحديث
           </button>
           <Link
             href="/dashboard/reports/supplier-statement"
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Supplier Statement
+            كشف حساب مورد
           </Link>
         </div>
       </div>
@@ -200,25 +200,25 @@ export default function ReportsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Total Revenue"
+          label="إجمالي الإيرادات"
           value={kpis?.totalRevenue}
           loading={isLoading}
           tone="neutral"
         />
         <KpiCard
-          label="Gross Profit"
+          label="إجمالي الربح"
           value={kpis?.grossProfit}
           loading={isLoading}
           tone="auto"
         />
         <KpiCard
-          label="Total Expenses"
+          label="إجمالي المصروفات"
           value={kpis?.totalExpenses}
           loading={isLoading}
           tone="expense"
         />
         <KpiCard
-          label="Net Profit"
+          label="صافي الربح"
           value={kpis?.netProfit}
           loading={isLoading}
           tone="auto"
@@ -227,31 +227,31 @@ export default function ReportsPage() {
 
       <div>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
+          <div className="text-right">
             <h2 className="text-sm font-semibold text-slate-800">
-              Inventory Valuation
+              تقييم المخزون
             </h2>
             <p className="text-xs text-slate-500">
-              Stock asset cost vs expected retail value (live snapshot)
+              تكلفة الأصول مقابل قيمة البيع المتوقعة
             </p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <KpiCard
-            label="Total Inventory Cost (Asset Value)"
+            label="تكلفة المخزون (رأس المال)"
             value={inventory?.totalAssetValue}
             loading={isLoading}
             tone="neutral"
           />
           <KpiCard
-            label="Expected Sales Value"
+            label="قيمة المبيعات المتوقعة"
             value={inventory?.expectedRetailValue}
             loading={isLoading}
             tone="neutral"
           />
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Potential Gross Margin
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm">
+            <p className="text-xs font-semibold tracking-wide text-slate-500">
+              هامش الربح المتوقع
             </p>
             <p
               className={clsx(
@@ -267,7 +267,7 @@ export default function ReportsPage() {
             </p>
             {!isLoading && inventory && (
               <p className="mt-1 text-xs text-slate-500">
-                {inventory.marginPercent}% of retail value
+                {inventory.marginPercent}% من قيمة البيع
               </p>
             )}
           </div>
@@ -278,22 +278,20 @@ export default function ReportsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-800">
-              Daily revenue trend
+              مؤشر الإيرادات اليومية
             </h2>
             <Link
               href="/dashboard/shifts"
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
             >
-              View All Shifts / Z-Reports
-              <span className="text-slate-400">·</span>
               سجل الورديات
             </Link>
           </div>
           <div className="mt-4 h-72">
             {isLoading ? (
-              <p className="text-sm text-slate-400">Loading chart…</p>
+              <p className="text-sm text-slate-400">جاري التحميل…</p>
             ) : chartDaily.length === 0 ? (
-              <p className="text-sm text-slate-400">No sales in this period</p>
+              <p className="text-sm text-slate-400">لا مبيعات في هذه الفترة</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartDaily}>
@@ -303,7 +301,7 @@ export default function ReportsPage() {
                   <Tooltip
                     formatter={(value) => [
                       formatEGP(Number(value) || 0),
-                      "Revenue",
+                      "الإيرادات",
                     ]}
                   />
                   <Line
@@ -321,14 +319,14 @@ export default function ReportsPage() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-800">
-            Top 10 best sellers
+            أفضل 10 منتجات مبيعاً
           </h2>
           <div className="mt-4 h-72">
             {isLoading ? (
-              <p className="text-sm text-slate-400">Loading chart…</p>
+              <p className="text-sm text-slate-400">جاري التحميل…</p>
             ) : chartSellers.length === 0 ? (
               <p className="text-sm text-slate-400">
-                No product sales in this period
+                لا مبيعات منتجات في هذه الفترة
               </p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -359,22 +357,22 @@ export default function ReportsPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3">
+        <div className="border-b border-slate-200 px-4 py-3 text-right">
           <h2 className="text-sm font-semibold text-slate-800">
-            Low Stock & Reorder Alerts
+            تنبيهات نواقص المخزون
           </h2>
           <p className="text-xs text-slate-500">
-            Products with stock ≤ 5 — order from suppliers to replenish
+            منتجات بمخزون ≤ 5 — اطلب من الموردين لإعادة التوريد
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">SKU</th>
-                <th className="px-4 py-3 text-right">Current stock</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th className="px-4 py-3">المنتج</th>
+                <th className="px-4 py-3">كود الصنف</th>
+                <th className="px-4 py-3 text-right">المخزون الحالي</th>
+                <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -421,7 +419,7 @@ export default function ReportsPage() {
                         className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         <ShoppingCart className="h-3.5 w-3.5" />
-                        Order Now
+                        اطلب الآن
                       </Link>
                     </td>
                   </tr>
@@ -457,8 +455,8 @@ function KpiCard({
         : "text-slate-900";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm">
+      <p className="text-xs font-semibold tracking-wide text-slate-500">
         {label}
       </p>
       <p className={clsx("mt-2 text-2xl font-bold tabular-nums", color)}>

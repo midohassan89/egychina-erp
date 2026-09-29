@@ -39,7 +39,7 @@ function defaultMonthRange() {
 
 export default function SupplierStatementPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-slate-500">جاري التحميل…</p>}>
       <SupplierStatementPageInner />
     </Suspense>
   );
@@ -141,14 +141,14 @@ function SupplierStatementPageInner() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             <ArrowLeft className="h-4 w-4" />
-            Reports
+            التقارير
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-slate-900">
-              كشف حساب مورد · Supplier Statement
+              كشف حساب مورد
             </h1>
             <p className="text-sm text-slate-500">
-              Chronological A/P ledger for supplier reconciliation
+              كشف ذمم الموردين الزمني للمطابقة
             </p>
           </div>
           <button
@@ -158,21 +158,21 @@ function SupplierStatementPageInner() {
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
           >
             <Printer className="h-4 w-4" />
-            طباعة كشف الحساب · Print
+            طباعة كشف الحساب
           </button>
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <label className="block min-w-[220px] flex-1">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Supplier
+              المورد
             </span>
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
-              <option value="">Select supplier…</option>
+              <option value="">اختر المورد…</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} ({formatEGP(s.balance)})
@@ -182,7 +182,7 @@ function SupplierStatementPageInner() {
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              From
+              من
             </span>
             <input
               type="date"
@@ -193,7 +193,7 @@ function SupplierStatementPageInner() {
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              To
+              إلى
             </span>
             <input
               type="date"
@@ -208,7 +208,7 @@ function SupplierStatementPageInner() {
             disabled={!supplierId || isLoading}
             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:bg-slate-300"
           >
-            {isLoading ? "Loading…" : "Load"}
+            {isLoading ? "جاري التحميل…" : "تحميل"}
           </button>
         </div>
 
@@ -223,7 +223,7 @@ function SupplierStatementPageInner() {
         <header className="supplier-statement-header">
           <h1 className="text-xl font-bold text-slate-900">{STORE_NAME}</h1>
           <p className="text-sm text-slate-600">
-            كشف حساب مورد · Supplier Account Statement
+            كشف حساب مورد
           </p>
           {supplierName && (
             <p className="mt-2 text-base font-semibold text-slate-900">
@@ -231,20 +231,20 @@ function SupplierStatementPageInner() {
             </p>
           )}
           <p className="text-sm text-slate-500">
-            Period: {startDate} → {endDate}
+            الفترة: {startDate} → {endDate}
             {generatedAt
-              ? ` · Generated ${new Date(generatedAt).toLocaleString()}`
+              ? ` · تم الإنشاء ${new Date(generatedAt).toLocaleString()}`
               : ""}
           </p>
         </header>
 
         {supplierId && (
           <div className="grid gap-3 sm:grid-cols-4 dashboard-print-hide">
-            <SummaryChip label="Opening balance" value={openingBalance} />
-            <SummaryChip label="Period debit (مدين)" value={periodDebit} />
-            <SummaryChip label="Period credit (دائن)" value={periodCredit} />
+            <SummaryChip label="رصيد افتتاحي" value={openingBalance} />
+            <SummaryChip label="مدين الفترة" value={periodDebit} />
+            <SummaryChip label="دائن الفترة" value={periodCredit} />
             <SummaryChip
-              label="Closing balance (الرصيد)"
+              label="الرصيد الختامي"
               value={closingBalance}
               emphasize
             />
@@ -255,12 +255,12 @@ function SupplierStatementPageInner() {
           <table className="supplier-statement-table min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-3">Date</th>
-                <th className="px-3 py-3">Type</th>
-                <th className="px-3 py-3">Reference / Notes</th>
-                <th className="px-3 py-3 text-right">Debit (مدين)</th>
-                <th className="px-3 py-3 text-right">Credit (دائن)</th>
-                <th className="px-3 py-3 text-right">Balance (الرصيد)</th>
+                <th className="px-3 py-3">التاريخ</th>
+                <th className="px-3 py-3">النوع</th>
+                <th className="px-3 py-3">المرجع / ملاحظات</th>
+                <th className="px-3 py-3 text-right">مدين</th>
+                <th className="px-3 py-3 text-right">دائن</th>
+                <th className="px-3 py-3 text-right">الرصيد</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -270,7 +270,7 @@ function SupplierStatementPageInner() {
                     colSpan={6}
                     className="px-3 py-10 text-center text-slate-400"
                   >
-                    Select a supplier to load the statement.
+                    اختر مورداً لتحميل الكشف.
                   </td>
                 </tr>
               ) : isLoading ? (
@@ -279,14 +279,14 @@ function SupplierStatementPageInner() {
                     colSpan={6}
                     className="px-3 py-10 text-center text-slate-400"
                   >
-                    Loading…
+                    جاري التحميل…
                   </td>
                 </tr>
               ) : (
                 <>
                   <tr className="bg-slate-50 font-semibold">
                     <td className="px-3 py-2.5 text-slate-700" colSpan={3}>
-                      Opening balance
+                      رصيد افتتاحي
                     </td>
                     <td className="px-3 py-2.5 text-right">—</td>
                     <td className="px-3 py-2.5 text-right">—</td>
@@ -300,7 +300,7 @@ function SupplierStatementPageInner() {
                         colSpan={6}
                         className="px-3 py-8 text-center text-slate-400"
                       >
-                        No transactions in this period.
+                        لا توجد حركات في هذه الفترة.
                       </td>
                     </tr>
                   ) : (
@@ -344,7 +344,7 @@ function SupplierStatementPageInner() {
                   )}
                   <tr className="bg-slate-900 font-bold text-white">
                     <td className="px-3 py-3" colSpan={3}>
-                      Closing balance · الرصيد الختامي
+                      الرصيد الختامي
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">
                       {formatEGP(periodDebit)}

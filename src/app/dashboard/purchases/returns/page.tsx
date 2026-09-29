@@ -224,17 +224,17 @@ export default function PurchaseReturnsPage() {
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
         >
           <ArrowLeft className="h-4 w-4" />
-          Purchases
+          المشتريات
         </Link>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Purchase Returns
+            مرتجعات المشتريات
           </h1>
           <p className="mt-1 text-slate-500">
-            Return to vendor — reduces supplier balance and stock (local + WC)
+            إرجاع للمورد — يخصم من رصيد المورد والمخزون
           </p>
         </div>
         <button
@@ -259,7 +259,7 @@ export default function PurchaseReturnsPage() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">التاريخ</th>
                 <th className="px-4 py-3">Supplier</th>
                 <th className="px-4 py-3 text-center">Lines</th>
                 <th className="px-4 py-3 text-right">Total Amount</th>
@@ -384,7 +384,7 @@ export default function PurchaseReturnsPage() {
                   <input
                     value={productQuery}
                     onChange={(e) => setProductQuery(e.target.value)}
-                    placeholder="Search product by name, barcode, or SKU…"
+                    placeholder="بحث بالاسم أو الباركود أو الكود…"
                     className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
                   />
                   {(productHits.length > 0 || searching) &&
@@ -392,7 +392,7 @@ export default function PurchaseReturnsPage() {
                       <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                         {searching && productHits.length === 0 ? (
                           <li className="px-3 py-2 text-sm text-slate-400">
-                            Searching…
+                            جاري البحث…
                           </li>
                         ) : (
                           productHits.map((p) => (
@@ -438,7 +438,7 @@ export default function PurchaseReturnsPage() {
                             colSpan={5}
                             className="px-3 py-8 text-center text-slate-400"
                           >
-                            Search and add products to return
+                            ابحث وأضف المنتجات للمرتجع
                           </td>
                         </tr>
                       ) : (
@@ -536,14 +536,14 @@ export default function PurchaseReturnsPage() {
                   onClick={() => setFormOpen(false)}
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
-                  Cancel
+                  إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:bg-slate-300"
                 >
-                  {isSubmitting ? "Saving…" : "Save Return & Sync Stock"}
+                  {isSubmitting ? "جاري الحفظ…" : "حفظ المرتجع وتحديث المخزون"}
                 </button>
               </div>
             </form>

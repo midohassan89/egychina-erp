@@ -131,17 +131,17 @@ export default function SalesHistoryPage() {
   return (
     <>
       <div className="dashboard-print-hide space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sales History</h1>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold text-slate-900">سجل المبيعات</h1>
           <p className="mt-1 text-slate-500">
-            POS receipts, refunds, and reprint for the thermal printer
+            فواتير الكاشير والمرتجعات وإعادة الطباعة
           </p>
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <label className="block min-w-[140px]">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Payment
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              طريقة الدفع
             </span>
             <select
               value={paymentMethod}
@@ -151,7 +151,7 @@ export default function SalesHistoryPage() {
               }}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
-              <option value="">All methods</option>
+              <option value="">كل الطرق</option>
               {PAYMENT_METHOD_OPTIONS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.labelEn}
@@ -160,8 +160,8 @@ export default function SalesHistoryPage() {
             </select>
           </label>
           <label className="block min-w-[120px]">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Type
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              النوع
             </span>
             <select
               value={typeFilter}
@@ -171,14 +171,14 @@ export default function SalesHistoryPage() {
               }}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
-              <option value="">All</option>
-              <option value="sale">Sales</option>
-              <option value="return">Returns</option>
+              <option value="">الكل</option>
+              <option value="sale">مبيعات</option>
+              <option value="return">مرتجعات</option>
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              From
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              من
             </span>
             <input
               type="date"
@@ -191,8 +191,8 @@ export default function SalesHistoryPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              To
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              إلى
             </span>
             <input
               type="date"
@@ -205,8 +205,8 @@ export default function SalesHistoryPage() {
             />
           </label>
           <label className="block min-w-[180px] flex-1">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Search
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+              بحث...
             </span>
             <input
               value={q}
@@ -217,7 +217,7 @@ export default function SalesHistoryPage() {
                   void load();
                 }
               }}
-              placeholder="Receipt #, cashier, customer…"
+              placeholder="رقم الفاتورة، الكاشير، العميل…"
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
@@ -229,7 +229,7 @@ export default function SalesHistoryPage() {
             }}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
-            Apply
+            تطبيق
           </button>
         </div>
 
@@ -242,15 +242,15 @@ export default function SalesHistoryPage() {
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Receipt</th>
-                  <th className="px-4 py-3">Date / Time</th>
-                  <th className="px-4 py-3">Cashier</th>
-                  <th className="px-4 py-3">Payment</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3">رقم الفاتورة</th>
+                  <th className="px-4 py-3">التاريخ / الوقت</th>
+                  <th className="px-4 py-3">الكاشير</th>
+                  <th className="px-4 py-3">طريقة الدفع</th>
+                  <th className="px-4 py-3 text-right">الإجمالي</th>
+                  <th className="px-4 py-3">الحالة</th>
+                  <th className="px-4 py-3 text-right">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -303,11 +303,11 @@ export default function SalesHistoryPage() {
                       <td className="px-4 py-3">
                         {order.isReturn ? (
                           <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-900 ring-1 ring-inset ring-amber-200">
-                            Returned
+                            مرتجع
                           </span>
                         ) : (
                           <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200">
-                            Completed
+                            مكتمل
                           </span>
                         )}
                       </td>
@@ -318,7 +318,7 @@ export default function SalesHistoryPage() {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          View Details
+                          عرض التفاصيل
                         </button>
                       </td>
                     </tr>
@@ -360,7 +360,7 @@ export default function SalesHistoryPage() {
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Order details
+                  تفاصيل الطلب
                 </h2>
                 <p className="text-sm text-slate-500">
                   {detail
@@ -411,7 +411,7 @@ export default function SalesHistoryPage() {
                         <th className="py-2 pr-2">Item</th>
                         <th className="py-2 pr-2 text-right">Qty</th>
                         <th className="py-2 pr-2 text-right">Price</th>
-                        <th className="py-2 text-right">Total</th>
+                        <th className="py-2 text-right">الإجمالي</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

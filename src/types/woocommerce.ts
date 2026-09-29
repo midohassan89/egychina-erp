@@ -97,6 +97,9 @@ export interface CachedProduct extends WooCommerceProduct {
   isFavorite?: boolean;
   /** Local Prisma product id (cuid). */
   prismaId?: string;
+  /** Arabic display name is `name`; optional EN/ZH for receipts & storefront. */
+  nameEn?: string | null;
+  nameZh?: string | null;
   /** Virtual bundle: Prisma id of the base single-unit product. */
   linkedProductId?: string | null;
   /** Base units consumed when one bundle is sold. */
@@ -127,6 +130,8 @@ export type SaleSyncStatus = "synced" | "pending" | "failed";
 export interface SaleLine {
   productId: number;
   name: string;
+  /** Chinese product name for bilingual thermal receipts. */
+  nameZh?: string | null;
   sku: string;
   qty: number;
   unitPrice: number;

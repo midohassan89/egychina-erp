@@ -23,6 +23,8 @@ export function prismaProductToCached(product: Product): CachedProduct {
   return {
     id: product.wcId,
     name: product.name,
+    nameEn: product.nameEn ?? null,
+    nameZh: product.nameZh ?? null,
     slug: product.name.toLowerCase().replace(/\s+/g, "-"),
     sku: product.sku ?? "",
     price,

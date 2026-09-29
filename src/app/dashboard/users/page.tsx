@@ -203,10 +203,10 @@ export default function UsersPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Users, Roles & Security
+            المستخدمين والصلاحيات
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Create staff accounts, assign roles, and set POS override PINs.
+            إنشاء حسابات الموظفين وتعيين الأدوار وأرقام PIN لنقطة البيع.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -215,12 +215,7 @@ export default function UsersPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50"
           >
             <ScrollText className="h-4 w-4 text-slate-500" />
-            <span className="leading-tight">
-              View Activity Logs
-              <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
-                سجل الحركات
-              </span>
-            </span>
+            سجل الحركات
           </Link>
           <button
             type="button"
@@ -231,7 +226,7 @@ export default function UsersPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <Plus className="h-4 w-4" />
-            New User
+            إضافة جديد
           </button>
         </div>
       </div>
@@ -251,7 +246,7 @@ export default function UsersPage() {
               <th className="px-4 py-3">PIN</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -443,14 +438,14 @@ export default function UsersPage() {
                   onClick={() => setCreateOpen(false)}
                   className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
                 >
-                  Cancel
+                  إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
                   className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
                 >
-                  {isSaving ? "Creating…" : "Create User"}
+                  {isSaving ? "جاري الإنشاء…" : "إضافة جديد"}
                 </button>
               </div>
             </form>
@@ -463,15 +458,15 @@ export default function UsersPage() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                Delete user?
+                حذف المستخدم؟
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Permanently remove{" "}
+                سيتم حذف{" "}
                 <span className="font-semibold text-slate-800">
                   {deleteTarget.username}
-                </span>
-                . If they have sales, shifts, or audit logs, deletion will be
-                blocked — suspend them instead.
+                </span>{" "}
+                نهائياً. إذا كان لديه مبيعات أو ورديات أو سجلات، سيتم منع الحذف —
+                علّق الحساب بدلاً من ذلك.
               </p>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4">
@@ -481,7 +476,7 @@ export default function UsersPage() {
                 onClick={() => setDeleteTarget(null)}
                 className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
-                Cancel
+                إلغاء
               </button>
               <button
                 type="button"
@@ -489,7 +484,7 @@ export default function UsersPage() {
                 onClick={() => void confirmDelete()}
                 className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-slate-300"
               >
-                {isDeleting ? "Deleting…" : "Delete"}
+                {isDeleting ? "جاري الحذف…" : "حذف"}
               </button>
             </div>
           </div>

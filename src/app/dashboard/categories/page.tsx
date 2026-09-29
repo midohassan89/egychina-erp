@@ -92,7 +92,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">الأقسام</h1>
-        <p className="mt-1 text-slate-500">Product departments used by the catalog</p>
+        <p className="mt-1 text-slate-500">أقسام المنتجات المستخدمة في الكتالوج</p>
       </div>
 
       <form
@@ -100,7 +100,7 @@ export default function CategoriesPage() {
         className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2"
       >
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Name</span>
+          <span className="mb-1 block text-sm font-medium text-slate-700">الاسم</span>
           <input
             required
             value={name}
@@ -148,7 +148,7 @@ export default function CategoriesPage() {
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {editingId ? "Save category" : "Add category"}
+            {editingId ? "حفظ" : "إضافة جديد"}
           </button>
           {editingId && (
             <button
@@ -157,7 +157,7 @@ export default function CategoriesPage() {
               disabled={saving}
               className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Cancel
+              إلغاء
             </button>
           )}
         </div>
@@ -168,28 +168,28 @@ export default function CategoriesPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full text-left text-sm">
+        <table className="min-w-full text-right text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">الاسم</th>
               <th className="px-4 py-3">English</th>
               <th className="px-4 py-3">中文</th>
               <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3 text-right">Products</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3 text-left">المنتجات</th>
+              <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                  Loading categories…
+                  جاري التحميل…
                 </td>
               </tr>
             ) : categories.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                  No categories yet.
+                  لا توجد أقسام بعد.
                 </td>
               </tr>
             ) : (
@@ -208,7 +208,7 @@ export default function CategoriesPage() {
                       onClick={() => startEdit(category)}
                       className="text-sm font-medium text-brand-700 hover:underline"
                     >
-                      Edit
+                      تعديل
                     </button>
                   </td>
                 </tr>

@@ -581,19 +581,22 @@ function POSPageInner() {
         />
       )}
 
-      <div className="pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none">
+      <div
+        dir="rtl"
+        className="pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none"
+      >
         {overPendingLimit && (
           <div
             role="alert"
             className="sticky top-0 z-40 shrink-0 border-b border-amber-800 bg-amber-400 px-4 py-3 text-amber-950"
           >
             <p className="text-sm font-bold sm:text-base">
-              {pendingCount} sales are still on this register
+              {pendingCount} عملية لا تزال على هذا الجهاز
             </p>
             <p className="mt-0.5 text-sm">
-              More than {PENDING_SALE_ALERT_THRESHOLD} tickets have not synced.
-              Check the internet connection. Sales stay saved on this device
-              and will send automatically when you are back online.
+              أكثر من {PENDING_SALE_ALERT_THRESHOLD} فواتير لم تتم مزامنتها.
+              تحقق من الاتصال بالإنترنت. المبيعات محفوظة على الجهاز وستُرسل
+              تلقائياً عند عودة الاتصال.
             </p>
           </div>
         )}
@@ -604,19 +607,19 @@ function POSPageInner() {
               : "flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 text-white"
           }
         >
-          <div className="min-w-0">
+          <div className="min-w-0 text-right">
             <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-              Souq El Obour - POS
+              سوق العبور - الكاشير
               {returnMode ? " · وضع الاسترجاع" : ""}
             </h1>
             <p className="mt-0.5 text-xs text-slate-400 sm:text-sm">
-              {isOnline ? "Online" : "Offline"} · {productCount} in DB ·{" "}
-              {catalog.length} ready
+              {isOnline ? "متصل" : "غير متصل"} · {productCount} في القاعدة ·{" "}
+              {catalog.length} جاهز
               {shiftApi.shift
-                ? ` · shift since ${new Date(shiftApi.shift.startedAt).toLocaleTimeString()} · float ${formatEGP(shiftApi.shift.startingCash)} · cash ${formatEGP(shiftApi.shift.cashSales ?? 0)}`
+                ? ` · الوردية بدأت: ${new Date(shiftApi.shift.startedAt).toLocaleTimeString("ar-EG")} · العهدة: ${formatEGP(shiftApi.shift.startingCash)} · النقدية: ${formatEGP(shiftApi.shift.cashSales ?? 0)}`
                 : ""}
               {returnMode && managerAuth
-                ? ` · auth ${managerAuth.managerName}`
+                ? ` · تفويض ${managerAuth.managerName}`
                 : ""}
             </p>
           </div>
@@ -628,7 +631,7 @@ function POSPageInner() {
               ) : scanMessage ? (
                 <p className="font-medium text-brand-300">{scanMessage}</p>
               ) : (
-                <p className="text-slate-400">Type barcode + Enter</p>
+                <p className="text-slate-400">أدخل الباركود...</p>
               )}
             </div>
             <button
@@ -641,7 +644,7 @@ function POSPageInner() {
                   : "rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
               }
             >
-              {returnMode ? "Exit Return" : "وضع الاسترجاع"}
+              {returnMode ? "إنهاء الاسترجاع" : "وضع الاسترجاع"}
             </button>
             <button
               type="button"
@@ -649,7 +652,7 @@ function POSPageInner() {
               onClick={handleOpenDrawer}
               className="rounded-xl bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:bg-slate-600"
             >
-              Open Drawer
+              فتح الدرج
             </button>
             <button
               type="button"
@@ -657,7 +660,7 @@ function POSPageInner() {
               onClick={() => void openZReportModal()}
               className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-600"
             >
-              Close Register (Z-Report)
+              تقفيل الكاشير (Z-Report)
             </button>
           </div>
         </header>
@@ -665,7 +668,7 @@ function POSPageInner() {
         {recentSales.length > 0 && (
           <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-4 py-1.5">
             <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Recent
+              السجل
             </span>
             {recentSales.map((sale) => (
               <span
@@ -704,6 +707,7 @@ function POSPageInner() {
             }}
             onIncrement={cart.increment}
             onDecrement={cart.decrement}
+            onAfterQtyChange={focusBarcodeSearch}
             onRemove={handleRemoveLine}
             onUpdateLine={cart.updateLine}
             onClear={() => {

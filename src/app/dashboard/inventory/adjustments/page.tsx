@@ -50,15 +50,15 @@ export default function InventoryAdjustmentsPage() {
         <div>
           <p className="text-sm text-slate-500">
             <Link href="/dashboard/inventory" className="hover:text-brand-700">
-              Inventory
+              المخزون
             </Link>{" "}
-            / Adjustments
+            / التسويات
           </p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">
-            Inventory Adjustments
+            تسويات المخزون
           </h1>
           <p className="mt-1 text-slate-500">
-            Wastage, shortages, production use, and manual counts
+            الهالك والنقص واستخدام الإنتاج والجرد اليدوي
           </p>
         </div>
         <Link
@@ -66,7 +66,7 @@ export default function InventoryAdjustmentsPage() {
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
-          تسوية جديدة · New Adjustment
+          تسوية جديدة
         </Link>
       </div>
 
@@ -81,12 +81,12 @@ export default function InventoryAdjustmentsPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3 text-right">Financial impact</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3">By</th>
-                <th className="px-4 py-3">Notes</th>
+                <th className="px-4 py-3">التاريخ</th>
+                <th className="px-4 py-3">النوع</th>
+                <th className="px-4 py-3 text-right">الأثر المالي</th>
+                <th className="px-4 py-3">الأصناف</th>
+                <th className="px-4 py-3">بواسطة</th>
+                <th className="px-4 py-3">ملاحظات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -96,7 +96,7 @@ export default function InventoryAdjustmentsPage() {
                     colSpan={6}
                     className="px-4 py-10 text-center text-slate-400"
                   >
-                    Loading…
+                    جاري التحميل…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
@@ -105,7 +105,7 @@ export default function InventoryAdjustmentsPage() {
                     colSpan={6}
                     className="px-4 py-10 text-center text-slate-400"
                   >
-                    No adjustments yet. Create one to reconcile stock.
+                    لا توجد تسويات بعد. أنشئ تسوية لمطابقة المخزون.
                   </td>
                 </tr>
               ) : (

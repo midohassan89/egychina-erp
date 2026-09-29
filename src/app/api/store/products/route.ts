@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const corsHeaders = {
@@ -27,16 +28,54 @@ export async function GET(req: NextRequest) {
       ...(search ? { name: { contains: search } } : {}),
     };
 
-    const [rows, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: { brand: true },
-        orderBy: { id: "desc" },
-        skip,
-        take: limit,
-      }),
+    const filters: Prisma.Sql[] = [Prisma.sql`p.isDeleted = 0`];
+
+    if (categoryId) {
+      filters.push(Prisma.sql`p.categoryId = ${categoryId}`);
+    }
+
+    if (brandId) {
+      filters.push(Prisma.sql`p.brandId = ${brandId}`);
+    }
+
+    if (search) {
+      filters.push(Prisma.sql`p.name LIKE ${`%${search}%`}`);
+    }
+
+    const whereSql = Prisma.join(filters, " AND ");
+
+    const [idRows, total] = await Promise.all([
+      prisma.$queryRaw<{ id: string }[]>`
+        SELECT p.id
+        FROM Product p
+        WHERE ${whereSql}
+        ORDER BY
+          CASE
+            WHEN LOWER(p.stockStatus) = 'outofstock' OR p.stockQuantity <= 0 THEN 1
+            ELSE 0
+          END ASC,
+          CASE
+            WHEN LOWER(p.stockStatus) = 'instock' THEN 0
+            ELSE 1
+          END ASC,
+          p.createdAt DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `,
       prisma.product.count({ where }),
     ]);
+
+    const orderedIds = idRows.map((row) => row.id);
+    const unordered = orderedIds.length
+      ? await prisma.product.findMany({
+          where: { id: { in: orderedIds } },
+          include: { brand: true },
+        })
+      : [];
+    const byId = new Map(unordered.map((product) => [product.id, product]));
+    const rows = orderedIds.flatMap((id) => {
+      const product = byId.get(id);
+      return product ? [product] : [];
+    });
 
     const products = rows.map((product) => ({
       id: product.id,
@@ -47,6 +86,7 @@ export async function GET(req: NextRequest) {
       image: product.imageUrl,
       categoryId: product.categoryId,
       stock: product.stockQuantity,
+      stockStatus: product.stockStatus,
       brand: product.brand
         ? {
             id: product.brand.id,

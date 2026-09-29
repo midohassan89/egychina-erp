@@ -17,72 +17,72 @@ import { canManageUsers, isManagerOrAdmin } from "@/lib/auth/roles";
 const cards = [
   {
     href: "/dashboard/suppliers",
-    title: "Suppliers",
-    description: "Vendor directory and balances",
+    title: "الموردين",
+    description: "سجل الموردين والأرصدة",
     icon: Truck,
     usersOnly: false,
   },
   {
     href: "/dashboard/purchases",
-    title: "Purchases",
-    description: "Supplier invoices and stock receiving",
+    title: "المشتريات",
+    description: "فواتير الموردين والاستلام",
     icon: ShoppingBag,
     usersOnly: false,
   },
   {
     href: "/dashboard/sales",
-    title: "Sales History",
-    description: "POS receipts, refunds, and reprints",
+    title: "سجل المبيعات",
+    description: "فواتير الكاشير والمرتجعات",
     icon: History,
     usersOnly: false,
   },
   {
     href: "/dashboard/expenses",
-    title: "Expenses",
-    description: "Categories and expense logging",
+    title: "المصروفات",
+    description: "تصنيفات وسجل المصروفات",
     icon: Receipt,
     usersOnly: false,
   },
   {
     href: "/dashboard/treasury",
-    title: "Treasury",
-    description: "Safe balance and cash ledger",
+    title: "الخزينة",
+    description: "أرصدة الخزينة والبنوك",
     icon: Wallet,
     usersOnly: false,
   },
   {
     href: "/dashboard/shifts",
-    title: "Shifts / Z-Reports",
-    description: "سجل الورديات — register closes and Z-Reports",
+    title: "سجل الورديات",
+    description: "تقفيل الكاشير وتقارير Z",
     icon: ClipboardList,
     usersOnly: false,
   },
   {
     href: "/dashboard/inventory",
-    title: "Inventory",
-    description: "Stock levels and adjustments",
+    title: "المخزون",
+    description: "مستويات المخزون والجرد",
     icon: Package,
     usersOnly: false,
   },
   {
     href: "/dashboard/reports",
-    title: "Reports",
-    description: "P&L, bestsellers, and stock alerts",
+    title: "التقارير",
+    description: "الأرباح، الأكثر مبيعاً، والنواقص",
     icon: BarChart3,
     usersOnly: false,
   },
   {
     href: "/dashboard/audit",
-    title: "Sale Audit",
-    description: "Orders flagged for review — stock gaps and missing shifts",
+    title: "مراجعة المبيعات",
+    description: "مراجعة فواتير الكاشير",
     icon: ShieldAlert,
     usersOnly: false,
     managersOnly: true,
   },
   {
     href: "/dashboard/users",
-    title: "Users & Roles",
-    description: "Manage staff accounts, roles, and PIN codes",
+    title: "المستخدمين والصلاحيات",
+    description: "إدارة حسابات الموظفين",
     icon: Shield,
     usersOnly: true,
   },
@@ -100,10 +100,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">ERP Dashboard</h1>
+      <div className="text-right">
+        <h1 className="text-2xl font-bold text-slate-900">لوحة تحكم النظام</h1>
         <p className="mt-1 text-slate-500">
-          Accounting modules for Souq El Obour — separate from WooCommerce auth
+          وحدات الحسابات والإدارة لسوق العبور
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -111,17 +111,12 @@ export default async function DashboardPage() {
           <Link
             key={href}
             href={href}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md"
+            className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm hover:shadow-md"
           >
             <div className="mb-3 inline-flex rounded-lg bg-brand-600 p-2.5 text-white">
               <Icon className="h-5 w-5" />
             </div>
             <h2 className="font-semibold text-slate-900">{title}</h2>
-            {href === "/dashboard/users" && (
-              <p className="mt-0.5 text-xs text-slate-400">
-                المستخدمين والصلاحيات
-              </p>
-            )}
             <p className="mt-1 text-sm text-slate-500">{description}</p>
           </Link>
         ))}

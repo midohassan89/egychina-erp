@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,21 +10,47 @@ const corsHeaders = {
   "Cache-Control": "no-store",
 };
 
-/** GET /api/store/brands — public brand list for the storefront. */
-export async function GET() {
+/** GET /api/store/brands — brands with products, optionally limited to a category. */
+export async function GET(request: NextRequest) {
   try {
+    const categoryId = request.nextUrl.searchParams.get("categoryId")?.trim() ?? "";
+
     const brands = await prisma.brand.findMany({
+      where: {
+        products: {
+          some: {
+            isDeleted: false,
+            ...(categoryId ? { categoryId } : {}),
+          },
+        },
+      },
       select: {
         id: true,
         name: true,
         nameEn: true,
         nameZh: true,
         image: true,
+        _count: {
+          select: {
+            products: {
+              where: {
+                isDeleted: false,
+                ...(categoryId ? { categoryId } : {}),
+              },
+            },
+          },
+        },
       },
-      orderBy: { name: "asc" },
+      orderBy: { products: { _count: "desc" } },
     });
 
-    return NextResponse.json(brands, { headers: corsHeaders });
+    return NextResponse.json(
+      brands.map(({ _count, ...brand }) => ({
+        ...brand,
+        productCount: _count.products,
+      })),
+      { headers: corsHeaders },
+    );
   } catch (error) {
     console.error("[api/store/brands]", error);
     return NextResponse.json(

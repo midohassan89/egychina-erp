@@ -92,7 +92,7 @@ function TreasuryPageInner() {
     const opts: { value: TransferSide; label: string; balance: number }[] = [
       {
         value: "TREASURY",
-        label: "Main Treasury Cash",
+        label: "الخزينة الرئيسية",
         balance,
       },
       ...bankAccounts.map((b) => ({
@@ -226,10 +226,10 @@ function TreasuryPageInner() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Treasury</h1>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold text-slate-900">الخزينة</h1>
           <p className="mt-1 text-slate-500">
-            Cash safe, digital bank balances, and fund transfers
+            أرصدة الخزينة والحسابات البنكية والتحويلات
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -246,13 +246,13 @@ function TreasuryPageInner() {
             className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900 hover:bg-sky-100"
           >
             <ArrowLeftRight className="h-4 w-4" />
-            تحويل داخلي · Internal Transfer
+            تحويل داخلي
           </button>
           <Link
             href="/dashboard/expenses"
             className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Manage Expenses
+            إدارة المصروفات
           </Link>
         </div>
       </div>
@@ -266,15 +266,15 @@ function TreasuryPageInner() {
       <div className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-8 text-white shadow-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-slate-400">
-              Current Treasury Balance (Cash)
+            <p className="text-sm font-medium tracking-wide text-slate-400">
+              الرصيد الحالي للخزينة
             </p>
             <p className="mt-2 text-4xl font-bold tabular-nums tracking-tight sm:text-5xl">
               {isLoading ? "…" : formatEGP(balance)}
             </p>
             {updatedAt && (
               <p className="mt-3 text-xs text-slate-500">
-                Updated {new Date(updatedAt).toLocaleString()}
+                آخر تحديث {new Date(updatedAt).toLocaleString()}
               </p>
             )}
           </div>
@@ -283,25 +283,25 @@ function TreasuryPageInner() {
               type="button"
               onClick={() => {
                 resetForm();
-                setDescription("Starting Capital");
+                setDescription("رأس المال الافتتاحي");
                 setDepositOpen(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
             >
               <Plus className="h-4 w-4" />
-              إيداع رصيد · Add Funds
+              إيداع رصيد
             </button>
             <button
               type="button"
               onClick={() => {
                 resetForm();
-                setDescription("Owner withdrawal");
+                setDescription("سحب المالك");
                 setWithdrawOpen(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl border-2 border-orange-400 bg-transparent px-4 py-2.5 text-sm font-semibold text-orange-300 hover:bg-orange-500/15 hover:text-orange-200"
             >
               <ArrowDownToLine className="h-4 w-4" />
-              سحب رصيد · Withdraw Funds
+              سحب رصيد
             </button>
           </div>
         </div>
@@ -310,18 +310,18 @@ function TreasuryPageInner() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            Bank Accounts
+            الحسابات البنكية
           </h2>
           <p className="text-xs text-slate-500">
-            Digital channels — filled automatically when a POS shift closes
+            القنوات الرقمية — تُحدَّث تلقائياً عند إغلاق الوردية
           </p>
         </div>
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading ? (
-            <p className="text-sm text-slate-400">Loading…</p>
+            <p className="text-sm text-slate-400">جاري التحميل…</p>
           ) : bankAccounts.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No bank accounts — run db:seed
+              لا توجد حسابات بنكية — نفّذ db:seed
             </p>
           ) : (
             bankAccounts.map((b) => (
@@ -347,18 +347,18 @@ function TreasuryPageInner() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            Cash ledger (Treasury)
+            سجل حركة الخزينة
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Reference</th>
+                <th className="px-4 py-3">التاريخ</th>
+                <th className="px-4 py-3">النوع</th>
+                <th className="px-4 py-3 text-right">المبلغ</th>
+                <th className="px-4 py-3">البيان</th>
+                <th className="px-4 py-3">المرجع</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -368,7 +368,7 @@ function TreasuryPageInner() {
                     colSpan={5}
                     className="px-4 py-10 text-center text-slate-400"
                   >
-                    Loading…
+                    جاري التحميل…
                   </td>
                 </tr>
               ) : transactions.length === 0 ? (
@@ -377,8 +377,8 @@ function TreasuryPageInner() {
                     colSpan={5}
                     className="px-4 py-10 text-center text-slate-400"
                   >
-                    No treasury movements yet. Use Add Funds to inject starting
-                    capital.
+                    لا توجد حركات خزينة بعد. استخدم إيداع رصيد لإضافة رأس المال
+                    الافتتاحي.
                   </td>
                 </tr>
               ) : (
@@ -427,8 +427,8 @@ function TreasuryPageInner() {
 
       {depositOpen && (
         <ModalShell
-          title="إيداع رصيد · Add Funds"
-          subtitle="Manual deposit into the master safe"
+          title="إيداع رصيد"
+          subtitle="إيداع يدوي في الخزينة الرئيسية"
           onClose={() => setDepositOpen(false)}
         >
           <form
@@ -443,15 +443,15 @@ function TreasuryPageInner() {
             <DescField
               value={description}
               onChange={setDescription}
-              placeholder="e.g. Starting Capital or Owner Injection"
+              placeholder="مثال: رأس المال الافتتاحي أو ضخ ملكية"
               focusClass="focus:border-emerald-500 focus:ring-emerald-500/20"
             />
             {formError && <FormError message={formError} />}
             <FormActions
               onCancel={() => setDepositOpen(false)}
               saving={isSaving}
-              saveLabel="Confirm Deposit"
-              savingLabel="Depositing…"
+              saveLabel="تأكيد الإيداع"
+              savingLabel="جاري الإيداع…"
               saveClass="bg-emerald-600 hover:bg-emerald-700"
             />
           </form>
@@ -460,8 +460,8 @@ function TreasuryPageInner() {
 
       {withdrawOpen && (
         <ModalShell
-          title="سحب رصيد · Withdraw Funds"
-          subtitle="Owner withdrawal (not an expense)"
+          title="سحب رصيد"
+          subtitle="سحب للمالك (ليس مصروفاً)"
           onClose={() => setWithdrawOpen(false)}
         >
           <form
@@ -469,7 +469,7 @@ function TreasuryPageInner() {
             className="space-y-4 px-5 py-4"
           >
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-              Available balance:{" "}
+              الرصيد المتاح:{" "}
               <span className="font-semibold tabular-nums text-slate-900">
                 {formatEGP(balance)}
               </span>
@@ -483,15 +483,15 @@ function TreasuryPageInner() {
             <DescField
               value={description}
               onChange={setDescription}
-              placeholder="e.g. Owner withdrawal"
+              placeholder="مثال: سحب المالك"
               focusClass="focus:border-orange-500 focus:ring-orange-500/20"
             />
             {formError && <FormError message={formError} />}
             <FormActions
               onCancel={() => setWithdrawOpen(false)}
               saving={isSaving}
-              saveLabel="Confirm Withdrawal"
-              savingLabel="Withdrawing…"
+              saveLabel="تأكيد السحب"
+              savingLabel="جاري السحب…"
               saveClass="bg-orange-600 hover:bg-orange-700"
             />
           </form>
@@ -500,8 +500,8 @@ function TreasuryPageInner() {
 
       {transferOpen && (
         <ModalShell
-          title="تحويل داخلي · Internal Transfer"
-          subtitle="Move funds between cash safe and bank accounts"
+          title="تحويل داخلي"
+          subtitle="نقل الأرصدة بين الخزينة والحسابات البنكية"
           onClose={() => setTransferOpen(false)}
         >
           <form
@@ -510,7 +510,7 @@ function TreasuryPageInner() {
           >
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">
-                From
+                من
               </span>
               <select
                 value={fromSide}
@@ -526,7 +526,7 @@ function TreasuryPageInner() {
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">
-                To
+                إلى
               </span>
               <select
                 value={toSide}
@@ -549,8 +549,8 @@ function TreasuryPageInner() {
             <FormActions
               onCancel={() => setTransferOpen(false)}
               saving={isSaving}
-              saveLabel="Confirm Transfer"
-              savingLabel="Transferring…"
+              saveLabel="تأكيد التحويل"
+              savingLabel="جاري التحويل…"
               saveClass="bg-sky-600 hover:bg-sky-700"
             />
           </form>
@@ -607,7 +607,7 @@ function AmountField({
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">
-        Amount (EGP)
+        المبلغ (ج.م)
       </span>
       <input
         required
@@ -642,7 +642,7 @@ function DescField({
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">
-        Description
+        البيان
       </span>
       <input
         required
@@ -686,7 +686,7 @@ function FormActions({
         onClick={onCancel}
         className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
       >
-        Cancel
+        إلغاء
       </button>
       <button
         type="submit"

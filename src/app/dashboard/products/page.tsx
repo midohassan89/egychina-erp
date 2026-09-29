@@ -468,10 +468,10 @@ function ProductsManagement() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Products Management
+            إدارة المنتجات
           </h1>
           <p className="mt-1 text-slate-500">
-            Local ERP catalog
+            كتالوج المنتجات المحلي
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -482,7 +482,7 @@ function ProductsManagement() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 <Plus className="h-4 w-4" />
-                Create New Product
+                إضافة جديد
               </Link>
             </>
           )}
@@ -530,7 +530,7 @@ function ProductsManagement() {
                   type="search"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search by name or barcode…"
+                  placeholder="بحث بالاسم أو الباركود…"
                   className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -539,7 +539,7 @@ function ProductsManagement() {
                   type="submit"
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
                 >
-                  Search
+                  بحث
                 </button>
                 {query && (
                   <button
@@ -547,7 +547,7 @@ function ProductsManagement() {
                     onClick={handleClearSearch}
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
                   >
-                    Clear
+                    إلغاء
                   </button>
                 )}
               </div>
@@ -555,7 +555,7 @@ function ProductsManagement() {
 
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-sm text-slate-600">
-                <span className="whitespace-nowrap font-medium">Stock</span>
+                <span className="whitespace-nowrap font-medium">المخزون</span>
                 <select
                   value={stockFilter}
                   onChange={(e) =>
@@ -563,9 +563,9 @@ function ProductsManagement() {
                   }
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 >
-                  <option value="all">All</option>
-                  <option value="instock">In Stock</option>
-                  <option value="outofstock">Out of Stock</option>
+                  <option value="all">الكل</option>
+                  <option value="instock">متوفر</option>
+                  <option value="outofstock">غير متوفر</option>
                 </select>
               </label>
 
@@ -578,7 +578,7 @@ function ProductsManagement() {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
-                    Export to Excel
+                    تصدير Excel
                   </button>
                   <button
                     type="button"
@@ -587,7 +587,7 @@ function ProductsManagement() {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                   >
                     <Upload className="h-4 w-4" />
-                    Import Excel
+                    استيراد Excel
                   </button>
                   <input
                     ref={importInputRef}
@@ -605,12 +605,12 @@ function ProductsManagement() {
           </div>
           <p className="text-sm text-slate-500">
             {isLoading || isPending
-              ? "Loading…"
-              : `${total.toLocaleString()} ${view === "trash" ? "in trash" : `product${total === 1 ? "" : "s"}`}`}
+              ? "جاري التحميل…"
+              : `${total.toLocaleString("ar-EG")} ${view === "trash" ? "في سلة المهملات" : "منتج"}`}
             {stockFilter !== "all" ? (
               <span className="text-slate-400">
                 {" "}
-                · {stockFilter === "instock" ? "In Stock" : "Out of Stock"}
+                · {stockFilter === "instock" ? "متوفر" : "غير متوفر"}
               </span>
             ) : null}
           </p>
@@ -627,15 +627,15 @@ function ProductsManagement() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-semibold">★</th>
-                <th className="px-4 py-3 font-semibold">Image</th>
-                <th className="px-4 py-3 font-semibold">Product Name</th>
-                <th className="px-4 py-3 font-semibold">Barcode</th>
-                <th className="px-4 py-3 font-semibold">SKU</th>
-                <th className="px-4 py-3 font-semibold">Price (EGP)</th>
-                <th className="px-4 py-3 font-semibold">Sale Price</th>
-                <th className="px-4 py-3 font-semibold">Stock Status</th>
-                <th className="px-4 py-3 font-semibold">Stock Qty</th>
-                <th className="px-4 py-3 font-semibold">Actions</th>
+                <th className="px-4 py-3 font-semibold">الصورة</th>
+                <th className="px-4 py-3 font-semibold">اسم المنتج</th>
+                <th className="px-4 py-3 font-semibold">الباركود</th>
+                <th className="px-4 py-3 font-semibold">كود الصنف</th>
+                <th className="px-4 py-3 font-semibold">السعر</th>
+                <th className="px-4 py-3 font-semibold">سعر التخفيض</th>
+                <th className="px-4 py-3 font-semibold">حالة المخزون</th>
+                <th className="px-4 py-3 font-semibold">الكمية</th>
+                <th className="px-4 py-3 font-semibold">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -645,7 +645,7 @@ function ProductsManagement() {
                     colSpan={colSpan}
                     className="px-4 py-16 text-center text-slate-400"
                   >
-                    Loading products…
+                    جاري تحميل المنتجات…
                   </td>
                 </tr>
               ) : products.length === 0 ? (
@@ -653,7 +653,7 @@ function ProductsManagement() {
                   <td colSpan={colSpan} className="px-4 py-16 text-center">
                     <Package className="mx-auto h-10 w-10 text-slate-300" />
                     <p className="mt-3 font-medium text-slate-600">
-                      {view === "trash" ? "Trash is empty" : "No products found"}
+                      {view === "trash" ? "سلة المهملات فارغة" : "لا توجد منتجات"}
                     </p>
                   </td>
                 </tr>
@@ -682,8 +682,8 @@ function ProductsManagement() {
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             {total === 0
-              ? "No results"
-              : `Showing ${from}–${to} of ${total.toLocaleString()}`}
+              ? "لا نتائج"
+              : `عرض ${from}–${to} من ${total.toLocaleString("ar-EG")}`}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -693,10 +693,10 @@ function ProductsManagement() {
               className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
-              Prev
+              السابق
             </button>
             <span className="min-w-[5.5rem] text-center text-sm tabular-nums text-slate-600">
-              Page {page} / {pageCount}
+              صفحة {page} / {pageCount}
             </span>
             <button
               type="button"
@@ -704,7 +704,7 @@ function ProductsManagement() {
               onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
               className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Next
+              التالي
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -934,8 +934,8 @@ function ProductRow({
             className="inline-flex items-center gap-2"
             title={
               inStock
-                ? "In Stock — click for Out of Stock"
-                : "Out of Stock — click for In Stock"
+                ? "متوفر — اضغط لتعليم غير متوفر"
+                : "غير متوفر — اضغط لتعليم متوفر"
             }
           >
             <span
@@ -957,12 +957,12 @@ function ProductRow({
                 inStock ? "text-emerald-700" : "text-slate-500",
               )}
             >
-              {inStock ? "In Stock" : "Out of Stock"}
+              {inStock ? "متوفر" : "غير متوفر"}
             </span>
           </button>
         ) : (
           <span className="text-xs font-semibold text-slate-500">
-            {inStock ? "In Stock" : "Out of Stock"}
+            {inStock ? "متوفر" : "غير متوفر"}
           </span>
         )}
       </td>
@@ -1004,13 +1004,13 @@ function ProductRow({
                 className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
               >
                 <Pencil className="h-3 w-3" />
-                Edit
+                تعديل
               </button>
               <Link
                 href={`/dashboard/products/${product.id}`}
                 className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
               >
-                Ledger
+                كارت الصنف
               </Link>
               <button
                 type="button"
@@ -1019,7 +1019,7 @@ function ProductRow({
                 className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="h-3 w-3" />
-                Delete
+                حذف
               </button>
             </>
           ) : (
@@ -1038,7 +1038,7 @@ function ProductRow({
                 onClick={onPermanentDelete}
                 className="rounded-md border border-red-300 bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
               >
-                Permanently Delete
+                حذف نهائي
               </button>
             </>
           )}

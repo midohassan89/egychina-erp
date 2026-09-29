@@ -232,7 +232,7 @@ export default function NewPurchaseInvoicePage() {
   return (
     <Suspense
       fallback={
-        <p className="text-sm text-slate-500">Loading purchase form…</p>
+        <p className="text-sm text-slate-500">جاري تحميل نموذج المشتريات…</p>
       }
     >
       <NewPurchaseInvoicePageInner />
@@ -409,6 +409,12 @@ function NewPurchaseInvoicePageInner() {
   const dueAmount = roundMoney(Math.max(0, totalAmount - paid));
   const previewStatus =
     dueAmount <= 0.001 ? "PAID" : paid > 0.001 ? "PARTIAL" : "UNPAID";
+  const previewStatusLabel =
+    previewStatus === "PAID"
+      ? "مدفوعة"
+      : previewStatus === "PARTIAL"
+        ? "جزئية"
+        : "غير مدفوعة";
 
   const addProduct = useCallback(async (product: ProductOption) => {
     const lastPieceCost = await fetchLastPurchaseCost(product.id);
@@ -956,17 +962,17 @@ function NewPurchaseInvoicePageInner() {
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
         >
           <ArrowLeft className="h-4 w-4" />
-          Purchases
+          المشتريات
         </Link>
       </div>
 
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          New Purchase Invoice
+          فاتورة مشتريات جديدة
         </h1>
         <p className="mt-1 text-slate-500">
-          Scan or search a product, press Enter to add it, then enter quantity
-          and cost. Receiving stock syncs to WooCommerce in one batch.
+          امسح أو ابحث عن منتج، اضغط Enter لإضافته، ثم أدخل الكمية والتكلفة.
+          استلام المخزون يُزامن مع ووكومرس دفعة واحدة.
         </p>
       </div>
 
@@ -974,7 +980,7 @@ function NewPurchaseInvoicePageInner() {
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3">
           <label className="block sm:col-span-1">
             <span className="mb-1 block text-sm font-medium text-slate-700">
-              Supplier
+              المورد
             </span>
             <select
               required
@@ -982,7 +988,7 @@ function NewPurchaseInvoicePageInner() {
               onChange={(e) => setSupplierId(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
-              <option value="">Select supplier…</option>
+              <option value="">اختر المورد…</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -994,26 +1000,26 @@ function NewPurchaseInvoicePageInner() {
                 href="/dashboard/suppliers"
                 className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline"
               >
-                Create a supplier first
+                أنشئ مورداً أولاً
               </Link>
             )}
           </label>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
-              Invoice # (optional)
+              رقم الفاتورة (اختياري)
             </span>
             <input
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-              placeholder="Supplier reference"
+              placeholder="مرجع المورد"
             />
           </label>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
-              Date
+              التاريخ
             </span>
             <input
               type="date"
@@ -1026,7 +1032,7 @@ function NewPurchaseInvoicePageInner() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-800">Line items</h2>
+          <h2 className="text-sm font-semibold text-slate-800">بنود الفاتورة</h2>
           <div className="relative mt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -1035,7 +1041,7 @@ function NewPurchaseInvoicePageInner() {
               value={productQuery}
               onChange={(e) => setProductQuery(e.target.value)}
               onKeyDown={(e) => void handleSearchKeyDown(e)}
-              placeholder="Scan barcode or search name / SKU — press Enter to add"
+              placeholder="امسح الباركود أو ابحث بالاسم / كود الصنف — اضغط Enter للإضافة"
               className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               autoComplete="off"
             />
@@ -1044,12 +1050,12 @@ function NewPurchaseInvoicePageInner() {
               <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {searching && productHits.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-400">
-                    Searching…
+                    جاري البحث…
                   </li>
                 ) : productHits.length === 0 ? (
                   <li className="p-2">
                     <p className="px-2 py-1.5 text-sm text-slate-500">
-                      No products match “{productQuery.trim()}”
+                      لا توجد منتجات مطابقة لـ «{productQuery.trim()}»
                     </p>
                     <button
                       type="button"
@@ -1060,7 +1066,7 @@ function NewPurchaseInvoicePageInner() {
                       className="flex w-full items-center gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-left text-sm font-semibold text-brand-800 hover:bg-brand-100"
                     >
                       <Plus className="h-4 w-4 shrink-0" />
-                      Add New Product
+                      إضافة منتج جديد
                     </button>
                   </li>
                 ) : (
@@ -1076,7 +1082,7 @@ function NewPurchaseInvoicePageInner() {
                             {p.name}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {p.barcode || p.sku || `WC #${p.wcId}`} · stock{" "}
+                            {p.barcode || p.sku || `WC #${p.wcId}`} · المخزون{" "}
                             {p.stockQuantity}
                           </span>
                         </span>
@@ -1093,38 +1099,38 @@ function NewPurchaseInvoicePageInner() {
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
                 <tr>
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="w-24 py-2 px-2">Packs</th>
+                  <th className="py-2 pr-3">المنتج</th>
+                  <th className="w-24 py-2 px-2">كراتين</th>
                   <th className="w-28 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-slate-600">
                       <Boxes className="h-3.5 w-3.5" />
-                      Pack size
+                      حجم الكرتونة
                     </span>
                   </th>
                   <th className="w-32 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-slate-500">
                       <Wallet className="h-3.5 w-3.5" />
-                      Pack cost
+                      تكلفة الكرتونة
                     </span>
                   </th>
-                  <th className="w-28 py-2 px-2">Line total</th>
-                  <th className="w-36 py-2 px-2">To stock</th>
+                  <th className="w-28 py-2 px-2">إجمالي البند</th>
+                  <th className="w-36 py-2 px-2">للمخزون</th>
                   <th className="w-36 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-blue-700">
                       <Tag className="h-3.5 w-3.5" />
-                      Regular price
+                      السعر العادي
                     </span>
                   </th>
                   <th className="w-40 py-2 px-2">
                     <span className="inline-flex items-center gap-1 text-amber-700">
                       <BadgePercent className="h-3.5 w-3.5" />
-                      Sale price
+                      سعر التخفيض
                     </span>
                   </th>
                   <th className="w-28 py-2 px-2">
                     <span className="inline-flex items-center gap-1">
                       <Percent className="h-3.5 w-3.5" />
-                      Margin
+                      هامش الربح
                     </span>
                   </th>
                   <th className="w-12 py-2" />
@@ -1134,7 +1140,7 @@ function NewPurchaseInvoicePageInner() {
                 {lines.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-8 text-center text-slate-400">
-                      Scan or search and press Enter to add products
+                      امسح أو ابحث واضغط Enter لإضافة المنتجات
                     </td>
                   </tr>
                 ) : (
@@ -1260,10 +1266,10 @@ function NewPurchaseInvoicePageInner() {
                           return (
                             <div className="leading-tight">
                               <p className="font-semibold tabular-nums text-slate-900">
-                                {pieces} pcs
+                                {pieces} قطعة
                               </p>
                               <p className="text-xs tabular-nums text-slate-500">
-                                {formatEGP(pieceCost)} / pc
+                                {formatEGP(pieceCost)} / قطعة
                               </p>
                             </div>
                           );
@@ -1390,7 +1396,7 @@ function NewPurchaseInvoicePageInner() {
           <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-500">
-                Invoice total
+                إجمالي الفاتورة
               </span>
               <span className="text-2xl font-bold tabular-nums text-slate-900">
                 {formatEGP(totalAmount)}
@@ -1399,7 +1405,7 @@ function NewPurchaseInvoicePageInner() {
 
             <label className="block max-w-xs">
               <span className="mb-1 block text-sm font-medium text-slate-700">
-                Amount paid now (EGP)
+                المبلغ المدفوع الآن (ج.م)
               </span>
               <input
                 type="number"
@@ -1413,13 +1419,13 @@ function NewPurchaseInvoicePageInner() {
 
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
               <span className="text-slate-600">
-                Due / A/P increase:{" "}
+                المستحق / زيادة الذمم:{" "}
                 <strong className="tabular-nums text-slate-900">
                   {formatEGP(dueAmount)}
                 </strong>
               </span>
               <span className="font-semibold text-slate-800">
-                Status: {previewStatus}
+                الحالة: {previewStatusLabel}
               </span>
             </div>
           </div>
@@ -1441,14 +1447,14 @@ function NewPurchaseInvoicePageInner() {
             href="/dashboard/purchases"
             className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Cancel
+            إلغاء
           </Link>
           <button
             type="submit"
             disabled={isSubmitting}
             className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
           >
-            {isSubmitting ? "Saving…" : "Save & Restock"}
+            {isSubmitting ? "جاري الحفظ…" : "حفظ وإضافة للمخزون"}
           </button>
         </div>
       </form>

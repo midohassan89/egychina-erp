@@ -90,7 +90,7 @@ export function ProductEditModal({
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Edit product
+              تعديل المنتج
             </h2>
             <p className="text-xs text-slate-400">WC #{product.wcId}</p>
           </div>
@@ -261,7 +261,7 @@ export function ProductEditModal({
               disabled={isSaving}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
-              Cancel
+              إلغاء
             </button>
             <button
               type="submit"
@@ -275,7 +275,7 @@ export function ProductEditModal({
               }
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {isSaving ? "Saving…" : "Save changes"}
+              {isSaving ? "جاري الحفظ…" : "حفظ"}
             </button>
           </div>
         </form>

@@ -25,6 +25,7 @@ export function cartToSaleLines(lines: CartLine[]): SaleLine[] {
     return {
       productId: line.product.id,
       name: line.product.name,
+      nameZh: line.product.nameZh?.trim() || null,
       sku: line.product.sku ?? "",
       qty: signedQty,
       unitPrice: line.unitPrice,

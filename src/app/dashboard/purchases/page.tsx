@@ -40,6 +40,13 @@ interface InvoiceDetail {
   items: InvoiceDetailItem[];
 }
 
+function statusLabel(status: string) {
+  if (status === "PAID") return "مدفوع";
+  if (status === "PARTIAL") return "مدفوع جزئياً";
+  if (status === "UNPAID") return "غير مدفوع";
+  return status;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "PAID"
@@ -55,7 +62,7 @@ function StatusBadge({ status }: { status: string }) {
         tone,
       )}
     >
-      {status}
+      {statusLabel(status)}
     </span>
   );
 }
@@ -202,10 +209,10 @@ export default function PurchasesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Purchases</h1>
+        <div className="text-right">
+          <h1 className="text-2xl font-bold text-slate-900">المشتريات</h1>
           <p className="mt-1 text-slate-500">
-            Purchase history, payment status, and stock-receiving invoices
+            سجل فواتير المشتريات وحالة الدفع والاستلام
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -213,14 +220,14 @@ export default function PurchasesPage() {
             href="/dashboard/purchases/returns"
             className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100"
           >
-            Purchase Returns
+            مرتجعات المشتريات
           </Link>
           <Link
             href="/dashboard/purchases/new"
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <Plus className="h-4 w-4" />
-            New Purchase Invoice
+            فاتورة مشتريات جديدة
           </Link>
         </div>
       </div>
@@ -234,15 +241,15 @@ export default function PurchasesPage() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Supplier</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-right">Paid</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">رقم الفاتورة</th>
+                <th className="px-4 py-3">التاريخ</th>
+                <th className="px-4 py-3">المورد</th>
+                <th className="px-4 py-3 text-right">الإجمالي</th>
+                <th className="px-4 py-3 text-right">المدفوع</th>
+                <th className="px-4 py-3">الحالة</th>
+                <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -309,7 +316,7 @@ export default function PurchasesPage() {
                               title="تعديل فاتورة مشتريات"
                             >
                               <Pencil className="h-3.5 w-3.5" />
-                              Edit
+                              تعديل
                             </Link>
                           )}
                           <button
@@ -318,7 +325,7 @@ export default function PurchasesPage() {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            View Details
+                            عرض التفاصيل
                           </button>
                         </div>
                       </td>
@@ -454,7 +461,7 @@ export default function PurchasesPage() {
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Invoice details
+                  تفاصيل الفاتورة
                 </h2>
                 {detail && (
                   <p className="text-sm text-slate-500">
@@ -489,25 +496,25 @@ export default function PurchasesPage() {
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-4">
                     <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">Date</p>
+                      <p className="text-xs text-slate-500">التاريخ</p>
                       <p className="font-medium text-slate-900">
                         {new Date(detail.date).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">Total</p>
+                      <p className="text-xs text-slate-500">الإجمالي</p>
                       <p className="font-semibold tabular-nums text-slate-900">
                         {formatEGP(detail.totalAmount)}
                       </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">Paid</p>
+                      <p className="text-xs text-slate-500">المدفوع</p>
                       <p className="font-semibold tabular-nums text-slate-900">
                         {formatEGP(detail.paidAmount)}
                       </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">Status</p>
+                      <p className="text-xs text-slate-500">الحالة</p>
                       <div className="mt-0.5">
                         <StatusBadge status={detail.status} />
                       </div>

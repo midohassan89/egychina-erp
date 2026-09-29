@@ -42,7 +42,12 @@ export async function GET(request: Request) {
     const sale = await prisma.sale.findUnique({
       where: { id },
       include: {
-        lines: { orderBy: { id: "asc" } },
+        lines: {
+          orderBy: { id: "asc" },
+          include: {
+            product: { select: { nameZh: true, sku: true } },
+          },
+        },
         user: { select: { id: true, username: true } },
       },
     });
