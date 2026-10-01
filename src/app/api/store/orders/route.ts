@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
   applySaleStockChanges,
@@ -45,19 +46,37 @@ async function sendWhatsApp(phone: string, message: string) {
 }
 
 function apiKeyMatches(provided: string, expected: string): boolean {
-  const providedBytes = Buffer.from(provided);
-  const expectedBytes = Buffer.from(expected);
-  if (providedBytes.length === 0 || providedBytes.length !== expectedBytes.length) {
+  const a = provided.trim();
+  const b = expected.trim();
+  const providedBytes = Buffer.from(a);
+  const expectedBytes = Buffer.from(b);
+  if (
+    providedBytes.length === 0 ||
+    providedBytes.length !== expectedBytes.length
+  ) {
     return false;
   }
   return timingSafeEqual(providedBytes, expectedBytes);
 }
 
-/** POST /api/store/orders — storefront checkout. Requires x-api-key. */
-export async function POST(request: Request) {
+async function isAuthorizedStoreRequest(request: Request): Promise<boolean> {
   const expectedKey = process.env.STORE_API_KEY ?? "";
-  const providedKey = request.headers.get("x-api-key") ?? "";
-  if (!expectedKey || !apiKeyMatches(providedKey, expectedKey)) {
+  const providedKey =
+    request.headers.get("x-api-key") ??
+    request.headers.get("X-API-KEY") ??
+    "";
+
+  if (expectedKey && apiKeyMatches(providedKey, expectedKey)) {
+    return true;
+  }
+
+  const session = await auth();
+  return Boolean(session?.user);
+}
+
+/** POST /api/store/orders — storefront checkout. Auth: x-api-key OR NextAuth session. */
+export async function POST(request: Request) {
+  if (!(await isAuthorizedStoreRequest(request))) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401, headers: corsHeaders },
