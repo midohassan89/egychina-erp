@@ -6,6 +6,7 @@ import {
   applySaleStockChanges,
   syncSaleStockRows,
 } from "@/lib/pos/applySaleStock";
+import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
 
 const POINTS_PER_EGP = 10;
@@ -14,7 +15,7 @@ const SHIPPING_FEES = new Set([0, 50, 60, 80]);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
@@ -91,6 +92,97 @@ async function isAuthorizedStoreRequest(request: Request): Promise<boolean> {
   return Boolean(session?.user);
 }
 
+function requireStoreApiKey(request: Request): boolean {
+  const expectedKey = cleanEnvSecret(process.env.STORE_API_KEY);
+  const providedKey = cleanEnvSecret(
+    request.headers.get("x-api-key") ??
+      request.headers.get("X-API-KEY") ??
+      "",
+  );
+  return Boolean(expectedKey && apiKeyMatches(providedKey, expectedKey));
+}
+
+/**
+ * GET /api/store/orders?phone=01…
+ * Returns past orders for a customer phone. Requires x-api-key.
+ */
+export async function GET(request: Request) {
+  if (!requireStoreApiKey(request)) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: corsHeaders },
+    );
+  }
+
+  try {
+    const phoneRaw =
+      new URL(request.url).searchParams.get("phone")?.trim() ?? "";
+    const phone = normalizeLoyaltyPhone(phoneRaw);
+    if (!phone) {
+      return NextResponse.json(
+        { error: "phone is required" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { phone },
+          { phone: phoneRaw },
+          { phone: { contains: phone.slice(-10) } },
+          {
+            customer: {
+              OR: [
+                { phone },
+                { phone: { contains: phone.slice(-10) } },
+              ],
+            },
+          },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: {
+            product: { select: { id: true, name: true, imageUrl: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        orders: orders.map((order) => ({
+          id: order.id,
+          customerName: order.customerName,
+          phone: order.phone,
+          address: order.address,
+          notes: order.notes,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          createdAt: order.createdAt.toISOString(),
+          items: order.items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.product.name,
+            imageUrl: item.product.imageUrl,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        })),
+      },
+      { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    console.error("[api/store/orders GET]", error);
+    return NextResponse.json(
+      { error: "Could not load orders" },
+      { status: 500, headers: corsHeaders },
+    );
+  }
+}
+
 /** POST /api/store/orders — storefront checkout. Auth: x-api-key OR NextAuth session. */
 export async function POST(request: Request) {
   if (!(await isAuthorizedStoreRequest(request))) {
@@ -118,6 +210,8 @@ export async function POST(request: Request) {
       shippingFee?: unknown;
       customerId?: unknown;
       pointsRedeemed?: unknown;
+      expoPushToken?: unknown;
+      pushToken?: unknown;
       items?: unknown;
       customer?: {
         phone?: unknown;
@@ -126,6 +220,8 @@ export async function POST(request: Request) {
         name?: unknown;
         fullName?: unknown;
         address?: unknown;
+        expoPushToken?: unknown;
+        pushToken?: unknown;
       };
     };
 
@@ -165,6 +261,12 @@ export async function POST(request: Request) {
     const notesRaw = pickString(body.notes, body.instructions);
     const notes = notesRaw || null;
     const finalTotal = Number(body.totalPrice ?? body.totalAmount ?? 0);
+    const expoPushToken = pickString(
+      nested.expoPushToken,
+      nested.pushToken,
+      body.expoPushToken,
+      body.pushToken,
+    );
 
     if (!finalPhone) {
       return NextResponse.json(
@@ -219,7 +321,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const customerId = typeof body.customerId === "string" ? body.customerId.trim() : "";
+    let customerId =
+      typeof body.customerId === "string" ? body.customerId.trim() : "";
     const isGuest = customerId.length === 0;
     const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -277,56 +380,92 @@ export async function POST(request: Request) {
       price: item.price,
     }));
     const order = await prisma.$transaction(async (tx) => {
-      if (!isGuest) {
-        const customer = await tx.customer.findUnique({
-          where: { id: customerId },
-          select: { id: true, pointsBalance: true },
-        });
+      const normalizedPhone = normalizeLoyaltyPhone(finalPhone);
+      let linkedCustomerId = customerId || null;
+
+      // Resolve / create Customer so expoPushToken can be stored for status pushes
+      if (normalizedPhone || linkedCustomerId) {
+        let customer = linkedCustomerId
+          ? await tx.customer.findUnique({
+              where: { id: linkedCustomerId },
+              select: { id: true, pointsBalance: true },
+            })
+          : null;
+
+        if (!customer && normalizedPhone) {
+          customer = await tx.customer.findFirst({
+            where: {
+              OR: [
+                { phone: normalizedPhone },
+                { phone: finalPhone },
+                { phone: { contains: normalizedPhone.slice(-10) } },
+              ],
+            },
+            select: { id: true, pointsBalance: true },
+          });
+        }
+
+        if (!customer && normalizedPhone) {
+          customer = await tx.customer.create({
+            data: {
+              phone: normalizedPhone,
+              name: finalName,
+              ...(expoPushToken ? { expoPushToken } : {}),
+            },
+            select: { id: true, pointsBalance: true },
+          });
+        }
 
         if (!customer) {
-          throw new Error("Customer not found");
-        }
+          if (!isGuest) throw new Error("Customer not found");
+        } else {
+          linkedCustomerId = customer.id;
 
-        if (pointsRedeemed > customer.pointsBalance) {
-          throw new Error("Insufficient points");
+          if (!isGuest) {
+            if (pointsRedeemed > customer.pointsBalance) {
+              throw new Error("Insufficient points");
+            }
+            await tx.customer.update({
+              where: { id: customer.id },
+              data: {
+                name: finalName || undefined,
+                pointsBalance:
+                  customer.pointsBalance - pointsRedeemed + (pointsEarned ?? 0),
+                ...(expoPushToken ? { expoPushToken } : {}),
+              },
+            });
+          } else if (expoPushToken || finalName) {
+            await tx.customer.update({
+              where: { id: customer.id },
+              data: {
+                ...(finalName ? { name: finalName } : {}),
+                ...(expoPushToken ? { expoPushToken } : {}),
+              },
+            });
+          }
         }
-
-        await tx.customer.update({
-          where: { id: customer.id },
-          data: {
-            pointsBalance: customer.pointsBalance - pointsRedeemed + (pointsEarned ?? 0),
-          },
-        });
       }
 
       const created = await tx.order.create({
-        data: isGuest
-          ? {
-              customerName: finalName,
-              phone: finalPhone,
-              address: finalAddress,
-              notes,
-              totalAmount: finalTotal,
-              items: { create: orderItems },
-            }
-          : {
-              customerName: finalName,
-              phone: finalPhone,
-              address: finalAddress,
-              notes,
-              totalAmount: finalTotal,
-              customerId,
-              pointsEarned,
-              pointsRedeemed,
-              items: { create: orderItems },
-            },
+        data: {
+          customerName: finalName,
+          phone: finalPhone,
+          address: finalAddress,
+          notes,
+          totalAmount: finalTotal,
+          ...(linkedCustomerId ? { customerId: linkedCustomerId } : {}),
+          ...(!isGuest
+            ? { pointsEarned, pointsRedeemed }
+            : {}),
+          items: { create: orderItems },
+        },
         include: { items: true },
       });
 
-      if (!isGuest && pointsRedeemed > 0) {
+      if (!isGuest && linkedCustomerId && pointsRedeemed > 0) {
         await tx.pointsTransaction.create({
           data: {
-            customerId,
+            customerId: linkedCustomerId,
             points: -pointsRedeemed,
             type: "REDEEM",
             description: `Order ${created.id}`,
@@ -334,10 +473,15 @@ export async function POST(request: Request) {
         });
       }
 
-      if (!isGuest && pointsEarned != null && pointsEarned > 0) {
+      if (
+        !isGuest &&
+        linkedCustomerId &&
+        pointsEarned != null &&
+        pointsEarned > 0
+      ) {
         await tx.pointsTransaction.create({
           data: {
-            customerId,
+            customerId: linkedCustomerId,
             points: pointsEarned,
             type: "EARN",
             description: `Order ${created.id}`,

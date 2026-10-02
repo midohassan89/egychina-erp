@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
-import { pushCopyForOrderStatus, sendExpoPush } from "@/lib/push/expo";
+import { sendExpoPush } from "@/lib/push/expo";
 
 const ORDER_STATUSES = [
   "قيد الانتظار",
@@ -31,8 +31,9 @@ export async function PATCH(
 
   try {
     const body = (await request.json()) as { status?: unknown };
-    const status = String(body.status ?? "");
-    if (!ORDER_STATUSES.includes(status as (typeof ORDER_STATUSES)[number])) {
+    const newStatus = String(body.status ?? "");
+    console.log("ADMIN STATUS UPDATE:", { orderId: id, newStatus });
+    if (!ORDER_STATUSES.includes(newStatus as (typeof ORDER_STATUSES)[number])) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
@@ -43,7 +44,7 @@ export async function PATCH(
         status: true,
         phone: true,
         customerId: true,
-        customer: { select: { expoPushToken: true, phone: true } },
+        customer: { select: { expoPushToken: true } },
       },
     });
     if (!existing) {
@@ -52,37 +53,47 @@ export async function PATCH(
 
     const order = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: { status: newStatus },
     });
 
-    // Notify mobile app when status actually changes
-    if (existing.status !== status) {
-      const copy = pushCopyForOrderStatus(status, order.id);
+    if (existing.status !== newStatus) {
       let token = existing.customer?.expoPushToken?.trim() ?? "";
 
-      // Fallback: look up customer by order phone if not linked
       if (!token && order.phone) {
+        const digits = order.phone.replace(/\D/g, "");
         const byPhone = await prisma.customer.findFirst({
-          where: { phone: { contains: order.phone.replace(/\D/g, "").slice(-10) } },
+          where: {
+            OR: [
+              { phone: order.phone },
+              ...(digits
+                ? [{ phone: { contains: digits.slice(-10) } }]
+                : []),
+            ],
+          },
           select: { expoPushToken: true },
         });
         token = byPhone?.expoPushToken?.trim() ?? "";
       }
 
-      if (copy && token) {
+      if (token) {
         const result = await sendExpoPush({
           to: token,
-          title: copy.title,
-          body: copy.body,
+          title: "تحديث حالة الطلب",
+          body: `طلبك رقم #${order.id} أصبح الآن: ${newStatus}`,
           data: {
             type: "order_status",
             orderId: order.id,
-            status,
+            status: newStatus,
           },
         });
         if (!result.ok) {
           console.error("[api/admin/orders/[id]] expo push", result.error);
         }
+      } else {
+        console.warn(
+          "[api/admin/orders/[id]] no expoPushToken for order",
+          order.id,
+        );
       }
     }
 
@@ -95,3 +106,6 @@ export async function PATCH(
     );
   }
 }
+
+/** Alias — some clients use PUT instead of PATCH. */
+export const PUT = PATCH;

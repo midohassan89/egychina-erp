@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatEGP } from "@/lib/pos/money";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
 
 export const ORDER_STATUSES = [
   "قيد الانتظار",
@@ -47,29 +48,59 @@ function formatOrderDate(iso: string): string {
   });
 }
 
-export function OrdersTable({ orders }: { orders: OrderRow[] }) {
+function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
+  const { toast } = useToast();
   const [rows, setRows] = useState(orders);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function updateStatus(id: string, status: string) {
     const previous = rows;
+    const prevStatus = previous.find((r) => r.id === id)?.status;
+    if (displayStatus(prevStatus ?? "") === status) return;
+
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, status } : row)),
     );
     setSavingId(id);
-    setError(null);
+
     try {
       const res = await fetch(`/api/admin/orders/${id}`, {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const body = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "Could not update status");
+
+      let body: { error?: string; status?: string } = {};
+      try {
+        body = (await res.json()) as { error?: string; status?: string };
+      } catch {
+        throw new Error(
+          res.status === 401 || res.redirected
+            ? "انتهت الجلسة — سجّل الدخول مرة أخرى"
+            : `فشل التحديث (HTTP ${res.status})`,
+        );
+      }
+
+      if (!res.ok) {
+        throw new Error(body.error ?? "تعذر تحديث الحالة");
+      }
+
+      if (body.status) {
+        setRows((current) =>
+          current.map((row) =>
+            row.id === id ? { ...row, status: body.status! } : row,
+          ),
+        );
+      }
+
+      toast(`تم تحديث الحالة إلى: ${status}`, "success");
     } catch (err) {
       setRows(previous);
-      setError(err instanceof Error ? err.message : "Could not update status");
+      toast(
+        err instanceof Error ? err.message : "تعذر تحديث الحالة",
+        "error",
+      );
     } finally {
       setSavingId(null);
     }
@@ -85,22 +116,17 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
 
   return (
     <div className="space-y-3">
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Customer Name</th>
-              <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Address/Notes</th>
-              <th className="px-4 py-3">Items</th>
-              <th className="px-4 py-3">Total Amount</th>
-              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">التاريخ</th>
+              <th className="px-4 py-3">العميل</th>
+              <th className="px-4 py-3">الهاتف</th>
+              <th className="px-4 py-3">العنوان / ملاحظات</th>
+              <th className="px-4 py-3">الأصناف</th>
+              <th className="px-4 py-3">الإجمالي</th>
+              <th className="px-4 py-3">الحالة</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -112,7 +138,10 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 <td className="px-4 py-3 font-medium text-slate-900">
                   {order.customerName}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-700" dir="ltr">
+                <td
+                  className="whitespace-nowrap px-4 py-3 text-slate-700"
+                  dir="ltr"
+                >
                   {order.phone}
                 </td>
                 <td className="max-w-xs px-4 py-3 text-slate-700">
@@ -138,9 +167,10 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                     <select
                       value={displayStatus(order.status)}
                       disabled={savingId === order.id}
-                      onChange={(event) =>
-                        void updateStatus(order.id, event.target.value)
-                      }
+                      onChange={(event) => {
+                        event.preventDefault();
+                        void updateStatus(order.id, event.target.value);
+                      }}
                       className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
                     >
                       {ORDER_STATUSES.map((status) => (
@@ -149,6 +179,9 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                         </option>
                       ))}
                     </select>
+                    {savingId === order.id && (
+                      <span className="text-xs text-slate-500">جاري الحفظ…</span>
+                    )}
                     <Link
                       href={`/print/order/${order.id}`}
                       target="_blank"
@@ -164,5 +197,13 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+export function OrdersTable({ orders }: { orders: OrderRow[] }) {
+  return (
+    <ToastProvider>
+      <OrdersTableInner orders={orders} />
+    </ToastProvider>
   );
 }

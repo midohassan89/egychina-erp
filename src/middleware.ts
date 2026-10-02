@@ -28,6 +28,10 @@ export default auth((req) => {
   }
 
   if (!isLoggedIn && pathname !== "/login") {
+    // API callers expect JSON 401 — not an HTML redirect to /login
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
