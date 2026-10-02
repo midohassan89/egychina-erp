@@ -321,7 +321,7 @@ export async function POST(request: Request) {
       );
     }
 
-    let customerId =
+    const customerId =
       typeof body.customerId === "string" ? body.customerId.trim() : "";
     const isGuest = customerId.length === 0;
     const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
