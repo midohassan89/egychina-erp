@@ -57,28 +57,33 @@ export async function PATCH(
     });
 
     if (existing.status !== newStatus) {
-      let token = existing.customer?.expoPushToken?.trim() ?? "";
+      // Prefer linked customer, then look up by order phone
+      let customer = existing.customerId
+        ? await prisma.customer.findUnique({
+            where: { id: existing.customerId },
+            select: { id: true, expoPushToken: true, phone: true },
+          })
+        : null;
 
-      if (!token && order.phone) {
+      if (!customer?.expoPushToken && order.phone) {
         const digits = order.phone.replace(/\D/g, "");
-        const byPhone = await prisma.customer.findFirst({
+        customer = await prisma.customer.findFirst({
           where: {
             OR: [
               { phone: order.phone },
-              ...(digits
-                ? [{ phone: { contains: digits.slice(-10) } }]
-                : []),
+              ...(digits ? [{ phone: { contains: digits.slice(-10) } }] : []),
             ],
           },
-          select: { expoPushToken: true },
+          select: { id: true, expoPushToken: true, phone: true },
         });
-        token = byPhone?.expoPushToken?.trim() ?? "";
       }
 
+      const token = customer?.expoPushToken?.trim() ?? "";
       if (token) {
         const result = await sendExpoPush({
           to: token,
-          title: "تحديث حالة الطلب",
+          sound: "default",
+          title: "تحديث حالة الطلب 📦",
           body: `طلبك رقم #${order.id} أصبح الآن: ${newStatus}`,
           data: {
             type: "order_status",
@@ -86,9 +91,12 @@ export async function PATCH(
             status: newStatus,
           },
         });
-        if (!result.ok) {
-          console.error("[api/admin/orders/[id]] expo push", result.error);
-        }
+        console.log("[api/admin/orders/[id]] expo push", {
+          orderId: order.id,
+          customerId: customer?.id,
+          ok: result.ok,
+          error: result.error,
+        });
       } else {
         console.warn(
           "[api/admin/orders/[id]] no expoPushToken for order",
