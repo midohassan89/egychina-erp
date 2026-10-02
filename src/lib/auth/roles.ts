@@ -5,6 +5,7 @@ export const ALL_ROLES = [
   "ACCOUNTANT",
   "MANAGER",
   "ADMIN",
+  "DRIVER",
 ] as const satisfies readonly AppRole[];
 
 /** Dashboard write APIs (purchases, treasury, products, etc.). */
@@ -31,6 +32,8 @@ export function canUsePos(role?: string | null): boolean {
 
 export function homeForRole(role?: string | null): string {
   if (role === "CASHIER") return "/pos";
+  /** Drivers use the mobile API only — no web home. */
+  if (role === "DRIVER") return "/login?error=driver-app-only";
   if (
     role === "ACCOUNTANT" ||
     role === "MANAGER" ||
@@ -64,10 +67,12 @@ export type NavAccess =
   | "audit"
   | "users"
   | "employees"
+  | "fleet"
   | "profile";
 
 const ROLE_NAV: Record<string, NavAccess[]> = {
   CASHIER: [],
+  DRIVER: [],
   ACCOUNTANT: [
     "overview",
     "suppliers",
@@ -90,6 +95,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "orders",
     "inventory",
     "expenses",
+    "fleet",
     "treasury",
     "reports",
     "shifts",
@@ -110,6 +116,7 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "orders",
     "inventory",
     "expenses",
+    "fleet",
     "treasury",
     "reports",
     "shifts",
@@ -133,6 +140,16 @@ export function dashboardBlockRedirect(
   pathname: string,
 ): string | null {
   if (role === "CASHIER") return "/pos";
+  if (role === "DRIVER") return "/login?error=driver-app-only";
+
+  // Fleet review — Manager and Admin only
+  if (
+    pathname.startsWith("/dashboard/fleet") &&
+    role !== "ADMIN" &&
+    role !== "MANAGER"
+  ) {
+    return "/dashboard";
+  }
 
   // Audit logs — Admin only (before general users check)
   if (

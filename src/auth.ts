@@ -22,6 +22,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user || user.status !== "ACTIVE") return null;
+        // Drivers authenticate only via POST /api/driver/login (mobile API).
+        if (user.role === "DRIVER") return null;
 
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return null;

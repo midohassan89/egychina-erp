@@ -1,6 +1,11 @@
 import type { NextAuthConfig } from "next-auth";
 
-export type AppRole = "CASHIER" | "ACCOUNTANT" | "MANAGER" | "ADMIN";
+export type AppRole =
+  | "CASHIER"
+  | "ACCOUNTANT"
+  | "MANAGER"
+  | "ADMIN"
+  | "DRIVER";
 
 /**
  * Edge-safe Auth.js config (no Prisma / Node APIs).
@@ -20,9 +25,15 @@ export const authConfig = {
       if (pathname === "/login") return true;
       if (
         pathname.startsWith("/price-checker") ||
-        pathname.startsWith("/api/price-checker")
+        pathname.startsWith("/api/price-checker") ||
+        pathname.startsWith("/api/store") ||
+        pathname.startsWith("/api/driver")
       ) {
         return true;
+      }
+      // Drivers must not use the web dashboard — only the mobile API.
+      if (auth?.user?.role === "DRIVER") {
+        return pathname === "/login";
       }
       return !!auth?.user;
     },

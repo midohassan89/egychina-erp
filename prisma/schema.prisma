@@ -12,6 +12,7 @@ enum Role {
   ACCOUNTANT
   MANAGER
   ADMIN
+  DRIVER
 }
 
 model User {
@@ -30,6 +31,8 @@ model User {
   inventoryAdjustments InventoryAdjustment[]
   sales Sale[]
   auditLogs AuditLog[]
+  driverExpenses DriverExpense[] @relation("DriverExpenses")
+  reviewedDriverExpenses DriverExpense[] @relation("DriverExpenseReviewer")
 }
 
 /// Immutable activity log for accountability (who did what).
@@ -548,4 +551,35 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+/// Driver-submitted fleet expense (fuel, toll, oil, maintenance).
+model DriverExpense {
+  id             String   @id @default(cuid())
+  driverId       String
+  driver         User     @relation("DriverExpenses", fields: [driverId], references: [id])
+  /** FUEL | TOLL | OIL | MAINTENANCE */
+  category       String
+  amount         Float
+  /** Amount accepted by admin (may differ on PARTIAL). */
+  approvedAmount Float?
+  /** PENDING | APPROVED | PARTIAL | REJECTED */
+  status         String   @default("PENDING")
+  adminNotes     String?
+  odometerImage  String?
+  pumpImage      String?
+  receiptImage   String?
+  tollImage      String?
+  /** Linked row in main Expense table after approval. */
+  linkedExpenseId Int?
+  reviewedById   String?
+  reviewedBy     User?    @relation("DriverExpenseReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([linkedExpenseId])
 }

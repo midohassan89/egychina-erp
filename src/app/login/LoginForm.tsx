@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
@@ -12,6 +12,12 @@ export default function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const urlError = useMemo(() => {
+    if (searchParams.get("error") === "driver-app-only") {
+      return "حسابات السائقين متاحة عبر تطبيق الموبايل فقط — لا يمكن الدخول للوحة التحكم.";
+    }
+    return null;
+  }, [searchParams]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -127,9 +133,9 @@ export default function LoginForm() {
             </div>
           </label>
 
-          {error && (
+          {(error || urlError) && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
+              {error ?? urlError}
             </p>
           )}
 

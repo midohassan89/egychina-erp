@@ -18,13 +18,31 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Public customer kiosk and storefront catalog — no login required
+  // Public / token-auth routes (auth enforced inside handlers)
   if (
     pathname.startsWith("/price-checker") ||
     pathname.startsWith("/api/price-checker") ||
-    pathname.startsWith("/api/store")
+    pathname.startsWith("/api/store") ||
+    pathname.startsWith("/api/driver")
   ) {
     return NextResponse.next();
+  }
+
+  // DRIVER — API-only (Bearer via /api/driver/*). Strictly no web dashboard/UI.
+  if (role === "DRIVER") {
+    if (pathname.startsWith("/api/driver")) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (pathname === "/login") {
+      return NextResponse.next();
+    }
+    // Includes all /dashboard/* and every other web route
+    return NextResponse.redirect(
+      new URL("/login?error=driver-app-only", req.nextUrl.origin),
+    );
   }
 
   if (!isLoggedIn && pathname !== "/login") {

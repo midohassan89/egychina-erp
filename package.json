@@ -31,6 +31,7 @@
     "react-dom": "^19.0.0",
     "react-simple-keyboard": "^3.8.274",
     "recharts": "^3.10.1",
+    "sharp": "^0.35.5",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

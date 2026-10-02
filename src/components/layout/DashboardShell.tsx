@@ -162,6 +162,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Receipt,
       },
       {
+        key: "fleet",
+        href: "/dashboard/fleet",
+        label: "أسطول السائقين",
+        icon: Truck,
+      },
+      {
         key: "reports",
         href: "/dashboard/reports",
         label: "التقارير",
