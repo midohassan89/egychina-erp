@@ -188,13 +188,18 @@ export async function POST(request: Request) {
     const items = body.items.map((raw) => {
       const item = raw as {
         productId?: unknown;
+        id?: unknown;
         quantity?: unknown;
+        qty?: unknown;
         price?: unknown;
+        unitPrice?: unknown;
+        lineTotal?: unknown;
       };
+      const itemPrice = Number(item.price ?? item.unitPrice ?? 0);
       return {
-        productId: String(item.productId ?? "").trim(),
-        quantity: Math.floor(Number(item.quantity)),
-        price: Number(item.price),
+        productId: String(item.productId ?? item.id ?? "").trim(),
+        quantity: Math.floor(Number(item.quantity ?? item.qty ?? 0)),
+        price: itemPrice,
       };
     });
 
