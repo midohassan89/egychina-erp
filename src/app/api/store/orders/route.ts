@@ -45,9 +45,22 @@ async function sendWhatsApp(phone: string, message: string) {
   }
 }
 
+/** Strip wrapping quotes + whitespace from .env values. */
+function cleanEnvSecret(raw: string | undefined | null): string {
+  let value = (raw ?? "").trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+  // Also drop any leftover quote characters inside the secret
+  return value.replace(/^["']+|["']+$/g, "").trim();
+}
+
 function apiKeyMatches(provided: string, expected: string): boolean {
-  const a = provided.trim();
-  const b = expected.trim();
+  const a = cleanEnvSecret(provided);
+  const b = cleanEnvSecret(expected);
   const providedBytes = Buffer.from(a);
   const expectedBytes = Buffer.from(b);
   if (
@@ -60,11 +73,15 @@ function apiKeyMatches(provided: string, expected: string): boolean {
 }
 
 async function isAuthorizedStoreRequest(request: Request): Promise<boolean> {
-  const expectedKey = process.env.STORE_API_KEY ?? "";
-  const providedKey =
+  const expectedKey = cleanEnvSecret(process.env.STORE_API_KEY);
+  const providedKey = cleanEnvSecret(
     request.headers.get("x-api-key") ??
-    request.headers.get("X-API-KEY") ??
-    "";
+      request.headers.get("X-API-KEY") ??
+      "",
+  );
+
+  // TEMP debug — remove after fixing mobile 401
+  console.log("Received Key:", providedKey, "Server Key:", expectedKey);
 
   if (expectedKey && apiKeyMatches(providedKey, expectedKey)) {
     return true;
