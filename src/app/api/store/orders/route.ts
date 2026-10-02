@@ -114,6 +114,7 @@ export async function POST(request: Request) {
       notes?: unknown;
       instructions?: unknown;
       totalAmount?: unknown;
+      totalPrice?: unknown;
       shippingFee?: unknown;
       customerId?: unknown;
       pointsRedeemed?: unknown;
@@ -124,10 +125,11 @@ export async function POST(request: Request) {
         mobile?: unknown;
         name?: unknown;
         fullName?: unknown;
+        address?: unknown;
       };
     };
 
-    // TEMP debug — inspect mobile payload keys, then remove
+    // TEMP debug — remove once mobile checkout is stable
     console.log("INCOMING ORDER BODY:", body);
 
     const pickString = (...values: unknown[]) => {
@@ -142,28 +144,27 @@ export async function POST(request: Request) {
     const nested = body.customer ?? {};
     const finalName =
       pickString(
+        nested.fullName,
+        nested.name,
         body.customerName,
         body.fullName,
         body.name,
-        nested.fullName,
-        nested.name,
       ) || "عميل المتجر";
-    const finalPhone =
-      pickString(
-        body.phone,
-        body.phoneNumber,
-        body.mobile,
-        body.contact,
-        nested.phone,
-        nested.phoneNumber,
-        nested.mobile,
-      ) || "01009972972";
+    const finalPhone = pickString(
+      nested.phone,
+      nested.phoneNumber,
+      nested.mobile,
+      body.phone,
+      body.phoneNumber,
+      body.mobile,
+      body.contact,
+    );
     const finalAddress =
-      pickString(body.address, body.deliveryAddress) ||
-      "العين السخنة - غير محدد";
+      pickString(nested.address, body.address, body.deliveryAddress) ||
+      "العين السخنة";
     const notesRaw = pickString(body.notes, body.instructions);
     const notes = notesRaw || null;
-    const totalAmount = Number(body.totalAmount);
+    const finalTotal = Number(body.totalPrice ?? body.totalAmount ?? 0);
 
     if (!finalPhone) {
       return NextResponse.json(
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
         { status: 400, headers: corsHeaders },
       );
     }
-    if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+    if (!Number.isFinite(finalTotal) || finalTotal < 0) {
       return NextResponse.json(
         { error: "totalAmount must be a non-negative number" },
         { status: 400, headers: corsHeaders },
@@ -216,18 +217,24 @@ export async function POST(request: Request) {
     const customerId = typeof body.customerId === "string" ? body.customerId.trim() : "";
     const isGuest = customerId.length === 0;
     const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
-    const shippingFee = Number(body.shippingFee ?? 0);
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const discount = isGuest ? 0 : pointsRedeemed / POINTS_FOR_ONE_EGP;
     const paidGoods = Math.max(0, subtotal - discount);
     const pointsEarned = isGuest ? null : Math.floor(paidGoods * POINTS_PER_EGP);
+
+    // Mobile often sends only totalPrice (goods + shipping) without shippingFee
+    let shippingFee = Number(body.shippingFee);
+    if (!Number.isFinite(shippingFee)) {
+      const inferred = Math.round((finalTotal - (isGuest ? subtotal : paidGoods)) * 100) / 100;
+      shippingFee = SHIPPING_FEES.has(inferred) ? inferred : 0;
+    }
 
     if (
       !Number.isInteger(pointsRedeemed) ||
       pointsRedeemed < 0 ||
       !SHIPPING_FEES.has(shippingFee) ||
       (!isGuest && discount - subtotal > 0.001) ||
-      Math.abs((isGuest ? subtotal : paidGoods) + shippingFee - totalAmount) > 0.02
+      Math.abs((isGuest ? subtotal : paidGoods) + shippingFee - finalTotal) > 0.02
     ) {
       return NextResponse.json(
         { error: "Order total does not match the calculated amount" },
@@ -294,7 +301,7 @@ export async function POST(request: Request) {
               phone: finalPhone,
               address: finalAddress,
               notes,
-              totalAmount,
+              totalAmount: finalTotal,
               items: { create: orderItems },
             }
           : {
@@ -302,7 +309,7 @@ export async function POST(request: Request) {
               phone: finalPhone,
               address: finalAddress,
               notes,
-              totalAmount,
+              totalAmount: finalTotal,
               customerId,
               pointsEarned,
               pointsRedeemed,
@@ -348,7 +355,7 @@ export async function POST(request: Request) {
 
       await persistSaleRecord(
         {
-          total: totalAmount,
+          total: finalTotal,
           paymentMethod: "store",
           customerName: finalName,
           requiresAudit: stockResult.auditReasons.length > 0,
