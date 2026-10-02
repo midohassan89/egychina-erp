@@ -3,10 +3,11 @@ import { requireDriver } from "@/lib/driver/auth";
 import { saveCompressedDriverImage } from "@/lib/driver/images";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * POST /api/driver/upload
- * Compress (max 800px wide, JPEG 70%) and store a driver expense photo.
+ * Compress (max 800px wide, JPEG 70%) and store under /uploads/expenses.
  * multipart field: image | file
  */
 export async function POST(request: Request) {
@@ -16,13 +17,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const form = await request.formData();
-    const file = form.get("image") ?? form.get("file");
-    if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+    const formData = await request.formData();
+    const file = formData.get("image") ?? formData.get("file");
+    if (!file || typeof file === "string") {
       return NextResponse.json({ error: "Image file is required" }, { status: 400 });
     }
-    const blob = file as File;
-    if (blob.size <= 0) {
+    const blob = file as Blob;
+    if (!blob.size) {
       return NextResponse.json({ error: "Image file is empty" }, { status: 400 });
     }
 
@@ -34,6 +35,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, url });
   } catch (error) {
     console.error("[api/driver/upload]", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Upload failed",
+        detail: error instanceof Error ? error.message : "unknown",
+      },
+      { status: 500 },
+    );
   }
 }

@@ -4,6 +4,16 @@ import { isDriverCategory, requireDriver } from "@/lib/driver/auth";
 import { saveCompressedDriverImage } from "@/lib/driver/images";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const IMAGE_FIELDS = [
+  "odometerImage",
+  "pumpImage",
+  "receiptImage",
+  "tollImage",
+] as const;
+
+type ImageField = (typeof IMAGE_FIELDS)[number];
 
 /**
  * GET /api/driver/expenses — list current driver's expense history.
@@ -20,13 +30,16 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
+    ok: true,
     expenses: expenses.map(serializeExpense),
   });
 }
 
 /**
- * POST /api/driver/expenses — submit a new expense (multipart or JSON).
- * Multipart fields: category, amount, odometerImage?, pumpImage?, receiptImage?, tollImage?
+ * POST /api/driver/expenses
+ * Accepts multipart/form-data (preferred) or JSON.
+ * Fields: category, amount
+ * Files: odometerImage?, pumpImage?, receiptImage?, tollImage?
  */
 export async function POST(request: Request) {
   const driver = await requireDriver(request);
@@ -36,77 +49,93 @@ export async function POST(request: Request) {
 
   try {
     const contentType = request.headers.get("content-type") ?? "";
+    const isMultipart = contentType.toLowerCase().includes("multipart/form-data");
+
     let category = "";
     let amount = 0;
-    const imageBuffers: Record<string, Buffer | null> = {
-      odometerImage: null,
-      pumpImage: null,
-      receiptImage: null,
-      tollImage: null,
-    };
+    const imageBuffers: Partial<Record<ImageField, Buffer>> = {};
 
-    if (contentType.includes("multipart/form-data")) {
-      const form = await request.formData();
-      category = String(form.get("category") ?? "").trim().toUpperCase();
-      amount = Number(form.get("amount"));
-      for (const key of Object.keys(imageBuffers)) {
-        const file = form.get(key);
-        if (file && typeof file === "object" && "arrayBuffer" in file) {
-          const blob = file as File;
-          if (blob.size > 0) {
-            imageBuffers[key] = Buffer.from(await blob.arrayBuffer());
-          }
-        }
+    if (isMultipart) {
+      const formData = await request.formData();
+
+      category = String(
+        formData.get("category") ?? formData.get("Category") ?? "",
+      )
+        .trim()
+        .toUpperCase();
+      amount = Number(
+        formData.get("amount") ?? formData.get("Amount") ?? NaN,
+      );
+
+      for (const field of IMAGE_FIELDS) {
+        const file = await extractFormFile(formData, field);
+        if (file) imageBuffers[field] = file;
       }
     } else {
-      const body = (await request.json()) as {
-        category?: unknown;
-        amount?: unknown;
-        odometerImage?: unknown;
-        pumpImage?: unknown;
-        receiptImage?: unknown;
-        tollImage?: unknown;
-      };
+      // Fallback: JSON with optional base64 images
+      let body: Record<string, unknown>;
+      try {
+        body = (await request.json()) as Record<string, unknown>;
+      } catch {
+        return NextResponse.json(
+          {
+            error:
+              "Expected multipart/form-data (or JSON). Check Content-Type header.",
+          },
+          { status: 400 },
+        );
+      }
       category = String(body.category ?? "").trim().toUpperCase();
       amount = Number(body.amount);
-      // Optional base64 data URLs
-      const imageKeys = [
-        "odometerImage",
-        "pumpImage",
-        "receiptImage",
-        "tollImage",
-      ] as const;
-      for (const key of imageKeys) {
-        const raw = body[key];
+      for (const field of IMAGE_FIELDS) {
+        const raw = body[field];
         if (typeof raw === "string" && raw.trim()) {
-          const b64 = raw.replace(/^data:image\/\w+;base64,/, "");
-          imageBuffers[key] = Buffer.from(b64, "base64");
+          const b64 = raw.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+          imageBuffers[field] = Buffer.from(b64, "base64");
         }
       }
     }
 
     if (!isDriverCategory(category)) {
       return NextResponse.json(
-        { error: "category must be FUEL, TOLL, OIL, or MAINTENANCE" },
+        {
+          error: "category must be FUEL, TOLL, OIL, or MAINTENANCE",
+          received: category || null,
+        },
         { status: 400 },
       );
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json(
-        { error: "amount must be greater than 0" },
+        { error: "amount must be greater than 0", received: amount },
         { status: 400 },
       );
     }
 
-    const urls: Record<string, string | null> = {
+    const urls: Record<ImageField, string | null> = {
       odometerImage: null,
       pumpImage: null,
       receiptImage: null,
       tollImage: null,
     };
-    for (const [key, buf] of Object.entries(imageBuffers)) {
-      if (buf) {
-        urls[key] = await saveCompressedDriverImage(buf, `${driver.id}-${key}`);
+
+    for (const field of IMAGE_FIELDS) {
+      const buf = imageBuffers[field];
+      if (!buf?.length) continue;
+      try {
+        urls[field] = await saveCompressedDriverImage(
+          buf,
+          `${driver.id}-${field}`,
+        );
+      } catch (err) {
+        console.error(`[api/driver/expenses] sharp failed for ${field}`, err);
+        return NextResponse.json(
+          {
+            error: `Failed to process image: ${field}`,
+            detail: err instanceof Error ? err.message : "sharp error",
+          },
+          { status: 400 },
+        );
       }
     }
 
@@ -124,16 +153,65 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { ok: true, expense: serializeExpense(expense) },
+      {
+        ok: true,
+        message: "Expense submitted successfully",
+        expense: serializeExpense(expense),
+      },
       { status: 201 },
     );
   } catch (error) {
     console.error("[api/driver/expenses POST]", error);
     return NextResponse.json(
-      { error: "Could not submit expense" },
+      {
+        error: "Could not submit expense",
+        detail: error instanceof Error ? error.message : "unknown",
+      },
       { status: 500 },
     );
   }
+}
+
+/** Read a File/Blob from formData (supports common alternate keys). */
+async function extractFormFile(
+  formData: FormData,
+  field: ImageField,
+): Promise<Buffer | null> {
+  const aliases = [
+    field,
+    field.replace("Image", ""),
+    field.toLowerCase(),
+    // e.g. odometer_image
+    field.replace(/Image$/, "_image").toLowerCase(),
+  ];
+
+  for (const key of aliases) {
+    const value = formData.get(key);
+    const buf = await fileToBuffer(value);
+    if (buf) return buf;
+  }
+
+  // Some clients append multiple parts with getAll
+  for (const key of aliases) {
+    for (const value of formData.getAll(key)) {
+      const buf = await fileToBuffer(value);
+      if (buf) return buf;
+    }
+  }
+
+  return null;
+}
+
+async function fileToBuffer(value: FormDataEntryValue | null): Promise<Buffer | null> {
+  if (!value || typeof value === "string") return null;
+  // File / Blob in the App Router FormData implementation
+  if (typeof (value as Blob).arrayBuffer !== "function") return null;
+  const blob = value as Blob;
+  const size = typeof blob.size === "number" ? blob.size : 0;
+  if (size <= 0) return null;
+  const ab = await blob.arrayBuffer();
+  if (!ab.byteLength) return null;
+  return Buffer.from(ab);
 }
 
 function serializeExpense(expense: {

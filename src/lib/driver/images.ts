@@ -2,16 +2,20 @@ import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "driver-expenses");
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "expenses");
 
 /**
  * Compress & resize an image buffer (max width 800px, JPEG ~70% quality),
- * save under public/uploads/driver-expenses, return public URL path.
+ * save under public/uploads/expenses, return public URL path.
  */
 export async function saveCompressedDriverImage(
   input: Buffer,
   prefix: string,
 ): Promise<string> {
+  if (!input.length) {
+    throw new Error("Empty image buffer");
+  }
+
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
   const filename = `${prefix}-${Date.now()}-${Math.random()
@@ -25,5 +29,5 @@ export async function saveCompressedDriverImage(
     .toBuffer();
 
   await fs.writeFile(path.join(UPLOAD_DIR, filename), output);
-  return `/uploads/driver-expenses/${filename}`;
+  return `/uploads/expenses/${filename}`;
 }
