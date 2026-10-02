@@ -103,9 +103,14 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       customerName?: unknown;
+      fullName?: unknown;
+      name?: unknown;
       phone?: unknown;
+      phoneNumber?: unknown;
       address?: unknown;
+      deliveryAddress?: unknown;
       notes?: unknown;
+      instructions?: unknown;
       totalAmount?: unknown;
       shippingFee?: unknown;
       customerId?: unknown;
@@ -113,18 +118,28 @@ export async function POST(request: Request) {
       items?: unknown;
     };
 
-    const customerName = String(body.customerName ?? "").trim();
-    const phone = String(body.phone ?? "").trim();
-    const address = String(body.address ?? "").trim();
-    const notes =
-      body.notes == null || String(body.notes).trim() === ""
-        ? null
-        : String(body.notes).trim();
+    const pickString = (...values: unknown[]) => {
+      for (const value of values) {
+        if (value == null) continue;
+        const text = String(value).trim();
+        if (text) return text;
+      }
+      return "";
+    };
+
+    const finalName =
+      pickString(body.customerName, body.fullName, body.name) || "عميل المتجر";
+    const finalPhone = pickString(body.phone, body.phoneNumber);
+    const finalAddress =
+      pickString(body.address, body.deliveryAddress) ||
+      "العين السخنة - غير محدد";
+    const notesRaw = pickString(body.notes, body.instructions);
+    const notes = notesRaw || null;
     const totalAmount = Number(body.totalAmount);
 
-    if (!customerName || !phone || !address) {
+    if (!finalPhone) {
       return NextResponse.json(
-        { error: "customerName, phone, and address are required" },
+        { error: "phone is required" },
         { status: 400, headers: corsHeaders },
       );
     }
@@ -247,17 +262,17 @@ export async function POST(request: Request) {
       const created = await tx.order.create({
         data: isGuest
           ? {
-              customerName,
-              phone,
-              address,
+              customerName: finalName,
+              phone: finalPhone,
+              address: finalAddress,
               notes,
               totalAmount,
               items: { create: orderItems },
             }
           : {
-              customerName,
-              phone,
-              address,
+              customerName: finalName,
+              phone: finalPhone,
+              address: finalAddress,
               notes,
               totalAmount,
               customerId,
@@ -307,7 +322,7 @@ export async function POST(request: Request) {
         {
           total: totalAmount,
           paymentMethod: "store",
-          customerName,
+          customerName: finalName,
           requiresAudit: stockResult.auditReasons.length > 0,
           auditReason,
           lines: saleLines,
