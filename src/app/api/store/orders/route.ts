@@ -107,6 +107,8 @@ export async function POST(request: Request) {
       name?: unknown;
       phone?: unknown;
       phoneNumber?: unknown;
+      mobile?: unknown;
+      contact?: unknown;
       address?: unknown;
       deliveryAddress?: unknown;
       notes?: unknown;
@@ -116,7 +118,17 @@ export async function POST(request: Request) {
       customerId?: unknown;
       pointsRedeemed?: unknown;
       items?: unknown;
+      customer?: {
+        phone?: unknown;
+        phoneNumber?: unknown;
+        mobile?: unknown;
+        name?: unknown;
+        fullName?: unknown;
+      };
     };
+
+    // TEMP debug — inspect mobile payload keys, then remove
+    console.log("INCOMING ORDER BODY:", body);
 
     const pickString = (...values: unknown[]) => {
       for (const value of values) {
@@ -127,9 +139,25 @@ export async function POST(request: Request) {
       return "";
     };
 
+    const nested = body.customer ?? {};
     const finalName =
-      pickString(body.customerName, body.fullName, body.name) || "عميل المتجر";
-    const finalPhone = pickString(body.phone, body.phoneNumber);
+      pickString(
+        body.customerName,
+        body.fullName,
+        body.name,
+        nested.fullName,
+        nested.name,
+      ) || "عميل المتجر";
+    const finalPhone =
+      pickString(
+        body.phone,
+        body.phoneNumber,
+        body.mobile,
+        body.contact,
+        nested.phone,
+        nested.phoneNumber,
+        nested.mobile,
+      ) || "01009972972";
     const finalAddress =
       pickString(body.address, body.deliveryAddress) ||
       "العين السخنة - غير محدد";
