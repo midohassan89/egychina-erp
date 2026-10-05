@@ -445,7 +445,7 @@ export async function POST(request: Request) {
           createIfMissing: Boolean(normalizedPhone || finalPhone),
         });
 
-        let customer = resolved
+        const customer = resolved
           ? await tx.customer.findUnique({
               where: { id: resolved.id },
               select: { id: true, name: true, pointsBalance: true },
