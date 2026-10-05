@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import {
   requireStoreApiKey,
   resolveCustomerIdFromRequest,
+  resolvePhoneFromRequest,
+  resolveStoreCustomer,
 } from "@/lib/store/storeAuth";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +13,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, x-api-key, x-customer-id, Authorization",
+    "Content-Type, x-api-key, x-customer-id, x-customer-phone, x-phone, Authorization",
 };
 
 function serializeAddress(address: {
@@ -36,7 +38,8 @@ function serializeAddress(address: {
 
 /**
  * GET /api/customer/addresses
- * Auth: x-api-key + customer id (x-customer-id | Bearer <id> | ?customerId=)
+ * Auth: x-api-key + (customerId OR phone)
+ * Identity via: x-customer-id / x-customer-phone / Bearer / ?customerId= / ?phone=
  */
 export async function GET(request: Request) {
   if (!requireStoreApiKey(request)) {
@@ -47,19 +50,30 @@ export async function GET(request: Request) {
   }
 
   const customerId = resolveCustomerIdFromRequest(request);
-  if (!customerId) {
+  const phone = resolvePhoneFromRequest(request);
+
+  if (!customerId && !phone) {
     return NextResponse.json(
-      { error: "customerId is required" },
+      { error: "customerId or phone is required" },
       { status: 400, headers: corsHeaders },
     );
   }
 
   try {
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { id: true },
+    const customer = await resolveStoreCustomer(prisma, {
+      customerId,
+      phone,
+      createIfMissing: false,
     });
+
     if (!customer) {
+      // Phone-only lookup with no customer yet → empty list (not an error)
+      if (phone && !customerId) {
+        return NextResponse.json(
+          { ok: true, addresses: [], customerId: null, phone },
+          { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
+        );
+      }
       return NextResponse.json(
         { error: "Customer not found" },
         { status: 404, headers: corsHeaders },
@@ -67,12 +81,17 @@ export async function GET(request: Request) {
     }
 
     const addresses = await prisma.customerAddress.findMany({
-      where: { customerId },
+      where: { customerId: customer.id },
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
 
     return NextResponse.json(
-      { ok: true, addresses: addresses.map(serializeAddress) },
+      {
+        ok: true,
+        customerId: customer.id,
+        phone: customer.phone,
+        addresses: addresses.map(serializeAddress),
+      },
       { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -86,8 +105,9 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/customer/addresses
- * Body: { title, fullAddress, isDefault?, customerId? }
- * Auth: x-api-key + customer id (header / Bearer / body.customerId)
+ * Body: { title, fullAddress, isDefault?, customerId?, phone?, name? }
+ * Auth: x-api-key + (customerId OR phone)
+ * If phone is new, Customer is created automatically then address is attached.
  */
 export async function POST(request: Request) {
   if (!requireStoreApiKey(request)) {
@@ -100,6 +120,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       customerId?: unknown;
+      phone?: unknown;
+      phoneNumber?: unknown;
+      mobile?: unknown;
+      name?: unknown;
+      fullName?: unknown;
       title?: unknown;
       fullAddress?: unknown;
       address?: unknown;
@@ -107,9 +132,16 @@ export async function POST(request: Request) {
     };
 
     const customerId = resolveCustomerIdFromRequest(request, body.customerId);
-    if (!customerId) {
+    const phone = resolvePhoneFromRequest(
+      request,
+      body.phone ?? body.phoneNumber ?? body.mobile,
+    );
+    const name =
+      String(body.fullName ?? body.name ?? "").trim() || null;
+
+    if (!customerId && !phone) {
       return NextResponse.json(
-        { error: "customerId is required" },
+        { error: "customerId or phone is required" },
         { status: 400, headers: corsHeaders },
       );
     }
@@ -133,45 +165,60 @@ export async function POST(request: Request) {
       );
     }
 
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { id: true },
-    });
-    if (!customer) {
-      return NextResponse.json(
-        { error: "Customer not found" },
-        { status: 404, headers: corsHeaders },
-      );
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      const customer = await resolveStoreCustomer(tx, {
+        customerId,
+        phone,
+        name,
+        createIfMissing: Boolean(phone),
+      });
 
-    const address = await prisma.$transaction(async (tx) => {
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
       const existingCount = await tx.customerAddress.count({
-        where: { customerId },
+        where: { customerId: customer.id },
       });
       const makeDefault = isDefault || existingCount === 0;
 
       if (makeDefault) {
         await tx.customerAddress.updateMany({
-          where: { customerId, isDefault: true },
+          where: { customerId: customer.id, isDefault: true },
           data: { isDefault: false },
         });
       }
 
-      return tx.customerAddress.create({
+      const address = await tx.customerAddress.create({
         data: {
-          customerId,
+          customerId: customer.id,
           title,
           fullAddress,
           isDefault: makeDefault,
         },
       });
+
+      return { customer, address };
     });
 
     return NextResponse.json(
-      { ok: true, address: serializeAddress(address) },
+      {
+        ok: true,
+        customerId: result.customer.id,
+        phone: result.customer.phone,
+        address: serializeAddress(result.address),
+      },
       { status: 201, headers: corsHeaders },
     );
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not save address";
+    if (message === "Customer not found") {
+      return NextResponse.json(
+        { error: message },
+        { status: 404, headers: corsHeaders },
+      );
+    }
     console.error("[api/customer/addresses POST]", error);
     return NextResponse.json(
       { error: "Could not save address" },
