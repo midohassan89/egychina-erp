@@ -7,13 +7,18 @@ import { saveCompressedProductImage } from "@/lib/images/compressServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAX_CANDIDATES = 5;
+
+const NO_VALID_IMAGE_AR =
+  "عفواً، لم نتمكن من جلب صورة صالحة لهذا المنتج من الإنترنت. يرجى إضافتها يدوياً.";
+
 interface SerpImageResult {
   original?: string;
   thumbnail?: string;
 }
 
-/** Search Google Images via SerpApi and return the first usable image URL. */
-async function findImageUrl(productName: string): Promise<string | null> {
+/** Search Google Images via SerpApi and return up to 5 candidate image URLs. */
+async function findImageCandidateUrls(productName: string): Promise<string[]> {
   const apiKey = process.env.SERPAPI_KEY ?? "";
   if (!apiKey) {
     throw new Error("SERPAPI_KEY is not set");
@@ -33,13 +38,102 @@ async function findImageUrl(productName: string): Promise<string | null> {
     throw new Error(body.error ?? "Image search failed");
   }
 
-  const first = body.images_results?.[0];
-  const imageUrl = first?.original || first?.thumbnail || "";
-  if (!imageUrl.startsWith("http")) return null;
-  return imageUrl;
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  for (const result of body.images_results ?? []) {
+    for (const candidate of [result.original, result.thumbnail]) {
+      const imageUrl = String(candidate ?? "").trim();
+      if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+        continue;
+      }
+      // Skip data-URLs / HTML-ish junk that sometimes appear in results
+      if (imageUrl.startsWith("data:") || /\.html?(?:\?|$)/i.test(imageUrl)) {
+        continue;
+      }
+      if (seen.has(imageUrl)) continue;
+      seen.add(imageUrl);
+      candidates.push(imageUrl);
+      if (candidates.length >= MAX_CANDIDATES) {
+        return candidates;
+      }
+    }
+  }
+
+  return candidates;
 }
 
-/** POST /api/admin/fetch-image — look up a product photo, compress with sharp, save locally. */
+/**
+ * Download a candidate URL and compress with sharp.
+ * Returns the local path on success, or null to try the next candidate.
+ */
+async function tryDownloadAndCompress(
+  imageUrl: string,
+  prefix: string,
+): Promise<string | null> {
+  let imageRes: Response;
+  try {
+    imageRes = await fetch(imageUrl, {
+      cache: "no-store",
+      redirect: "follow",
+      headers: {
+        // Some CDNs reject empty/bot-like user agents
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "User-Agent":
+          "Mozilla/5.0 (compatible; ERP-ImageFetcher/1.0; +https://localhost)",
+      },
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch {
+    return null;
+  }
+
+  if (!imageRes.ok) return null;
+
+  const contentType = (imageRes.headers.get("content-type") ?? "")
+    .split(";")[0]
+    ?.trim()
+    .toLowerCase();
+  if (!contentType || !contentType.startsWith("image/")) {
+    return null;
+  }
+  // SVG / XML often trigger sharp "XML parse error: html"
+  if (
+    contentType.includes("svg") ||
+    contentType.includes("xml") ||
+    contentType === "image/svg+xml"
+  ) {
+    return null;
+  }
+
+  let buffer: Buffer;
+  try {
+    const bytes = await imageRes.arrayBuffer();
+    buffer = Buffer.from(bytes);
+  } catch {
+    return null;
+  }
+
+  if (!buffer.length) return null;
+
+  // Quick reject: HTML pages mislabeled as images
+  const head = buffer.subarray(0, Math.min(64, buffer.length)).toString("utf8");
+  if (
+    /^\s*<(!DOCTYPE|html|head|body|script|svg)\b/i.test(head) ||
+    head.includes("<html")
+  ) {
+    return null;
+  }
+
+  try {
+    return await saveCompressedProductImage(buffer, prefix);
+  } catch {
+    // Unsupported / corrupt format — try next candidate
+    return null;
+  }
+}
+
+/** POST /api/admin/fetch-image — Google Images → sharp WebP, with fallback loop. */
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -73,44 +167,41 @@ export async function POST(request: Request) {
       }
     }
 
-    const externalImageUrl = await findImageUrl(productName);
-    if (!externalImageUrl) {
-      return NextResponse.json(
-        { error: "No image found for this product" },
-        { status: 404 },
-      );
-    }
-
-    const imageRes = await fetch(externalImageUrl);
-    if (!imageRes.ok) {
-      return NextResponse.json(
-        { error: "Could not download the image" },
-        { status: 502 },
-      );
-    }
-    const buffer = Buffer.from(await imageRes.arrayBuffer());
-    if (buffer.length === 0) {
-      return NextResponse.json(
-        { error: "Downloaded image was empty" },
-        { status: 502 },
-      );
+    const candidates = await findImageCandidateUrls(productName);
+    if (candidates.length === 0) {
+      return NextResponse.json({ error: NO_VALID_IMAGE_AR }, { status: 400 });
     }
 
     const safeId = productId.replace(/[^a-zA-Z0-9_-]/g, "") || "new";
-    const localUrl = await saveCompressedProductImage(buffer, `product-${safeId}`);
+    const prefix = `product-${safeId}`;
 
-    if (productId) {
-      await prisma.product.update({
-        where: { id: productId },
-        data: { imageUrl: localUrl },
+    for (const candidateUrl of candidates) {
+      const localUrl = await tryDownloadAndCompress(candidateUrl, prefix);
+      if (!localUrl) continue;
+
+      if (productId) {
+        await prisma.product.update({
+          where: { id: productId },
+          data: { imageUrl: localUrl },
+        });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        imageUrl: localUrl,
+        sourceUrl: candidateUrl,
       });
     }
 
-    return NextResponse.json({ ok: true, imageUrl: localUrl });
+    return NextResponse.json({ error: NO_VALID_IMAGE_AR }, { status: 400 });
   } catch (error) {
     console.error("[api/admin/fetch-image]", error);
     const message =
       error instanceof Error ? error.message : "Could not fetch image";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Search-key / SerpApi config errors stay as 500; empty results already 400 above
+    if (message === "SERPAPI_KEY is not set") {
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+    return NextResponse.json({ error: NO_VALID_IMAGE_AR }, { status: 400 });
   }
 }
