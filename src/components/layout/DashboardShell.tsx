@@ -195,7 +195,7 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "employees",
         href: "/dashboard/employees",
-        label: "الموظفين",
+        label: "الموظفين والرواتب",
         icon: IdCard,
       },
       {

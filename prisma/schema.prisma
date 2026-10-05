@@ -251,6 +251,8 @@ model Expense {
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
+  employeeTransactions EmployeeTransaction[]
+
   @@index([categoryId])
   @@index([date])
   @@index([bankAccountId])
@@ -396,16 +398,49 @@ model OpeningBalanceItem {
   @@index([productId])
 }
 
+enum EmployeeTransactionType {
+  ADVANCE
+  DEDUCTION
+  BONUS
+  SALARY_PAYMENT
+}
+
 /// Staff who can receive an internal meal (وجبات عمال). Not a login account.
 model Employee {
-  id        Int      @id @default(autoincrement())
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  name       String
+  isActive   Boolean  @default(true)
+  /** Monthly base salary in EGP. */
+  baseSalary Float    @default(0)
+  hireDate   DateTime @default(now())
+  createdAt  DateTime @default(now())
 
-  sales Sale[]
+  sales        Sale[]
+  transactions EmployeeTransaction[]
 
   @@index([isActive])
+}
+
+/// HR / payroll ledger row for an employee (سلف، خصومات، مكافآت، صرف راتب).
+model EmployeeTransaction {
+  id           Int                     @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date         DateTime                @default(now())
+  amount       Float
+  type         EmployeeTransactionType
+  /** Used for DEDUCTION: amount = baseSalary / 30 * daysDeducted */
+  daysDeducted Float?
+  note         String?
+  /** Set when cash left the safe (advance / salary / immediate bonus). */
+  expenseId    Int?
+  expense      Expense?                @relation(fields: [expenseId], references: [id])
+  createdAt    DateTime                @default(now())
+
+  @@index([employeeId])
+  @@index([date])
+  @@index([type])
+  @@index([expenseId])
 }
 
 /// Completed POS sale / return — source of truth for Reports P&L and bestsellers.
