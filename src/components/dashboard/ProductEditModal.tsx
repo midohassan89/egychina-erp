@@ -145,6 +145,7 @@ export function ProductEditModal({
             <ImagePicker
               value={imageUrl}
               productName={name}
+              productId={product.id}
               onChange={setImageUrl}
             />
           </div>

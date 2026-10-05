@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import {
+  FETCH_IMAGE_FALLBACK_ERROR,
+  fetchProductImageFromWeb,
+} from "@/lib/images/fetchProductImage";
 
 export interface MissingImageProduct {
   id: string;
@@ -24,22 +28,18 @@ export function AutoImageList({ products }: { products: MissingImageProduct[] })
     setBusyId(product.id);
     setError(null);
     try {
-      const res = await fetch("/api/admin/fetch-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: product.id,
-          productName: product.name,
-        }),
+      await fetchProductImageFromWeb({
+        productId: product.id,
+        productName: product.name,
       });
-      const body = (await res.json()) as { error?: string; imageUrl?: string };
-      if (!res.ok || !body.imageUrl) {
-        throw new Error(body.error ?? "Could not fetch image");
-      }
       setRows((current) => current.filter((row) => row.id !== product.id));
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not fetch image");
+      setError(
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : FETCH_IMAGE_FALLBACK_ERROR,
+      );
       return false;
     } finally {
       setBusyId(null);
