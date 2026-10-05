@@ -540,6 +540,25 @@ model Customer {
 
   pointsTransactions PointsTransaction[]
   orders             Order[]
+  addresses          CustomerAddress[]
+}
+
+/// Saved delivery address for a storefront customer (Home, Work, …).
+model CustomerAddress {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /** e.g. Home, Work */
+  title       String
+  fullAddress String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
 }
 
 model PointsTransaction {
@@ -560,7 +579,11 @@ model Order {
   id             String      @id @default(cuid())
   customerName   String
   phone          String
+  /** Snapshot of delivery address at order time. */
   address        String
+  /** Optional link to the saved CustomerAddress used at checkout. */
+  customerAddressId String?
+  customerAddress   CustomerAddress? @relation(fields: [customerAddressId], references: [id], onDelete: SetNull)
   notes          String?
   totalAmount    Float
   status         String      @default("PENDING")
@@ -572,6 +595,7 @@ model Order {
   items          OrderItem[]
 
   @@index([customerId])
+  @@index([customerAddressId])
 }
 
 model OrderItem {

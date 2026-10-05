@@ -23,6 +23,7 @@ export default auth((req) => {
     pathname.startsWith("/price-checker") ||
     pathname.startsWith("/api/price-checker") ||
     pathname.startsWith("/api/store") ||
+    pathname.startsWith("/api/customer") ||
     pathname.startsWith("/api/driver")
   ) {
     return NextResponse.next();

@@ -158,6 +158,7 @@ export async function GET(request: Request) {
           customerName: order.customerName,
           phone: order.phone,
           address: order.address,
+          customerAddressId: order.customerAddressId,
           notes: order.notes,
           totalAmount: order.totalAmount,
           status: order.status,
@@ -202,7 +203,10 @@ export async function POST(request: Request) {
       mobile?: unknown;
       contact?: unknown;
       address?: unknown;
+      fullAddress?: unknown;
       deliveryAddress?: unknown;
+      customerAddressId?: unknown;
+      addressId?: unknown;
       notes?: unknown;
       instructions?: unknown;
       totalAmount?: unknown;
@@ -220,6 +224,7 @@ export async function POST(request: Request) {
         name?: unknown;
         fullName?: unknown;
         address?: unknown;
+        fullAddress?: unknown;
         expoPushToken?: unknown;
         pushToken?: unknown;
       };
@@ -255,9 +260,53 @@ export async function POST(request: Request) {
       body.mobile,
       body.contact,
     );
-    const finalAddress =
-      pickString(nested.address, body.address, body.deliveryAddress) ||
-      "العين السخنة";
+    const customerAddressId = pickString(
+      body.customerAddressId,
+      body.addressId,
+    );
+    let finalAddress = pickString(
+      nested.fullAddress,
+      nested.address,
+      body.fullAddress,
+      body.address,
+      body.deliveryAddress,
+    );
+    let linkedAddressId: string | null = null;
+
+    // Prefer a saved CustomerAddress when customerAddressId is provided
+    let addressOwnerCustomerId: string | null = null;
+    if (customerAddressId) {
+      const savedAddress = await prisma.customerAddress.findUnique({
+        where: { id: customerAddressId },
+        select: {
+          id: true,
+          fullAddress: true,
+          customerId: true,
+        },
+      });
+      if (!savedAddress) {
+        return NextResponse.json(
+          { error: "customerAddressId not found" },
+          { status: 400, headers: corsHeaders },
+        );
+      }
+      const bodyCustomerId =
+        typeof body.customerId === "string" ? body.customerId.trim() : "";
+      if (bodyCustomerId && savedAddress.customerId !== bodyCustomerId) {
+        return NextResponse.json(
+          { error: "customerAddressId does not belong to this customer" },
+          { status: 403, headers: corsHeaders },
+        );
+      }
+      finalAddress = savedAddress.fullAddress;
+      linkedAddressId = savedAddress.id;
+      addressOwnerCustomerId = savedAddress.customerId;
+    }
+
+    if (!finalAddress) {
+      finalAddress = "العين السخنة";
+    }
+
     const notesRaw = pickString(body.notes, body.instructions);
     const notes = notesRaw || null;
     const finalTotal = Number(body.totalPrice ?? body.totalAmount ?? 0);
@@ -322,7 +371,9 @@ export async function POST(request: Request) {
     }
 
     const customerId =
-      typeof body.customerId === "string" ? body.customerId.trim() : "";
+      (typeof body.customerId === "string" ? body.customerId.trim() : "") ||
+      addressOwnerCustomerId ||
+      "";
     const isGuest = customerId.length === 0;
     const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -451,6 +502,7 @@ export async function POST(request: Request) {
           customerName: finalName,
           phone: finalPhone,
           address: finalAddress,
+          ...(linkedAddressId ? { customerAddressId: linkedAddressId } : {}),
           notes,
           totalAmount: finalTotal,
           ...(linkedCustomerId ? { customerId: linkedCustomerId } : {}),
