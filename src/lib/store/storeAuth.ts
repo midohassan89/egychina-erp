@@ -152,9 +152,10 @@ export async function findCustomerByIdOrPhone(
 }
 
 /**
- * Resolve customer for address APIs.
- * - GET: find by customerId or phone (no create)
- * - POST: find by customerId or phone; if only phone and missing, create
+ * Resolve storefront customer by phone (preferred) or customerId.
+ * - Looks up by phone first when provided (mobile auth is phone-based).
+ * - If missing and createIfMissing: creates with phone + fullName.
+ * - If exists but name is empty and fullName provided: updates the name.
  */
 export async function resolveStoreCustomer(
   db: DbClient,
@@ -165,16 +166,37 @@ export async function resolveStoreCustomer(
     createIfMissing?: boolean;
   },
 ): Promise<{ id: string; phone: string; name: string | null } | null> {
-  const existing = await findCustomerByIdOrPhone(db, opts);
-  if (existing) return existing;
-
-  if (!opts.createIfMissing) return null;
-
+  const name = opts.name?.trim() || null;
   const phoneRaw = opts.phone?.trim() || "";
   const phone = phoneRaw ? normalizeLoyaltyPhone(phoneRaw) || phoneRaw : "";
+
+  // Phone-first lookup (mobile apps primarily identify by phone)
+  let existing: { id: string; phone: string; name: string | null } | null =
+    null;
+  if (phone) {
+    existing = await findCustomerByIdOrPhone(db, { phone });
+  }
+  if (!existing && opts.customerId?.trim()) {
+    existing = await findCustomerByIdOrPhone(db, {
+      customerId: opts.customerId,
+    });
+  }
+
+  if (existing) {
+    const needsName = Boolean(name) && !existing.name?.trim();
+    if (needsName) {
+      return db.customer.update({
+        where: { id: existing.id },
+        data: { name: name! },
+        select: { id: true, phone: true, name: true },
+      });
+    }
+    return existing;
+  }
+
+  if (!opts.createIfMissing) return null;
   if (!phone) return null;
 
-  const name = opts.name?.trim() || null;
   return db.customer.create({
     data: {
       phone,

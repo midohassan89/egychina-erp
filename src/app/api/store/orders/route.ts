@@ -8,6 +8,7 @@ import {
 } from "@/lib/pos/applySaleStock";
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
+import { resolveStoreCustomer } from "@/lib/store/storeAuth";
 
 const POINTS_PER_EGP = 10;
 const POINTS_FOR_ONE_EGP = 1000;
@@ -243,14 +244,14 @@ export async function POST(request: Request) {
     };
 
     const nested = body.customer ?? {};
-    const finalName =
-      pickString(
-        nested.fullName,
-        nested.name,
-        body.customerName,
-        body.fullName,
-        body.name,
-      ) || "عميل المتجر";
+    const providedFullName = pickString(
+      nested.fullName,
+      nested.name,
+      body.customerName,
+      body.fullName,
+      body.name,
+    );
+    const finalName = providedFullName || "عميل المتجر";
     const finalPhone = pickString(
       nested.phone,
       nested.phoneNumber,
@@ -434,38 +435,22 @@ export async function POST(request: Request) {
       const normalizedPhone = normalizeLoyaltyPhone(finalPhone);
       let linkedCustomerId = customerId || null;
 
-      // Resolve / create Customer so expoPushToken can be stored for status pushes
+      // Resolve / create Customer by phone + fullName (fill name if missing)
       if (normalizedPhone || linkedCustomerId) {
-        let customer = linkedCustomerId
+        const resolved = await resolveStoreCustomer(tx, {
+          customerId: linkedCustomerId ?? undefined,
+          phone: normalizedPhone || finalPhone,
+          // Only persist a real provided name — not the "عميل المتجر" fallback
+          name: providedFullName || null,
+          createIfMissing: Boolean(normalizedPhone || finalPhone),
+        });
+
+        let customer = resolved
           ? await tx.customer.findUnique({
-              where: { id: linkedCustomerId },
-              select: { id: true, pointsBalance: true },
+              where: { id: resolved.id },
+              select: { id: true, name: true, pointsBalance: true },
             })
           : null;
-
-        if (!customer && normalizedPhone) {
-          customer = await tx.customer.findFirst({
-            where: {
-              OR: [
-                { phone: normalizedPhone },
-                { phone: finalPhone },
-                { phone: { contains: normalizedPhone.slice(-10) } },
-              ],
-            },
-            select: { id: true, pointsBalance: true },
-          });
-        }
-
-        if (!customer && normalizedPhone) {
-          customer = await tx.customer.create({
-            data: {
-              phone: normalizedPhone,
-              name: finalName,
-              ...(expoPushToken ? { expoPushToken } : {}),
-            },
-            select: { id: true, pointsBalance: true },
-          });
-        }
 
         if (!customer) {
           if (!isGuest) throw new Error("Customer not found");
@@ -479,19 +464,15 @@ export async function POST(request: Request) {
             await tx.customer.update({
               where: { id: customer.id },
               data: {
-                name: finalName || undefined,
                 pointsBalance:
                   customer.pointsBalance - pointsRedeemed + (pointsEarned ?? 0),
                 ...(expoPushToken ? { expoPushToken } : {}),
               },
             });
-          } else if (expoPushToken || finalName) {
+          } else if (expoPushToken) {
             await tx.customer.update({
               where: { id: customer.id },
-              data: {
-                ...(finalName ? { name: finalName } : {}),
-                ...(expoPushToken ? { expoPushToken } : {}),
-              },
+              data: { expoPushToken },
             });
           }
         }
@@ -591,7 +572,14 @@ export async function POST(request: Request) {
     const customerMessage = `مرحباً ${order.customerName}،\nشكراً لطلبك من *ايجي شاينا ماركت* 🛒\n\nطلبك رقم *#${order.id}* تم استلامه وجاري تجهيزه الآن.\nالإجمالي: *${order.totalAmount} EGP*\n\nسنتواصل معك قريباً عند خروج الطلب للتوصيل 🚚\nلأي استفسار: 01009972972`;
     void sendWhatsApp(customerPhone, customerMessage);
 
-    return NextResponse.json(order, { status: 201, headers: corsHeaders });
+    return NextResponse.json(
+      {
+        ...order,
+        customerId: order.customerId,
+        fullName: order.customerName,
+      },
+      { status: 201, headers: corsHeaders },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not create order";
 
