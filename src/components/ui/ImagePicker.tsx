@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { Camera, FolderOpen, ImagePlus, Loader2 } from "lucide-react";
+import { compressImageForUpload } from "@/lib/images/compressClient";
 
 interface ImagePickerProps {
   value: string;
@@ -9,8 +10,11 @@ interface ImagePickerProps {
   onChange: (url: string) => void;
 }
 
+const ACCEPT = "image/png, image/jpeg, image/webp";
+
 export function ImagePicker({ value, productName, onChange }: ImagePickerProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const browseRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [fetching, setFetching] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +50,9 @@ export function ImagePicker({ value, productName, onChange }: ImagePickerProps) 
     setError(null);
     setUploading(true);
     try {
+      const compressed = await compressImageForUpload(file);
       const form = new FormData();
-      form.set("file", file);
+      form.set("file", compressed);
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
         body: form,
@@ -62,6 +67,12 @@ export function ImagePicker({ value, productName, onChange }: ImagePickerProps) 
     } finally {
       setUploading(false);
     }
+  }
+
+  function onFileSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void uploadFile(file);
   }
 
   return (
@@ -92,11 +103,24 @@ export function ImagePicker({ value, productName, onChange }: ImagePickerProps) 
         <button
           type="button"
           disabled={busy}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => browseRef.current?.click()}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-          رفع صورة
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FolderOpen className="h-4 w-4" />
+          )}
+          تصفح الملفات
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => cameraRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          <Camera className="h-4 w-4" />
+          كاميرا
         </button>
         <button
           type="button"
@@ -112,15 +136,19 @@ export function ImagePicker({ value, productName, onChange }: ImagePickerProps) 
       </div>
 
       <input
-        ref={fileRef}
+        ref={browseRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT}
         className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void uploadFile(file);
-        }}
+        onChange={onFileSelected}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept={ACCEPT}
+        capture="environment"
+        className="hidden"
+        onChange={onFileSelected}
       />
 
       {error && <p className="text-xs text-red-600">{error}</p>}

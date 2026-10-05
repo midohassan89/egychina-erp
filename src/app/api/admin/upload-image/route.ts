@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import { auth } from "@/auth";
 import { isEditor } from "@/lib/auth/roles";
+import { saveCompressedProductImage } from "@/lib/images/compressServer";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "products");
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const EXTENSION_BY_TYPE: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-};
-
-/** POST /api/admin/upload-image — save a product image and return its local path. */
+/** POST /api/admin/upload-image — compress with sharp (WebP) and return local path. */
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -26,27 +19,27 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData();
     const file = form.get("file");
-    if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+    if (!file || typeof file === "string") {
       return NextResponse.json({ error: "Image file is required" }, { status: 400 });
     }
 
-    const blob = file as File;
-    if (blob.size <= 0) {
+    const blob = file as Blob;
+    if (!blob.size) {
       return NextResponse.json({ error: "Image file is empty" }, { status: 400 });
     }
 
-    const extension = EXTENSION_BY_TYPE[blob.type] ?? ".jpg";
     const buffer = Buffer.from(await blob.arrayBuffer());
-    const filename = `upload-${Date.now()}${extension}`;
+    const imageUrl = await saveCompressedProductImage(buffer, "upload");
 
-    await fs.mkdir(UPLOAD_DIR, { recursive: true });
-    await fs.writeFile(path.join(UPLOAD_DIR, filename), buffer);
-
-    return NextResponse.json({
-      imageUrl: `/uploads/products/${filename}`,
-    });
+    return NextResponse.json({ ok: true, imageUrl });
   } catch (error) {
     console.error("[api/admin/upload-image]", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Upload failed",
+        detail: error instanceof Error ? error.message : "unknown",
+      },
+      { status: 500 },
+    );
   }
 }
