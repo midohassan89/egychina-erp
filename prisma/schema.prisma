@@ -535,6 +535,8 @@ model Customer {
   pointsBalance Int      @default(0)
   /** Expo push token from the mobile app (ExponentPushToken[…]). */
   expoPushToken String?
+  /** Firebase Cloud Messaging (FCM) device token. */
+  pushToken     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
