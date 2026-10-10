@@ -25,7 +25,8 @@ export default auth((req) => {
     pathname.startsWith("/api/store") ||
     pathname.startsWith("/api/customer") ||
     pathname.startsWith("/api/driver") ||
-    (pathname === "/api/settings" && req.method === "GET")
+    (pathname === "/api/settings" && req.method === "GET") ||
+    /^\/api\/customers\/[^/]+\/(addresses|orders)\/?$/.test(pathname)
   ) {
     return NextResponse.next();
   }

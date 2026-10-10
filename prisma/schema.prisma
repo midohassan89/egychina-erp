@@ -542,7 +542,27 @@ model Customer {
 
   pointsTransactions PointsTransaction[]
   orders             Order[]
-  addresses          CustomerAddress[]
+  /** Shared addresses for the mobile app and website. */
+  addresses          Address[]
+  /** Earlier full-address rows used by the store checkout API. */
+  customerAddresses  CustomerAddress[]
+}
+
+/// Delivery address shared by the mobile app and website.
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /** e.g. Home, Work */
+  title      String
+  street     String
+  city       String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
 }
 
 /// Key/value settings for the storefront (loyalty ratios, etc.).
