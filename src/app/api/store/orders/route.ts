@@ -9,9 +9,8 @@ import {
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
 import { resolveStoreCustomer } from "@/lib/store/storeAuth";
+import { getLoyaltySettings } from "@/lib/loyalty/settings";
 
-const POINTS_PER_EGP = 10;
-const POINTS_FOR_ONE_EGP = 1000;
 const SHIPPING_FEES = new Set([0, 50, 60, 80]);
 
 const corsHeaders = {
@@ -377,10 +376,13 @@ export async function POST(request: Request) {
       "";
     const isGuest = customerId.length === 0;
     const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
+    const loyalty = await getLoyaltySettings();
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const discount = isGuest ? 0 : pointsRedeemed / POINTS_FOR_ONE_EGP;
+    const discount = isGuest ? 0 : pointsRedeemed / loyalty.pointsRedeemValue;
     const paidGoods = Math.max(0, subtotal - discount);
-    const pointsEarned = isGuest ? null : Math.floor(paidGoods * POINTS_PER_EGP);
+    const pointsEarned = isGuest
+      ? null
+      : Math.floor(paidGoods * loyalty.pointsEarnRatio);
 
     // Mobile often sends only totalPrice (goods + shipping) without shippingFee
     let shippingFee = Number(body.shippingFee);

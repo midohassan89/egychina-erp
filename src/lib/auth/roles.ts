@@ -67,6 +67,8 @@ export type NavAccess =
   | "audit"
   | "users"
   | "employees"
+  | "customers"
+  | "settings"
   | "fleet"
   | "profile";
 
@@ -101,6 +103,8 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "shifts",
     "audit",
     "users",
+    "customers",
+    "settings",
     "profile",
   ],
   ADMIN: [
@@ -123,6 +127,8 @@ const ROLE_NAV: Record<string, NavAccess[]> = {
     "audit",
     "users",
     "employees",
+    "customers",
+    "settings",
     "profile",
   ],
 };
@@ -178,6 +184,24 @@ export function dashboardBlockRedirect(
 
   // Employees (staff meals) — Admin only
   if (pathname.startsWith("/dashboard/employees") && role !== "ADMIN") {
+    return "/dashboard";
+  }
+
+  // Store customers & loyalty — Manager and Admin
+  if (
+    pathname.startsWith("/dashboard/customers") &&
+    role !== "ADMIN" &&
+    role !== "MANAGER"
+  ) {
+    return "/dashboard";
+  }
+
+  // Store settings (loyalty ratios) — Manager and Admin
+  if (
+    pathname.startsWith("/dashboard/settings") &&
+    role !== "ADMIN" &&
+    role !== "MANAGER"
+  ) {
     return "/dashboard";
   }
 

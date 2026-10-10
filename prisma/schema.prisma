@@ -545,6 +545,14 @@ model Customer {
   addresses          CustomerAddress[]
 }
 
+/// Key/value settings for the storefront (loyalty ratios, etc.).
+model StoreSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
 /// Saved delivery address for a storefront customer (Home, Work, …).
 model CustomerAddress {
   id          String   @id @default(cuid())

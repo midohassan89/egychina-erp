@@ -199,6 +199,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: IdCard,
       },
       {
+        key: "customers",
+        href: "/dashboard/customers",
+        label: "العملاء ونقاط الولاء",
+        icon: Award,
+      },
+      {
         key: "users",
         href: "/dashboard/users",
         label: "المستخدمين والصلاحيات",
@@ -211,6 +217,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "الإعدادات",
     icon: Settings,
     items: [
+      {
+        key: "settings",
+        href: "/dashboard/settings",
+        label: "الإعدادات",
+        icon: Settings,
+      },
       {
         key: "profile",
         href: "/dashboard/profile",
