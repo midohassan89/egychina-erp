@@ -18,9 +18,17 @@ function serializeAddress(address: {
   title: string;
   street: string;
   city: string;
+  phoneNumber: string | null;
+  zoneId: string | null;
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
+  zone?: {
+    id: string;
+    name: string;
+    deliveryFee: number;
+    isActive: boolean;
+  } | null;
 }) {
   return {
     id: address.id,
@@ -28,10 +36,44 @@ function serializeAddress(address: {
     title: address.title,
     street: address.street,
     city: address.city,
+    phoneNumber: address.phoneNumber,
+    zoneId: address.zoneId,
+    zone: address.zone
+      ? {
+          id: address.zone.id,
+          name: address.zone.name,
+          deliveryFee: address.zone.deliveryFee,
+          isActive: address.zone.isActive,
+        }
+      : null,
     isDefault: address.isDefault,
     createdAt: address.createdAt.toISOString(),
     updatedAt: address.updatedAt.toISOString(),
   };
+}
+
+/** Empty string clears the phone. Undefined means "not sent". */
+function parsePhone(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const phone = String(value).trim().slice(0, 30);
+  return phone || null;
+}
+
+async function resolveZoneId(
+  value: unknown,
+): Promise<{ zoneId: string | null } | { error: string }> {
+  if (value === undefined) return { zoneId: null };
+  if (value === null || String(value).trim() === "") return { zoneId: null };
+  const zoneId = String(value).trim();
+  const zone = await prisma.deliveryZone.findUnique({
+    where: { id: zoneId },
+    select: { id: true, isActive: true },
+  });
+  if (!zone || !zone.isActive) {
+    return { error: "Delivery zone not found" };
+  }
+  return { zoneId: zone.id };
 }
 
 async function canAccess(request: Request): Promise<boolean> {
@@ -71,6 +113,11 @@ export async function GET(
   const addresses = await prisma.address.findMany({
     where: { customerId: id },
     orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    include: {
+      zone: {
+        select: { id: true, name: true, deliveryFee: true, isActive: true },
+      },
+    },
   });
 
   return NextResponse.json(
@@ -79,7 +126,7 @@ export async function GET(
   );
 }
 
-/** POST /api/customers/[id]/addresses — body: { title, street, city, isDefault? } */
+/** POST /api/customers/[id]/addresses — body: { title, street, city, phoneNumber?, zoneId?, isDefault? } */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -103,6 +150,8 @@ export async function POST(
     title?: unknown;
     street?: unknown;
     city?: unknown;
+    phoneNumber?: unknown;
+    zoneId?: unknown;
     isDefault?: unknown;
   };
   try {
@@ -117,9 +166,19 @@ export async function POST(
   const title = String(body.title ?? "").trim().slice(0, 80);
   const street = String(body.street ?? "").trim().slice(0, 300);
   const city = String(body.city ?? "").trim().slice(0, 120);
+  const phoneNumber = parsePhone(body.phoneNumber) ?? null;
   if (!title || !street || !city) {
     return NextResponse.json(
       { error: "title, street, and city are required" },
+      { status: 400, headers: corsHeaders },
+    );
+  }
+  const zone = await resolveZoneId(
+    body.zoneId === undefined ? null : body.zoneId,
+  );
+  if ("error" in zone) {
+    return NextResponse.json(
+      { error: zone.error },
       { status: 400, headers: corsHeaders },
     );
   }
@@ -139,7 +198,14 @@ export async function POST(
         title,
         street,
         city,
+        phoneNumber,
+        zoneId: zone.zoneId,
         isDefault: makeDefault,
+      },
+      include: {
+        zone: {
+          select: { id: true, name: true, deliveryFee: true, isActive: true },
+        },
       },
     });
   });
@@ -150,7 +216,7 @@ export async function POST(
   );
 }
 
-/** PUT /api/customers/[id]/addresses — body: { id, title?, street?, city?, isDefault? } */
+/** PUT /api/customers/[id]/addresses — body: { id, title?, street?, city?, phoneNumber?, zoneId?, isDefault? } */
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -169,6 +235,8 @@ export async function PUT(
     title?: unknown;
     street?: unknown;
     city?: unknown;
+    phoneNumber?: unknown;
+    zoneId?: unknown;
     isDefault?: unknown;
   };
   try {
@@ -213,6 +281,19 @@ export async function PUT(
     );
   }
 
+  let nextZoneId: string | null | undefined;
+  if (body.zoneId !== undefined) {
+    const zone = await resolveZoneId(body.zoneId);
+    if ("error" in zone) {
+      return NextResponse.json(
+        { error: zone.error },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+    nextZoneId = zone.zoneId;
+  }
+  const nextPhone = parsePhone(body.phoneNumber);
+
   const address = await prisma.$transaction(async (tx) => {
     if (body.isDefault === true) {
       await tx.address.updateMany({
@@ -226,9 +307,16 @@ export async function PUT(
         ...(title !== undefined ? { title } : {}),
         ...(street !== undefined ? { street } : {}),
         ...(city !== undefined ? { city } : {}),
+        ...(nextPhone !== undefined ? { phoneNumber: nextPhone } : {}),
+        ...(nextZoneId !== undefined ? { zoneId: nextZoneId } : {}),
         ...(typeof body.isDefault === "boolean"
           ? { isDefault: body.isDefault }
           : {}),
+      },
+      include: {
+        zone: {
+          select: { id: true, name: true, deliveryFee: true, isActive: true },
+        },
       },
     });
   });

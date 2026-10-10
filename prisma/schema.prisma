@@ -548,21 +548,40 @@ model Customer {
   customerAddresses  CustomerAddress[]
 }
 
+/// Configurable delivery area and fee (تيدا الصناعية، بورتو السخنة، …).
+model DeliveryZone {
+  id          String   @id @default(cuid())
+  name        String
+  deliveryFee Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  addresses Address[]
+
+  @@index([isActive])
+}
+
 /// Delivery address shared by the mobile app and website.
 model Address {
-  id         String   @id @default(cuid())
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   /** e.g. Home, Work */
-  title      String
-  street     String
-  city       String
-  isDefault  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  title       String
+  street      String
+  city        String
+  /** Contact number for this address. */
+  phoneNumber String?
+  zoneId      String?
+  zone        DeliveryZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([customerId])
   @@index([customerId, isDefault])
+  @@index([zoneId])
 }
 
 /// Key/value settings for the storefront (loyalty ratios, etc.).
