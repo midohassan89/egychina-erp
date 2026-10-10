@@ -30,8 +30,11 @@ export async function POST(request: Request) {
     const nameZh = String(form.get("nameZh") ?? "");
     const price = parseFloat(String(form.get("price") ?? ""));
     const saleRaw = String(form.get("salePrice") ?? "").trim();
+    const saleParsed = saleRaw === "" ? null : Number(saleRaw);
     const salePrice =
-      saleRaw === "" ? null : parseFloat(saleRaw);
+      saleParsed != null && Number.isFinite(saleParsed) && saleParsed > 0
+        ? saleParsed
+        : null;
     const barcode = String(form.get("barcode") ?? "");
     const stockStatusRaw = String(form.get("stockStatus") ?? "instock");
     const stockStatus =
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
       nameEn,
       nameZh,
       price,
-      salePrice: Number.isFinite(salePrice as number) ? salePrice : null,
+      salePrice,
       barcode,
       stockQuantity: 0,
       stockStatus,

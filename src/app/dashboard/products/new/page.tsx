@@ -171,7 +171,10 @@ function NewProductForm() {
       form.set("nameEn", nameEn.trim());
       form.set("nameZh", nameZh.trim());
       form.set("price", String(regular));
-      if (sale != null && sale > 0) form.set("salePrice", String(sale));
+      form.set(
+        "salePrice",
+        sale != null && Number.isFinite(sale) && sale > 0 ? String(sale) : "",
+      );
       form.set("barcode", barcode.trim());
       if (isBundle) {
         form.set("linkedProductId", linkedProductId);

@@ -18,6 +18,8 @@ interface ProductEditModalProps {
     name: string;
     sku: string;
     barcode: string;
+    price: number;
+    salePrice: number | null;
     linkedProductId: string | null;
     bundleMultiplier: number | null;
     categoryId: string | null;
@@ -46,6 +48,13 @@ export function ProductEditModal({
   );
   const [sku, setSku] = useState(product.sku ?? "");
   const [barcode, setBarcode] = useState(product.barcode ?? "");
+  const [price, setPrice] = useState(String(product.price ?? ""));
+  const [salePrice, setSalePrice] = useState(
+    product.salePrice != null && product.salePrice > 0
+      ? String(product.salePrice)
+      : "",
+  );
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [isBundle, setIsBundle] = useState(Boolean(product.linkedProductId));
   const [linkedProductId, setLinkedProductId] = useState(
     product.linkedProductId ?? "",
@@ -64,6 +73,13 @@ export function ProductEditModal({
     setNameZh(product.nameZh ?? "");
     setSku(product.sku ?? "");
     setBarcode(product.barcode ?? "");
+    setPrice(String(product.price ?? ""));
+    setSalePrice(
+      product.salePrice != null && product.salePrice > 0
+        ? String(product.salePrice)
+        : "",
+    );
+    setPriceError(null);
     setIsBundle(Boolean(product.linkedProductId));
     setLinkedProductId(product.linkedProductId ?? "");
     setBundleMultiplier(String(product.bundleMultiplier ?? 3));
@@ -108,6 +124,24 @@ export function ProductEditModal({
           className="max-h-[min(80dvh,720px)] space-y-4 overflow-y-auto px-5 py-5"
           onSubmit={(e) => {
             e.preventDefault();
+            const regular = parseFloat(price);
+            const saleRaw = salePrice.trim();
+            const sale = saleRaw === "" ? null : parseFloat(saleRaw);
+            if (!Number.isFinite(regular) || regular < 0) {
+              setPriceError("Enter a valid regular price");
+              return;
+            }
+            if (sale != null && (!Number.isFinite(sale) || sale < 0)) {
+              setPriceError("Enter a valid sale price");
+              return;
+            }
+            if (sale != null && sale > 0 && sale >= regular) {
+              setPriceError("Sale price must be less than the regular price");
+              return;
+            }
+            setPriceError(null);
+            const normalizedSale = sale != null && sale > 0 ? sale : null;
+            const prices = { price: regular, salePrice: normalizedSale };
             if (isBundle) {
               if (!linkedProductId) return;
               const mult = Math.floor(Number(bundleMultiplier));
@@ -116,6 +150,7 @@ export function ProductEditModal({
                 name,
                 sku,
                 barcode,
+                ...prices,
                 linkedProductId,
                 bundleMultiplier: mult,
                 categoryId: categoryId || null,
@@ -130,6 +165,7 @@ export function ProductEditModal({
               name,
               sku,
               barcode,
+              ...prices,
               linkedProductId: null,
               bundleMultiplier: null,
               categoryId: categoryId || null,
@@ -196,6 +232,43 @@ export function ProductEditModal({
             </span>
             <BrandSelect value={brandId} onChange={setBrandId} />
           </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">
+                Regular Price (EGP)
+              </span>
+              <input
+                required
+                type="number"
+                min={0}
+                step="0.01"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  setPriceError(null);
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">
+                Sale Price (optional)
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={salePrice}
+                onChange={(e) => {
+                  setSalePrice(e.target.value);
+                  setPriceError(null);
+                }}
+                placeholder="Must be less than regular"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              />
+            </label>
+          </div>
+          {priceError && <p className="text-xs text-red-600">{priceError}</p>}
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Barcode</span>
             <input

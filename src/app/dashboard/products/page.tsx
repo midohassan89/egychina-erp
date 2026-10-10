@@ -388,6 +388,8 @@ function ProductsManagement() {
     name: string;
     sku: string;
     barcode: string;
+    price: number;
+    salePrice: number | null;
     linkedProductId: string | null;
     bundleMultiplier: number | null;
     categoryId: string | null;
@@ -406,6 +408,8 @@ function ProductsManagement() {
           name: values.name,
           sku: values.sku || null,
           barcode: values.barcode || null,
+          price: values.price,
+          salePrice: values.salePrice,
           linkedProductId: values.linkedProductId,
           bundleMultiplier: values.bundleMultiplier,
           categoryId: values.categoryId,
