@@ -11,9 +11,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+function optionalName(value: unknown): string {
+  return String(value ?? "").trim().slice(0, 120);
+}
+
 function serializeZone(zone: {
   id: string;
-  name: string;
+  nameAr: string;
+  nameEn: string;
+  nameZh: string;
   deliveryFee: number;
   isActive: boolean;
   createdAt: Date;
@@ -21,7 +27,9 @@ function serializeZone(zone: {
 }) {
   return {
     id: zone.id,
-    name: zone.name,
+    nameAr: zone.nameAr,
+    nameEn: zone.nameEn,
+    nameZh: zone.nameZh,
     deliveryFee: zone.deliveryFee,
     isActive: zone.isActive,
     createdAt: zone.createdAt.toISOString(),
@@ -52,11 +60,19 @@ function parseFee(value: unknown): number | null {
   return fee;
 }
 
-/** GET /api/delivery-zones — public list of active zones. */
+/**
+ * GET /api/delivery-zones
+ * Public callers receive active zones only.
+ * A manager/admin session receives every zone so the dashboard can edit inactive ones.
+ */
 export async function GET() {
+  const session = await auth();
+  const includeInactive = Boolean(
+    session?.user && isManagerOrAdmin(session.user.role),
+  );
   const zones = await prisma.deliveryZone.findMany({
-    where: { isActive: true },
-    orderBy: [{ name: "asc" }],
+    where: includeInactive ? undefined : { isActive: true },
+    orderBy: [{ nameAr: "asc" }],
   });
   return NextResponse.json(
     { ok: true, zones: zones.map(serializeZone) },
@@ -64,12 +80,18 @@ export async function GET() {
   );
 }
 
-/** POST /api/delivery-zones — body: { name, deliveryFee, isActive? } */
+/** POST /api/delivery-zones — body: { nameAr, nameEn?, nameZh?, deliveryFee, isActive? } */
 export async function POST(request: Request) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  let body: { name?: unknown; deliveryFee?: unknown; isActive?: unknown };
+  let body: {
+    nameAr?: unknown;
+    nameEn?: unknown;
+    nameZh?: unknown;
+    deliveryFee?: unknown;
+    isActive?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -79,11 +101,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const name = String(body.name ?? "").trim().slice(0, 120);
+  const nameAr = optionalName(body.nameAr);
   const deliveryFee = parseFee(body.deliveryFee);
-  if (!name) {
+  if (!nameAr) {
     return NextResponse.json(
-      { error: "name is required" },
+      { error: "nameAr is required" },
       { status: 400, headers: corsHeaders },
     );
   }
@@ -96,7 +118,9 @@ export async function POST(request: Request) {
 
   const zone = await prisma.deliveryZone.create({
     data: {
-      name,
+      nameAr,
+      nameEn: optionalName(body.nameEn),
+      nameZh: optionalName(body.nameZh),
       deliveryFee,
       isActive: body.isActive === false ? false : true,
     },
@@ -108,14 +132,16 @@ export async function POST(request: Request) {
   );
 }
 
-/** PUT /api/delivery-zones — body: { id, name?, deliveryFee?, isActive? } */
+/** PUT /api/delivery-zones — body: { id, nameAr?, nameEn?, nameZh?, deliveryFee?, isActive? } */
 export async function PUT(request: Request) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
   let body: {
     id?: unknown;
-    name?: unknown;
+    nameAr?: unknown;
+    nameEn?: unknown;
+    nameZh?: unknown;
     deliveryFee?: unknown;
     isActive?: unknown;
   };
@@ -144,14 +170,18 @@ export async function PUT(request: Request) {
     );
   }
 
-  const name =
-    body.name !== undefined ? String(body.name).trim().slice(0, 120) : undefined;
-  if (name === "") {
+  const nameAr =
+    body.nameAr !== undefined ? optionalName(body.nameAr) : undefined;
+  if (nameAr === "") {
     return NextResponse.json(
-      { error: "name cannot be empty" },
+      { error: "nameAr cannot be empty" },
       { status: 400, headers: corsHeaders },
     );
   }
+  const nameEn =
+    body.nameEn !== undefined ? optionalName(body.nameEn) : undefined;
+  const nameZh =
+    body.nameZh !== undefined ? optionalName(body.nameZh) : undefined;
 
   let deliveryFee: number | undefined;
   if (body.deliveryFee !== undefined) {
@@ -168,7 +198,9 @@ export async function PUT(request: Request) {
   const zone = await prisma.deliveryZone.update({
     where: { id },
     data: {
-      ...(name !== undefined ? { name } : {}),
+      ...(nameAr !== undefined ? { nameAr } : {}),
+      ...(nameEn !== undefined ? { nameEn } : {}),
+      ...(nameZh !== undefined ? { nameZh } : {}),
       ...(deliveryFee !== undefined ? { deliveryFee } : {}),
       ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
     },

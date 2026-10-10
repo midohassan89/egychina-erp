@@ -551,7 +551,12 @@ model Customer {
 /// Configurable delivery area and fee (تيدا الصناعية، بورتو السخنة، …).
 model DeliveryZone {
   id          String   @id @default(cuid())
-  name        String
+  /** Arabic name shown in the admin panel. */
+  nameAr      String
+  /** English name shown on the storefront. */
+  nameEn      String   @default("")
+  /** Chinese name shown on the storefront. */
+  nameZh      String   @default("")
   deliveryFee Float
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())

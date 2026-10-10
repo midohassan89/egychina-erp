@@ -25,7 +25,9 @@ function serializeAddress(address: {
   updatedAt: Date;
   zone?: {
     id: string;
-    name: string;
+    nameAr: string;
+    nameEn: string;
+    nameZh: string;
     deliveryFee: number;
     isActive: boolean;
   } | null;
@@ -41,7 +43,9 @@ function serializeAddress(address: {
     zone: address.zone
       ? {
           id: address.zone.id,
-          name: address.zone.name,
+          nameAr: address.zone.nameAr,
+          nameEn: address.zone.nameEn,
+          nameZh: address.zone.nameZh,
           deliveryFee: address.zone.deliveryFee,
           isActive: address.zone.isActive,
         }
@@ -115,7 +119,14 @@ export async function GET(
     orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     include: {
       zone: {
-        select: { id: true, name: true, deliveryFee: true, isActive: true },
+        select: {
+          id: true,
+          nameAr: true,
+          nameEn: true,
+          nameZh: true,
+          deliveryFee: true,
+          isActive: true,
+        },
       },
     },
   });
@@ -204,7 +215,14 @@ export async function POST(
       },
       include: {
         zone: {
-          select: { id: true, name: true, deliveryFee: true, isActive: true },
+          select: {
+          id: true,
+          nameAr: true,
+          nameEn: true,
+          nameZh: true,
+          deliveryFee: true,
+          isActive: true,
+        },
         },
       },
     });
@@ -315,7 +333,14 @@ export async function PUT(
       },
       include: {
         zone: {
-          select: { id: true, name: true, deliveryFee: true, isActive: true },
+          select: {
+          id: true,
+          nameAr: true,
+          nameEn: true,
+          nameZh: true,
+          deliveryFee: true,
+          isActive: true,
+        },
         },
       },
     });

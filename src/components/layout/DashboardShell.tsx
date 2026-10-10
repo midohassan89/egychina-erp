@@ -23,6 +23,7 @@ import {
   ClipboardList,
   ShieldAlert,
   ShoppingCart,
+  MapPin,
   Images,
   Languages,
   Award,
@@ -134,6 +135,12 @@ const NAV_GROUPS: NavGroup[] = [
     icon: ShoppingCart,
     items: [
       { key: "orders", href: "/admin/orders", label: "الطلبات", icon: ShoppingCart },
+      {
+        key: "deliveryZones",
+        href: "/admin/delivery-zones",
+        label: "مناطق التوصيل",
+        icon: MapPin,
+      },
       { key: "sales", href: "/dashboard/sales", label: "المبيعات", icon: History },
       {
         key: "pos",
