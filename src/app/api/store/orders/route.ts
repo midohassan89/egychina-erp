@@ -125,6 +125,22 @@ export async function GET(request: Request) {
       );
     }
 
+    const customer = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          { phone },
+          { phone: phoneRaw },
+          { phone: { contains: phone.slice(-10) } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        pointsBalance: true,
+      },
+    });
+
     const orders = await prisma.order.findMany({
       where: {
         OR: [
@@ -153,6 +169,15 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
+        pointsBalance: customer?.pointsBalance ?? 0,
+        customer: customer
+          ? {
+              id: customer.id,
+              name: customer.name,
+              phone: customer.phone,
+              pointsBalance: customer.pointsBalance,
+            }
+          : null,
         orders: orders.map((order) => ({
           id: order.id,
           customerName: order.customerName,

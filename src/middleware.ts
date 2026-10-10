@@ -24,7 +24,8 @@ export default auth((req) => {
     pathname.startsWith("/api/price-checker") ||
     pathname.startsWith("/api/store") ||
     pathname.startsWith("/api/customer") ||
-    pathname.startsWith("/api/driver")
+    pathname.startsWith("/api/driver") ||
+    (pathname === "/api/settings" && req.method === "GET")
   ) {
     return NextResponse.next();
   }

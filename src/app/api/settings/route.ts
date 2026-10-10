@@ -10,21 +10,21 @@ function requireManager(role: string | undefined) {
   return isManagerOrAdmin(role);
 }
 
-/** GET /api/settings — loyalty ratios (defaults when rows are missing). */
-export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!requireManager(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+const publicHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Cache-Control": "no-store",
+};
 
+/** GET /api/settings — public loyalty ratios (defaults when rows are missing). */
+export async function GET() {
   const loyalty = await getLoyaltySettings();
-  return NextResponse.json({
-    points_earn_ratio: loyalty.pointsEarnRatio,
-    points_redeem_value: loyalty.pointsRedeemValue,
-  });
+  return NextResponse.json(
+    {
+      points_earn_ratio: loyalty.pointsEarnRatio,
+      points_redeem_value: loyalty.pointsRedeemValue,
+    },
+    { headers: publicHeaders },
+  );
 }
 
 /** PUT /api/settings — save loyalty ratios into StoreSetting. */
