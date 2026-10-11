@@ -170,14 +170,18 @@ export async function applySaleStockChanges(options: {
         continue;
       }
 
-      const nextQty = current.stockQuantity + delta;
-      const stockStatus = nextQty > 0 ? "instock" : "outofstock";
-
       const row = await tx.product.update({
         where: { id: productId },
-        data: { stockQuantity: nextQty, stockStatus },
+        data: { stockQuantity: { decrement: Math.abs(delta) } },
         select: { id: true, wcId: true, stockQuantity: true },
       });
+      const stockStatus = row.stockQuantity > 0 ? "instock" : "outofstock";
+      if (stockStatus !== current.stockStatus) {
+        await tx.product.update({
+          where: { id: productId },
+          data: { stockStatus },
+        });
+      }
       updated.push({
         productId: row.id,
         wcId: row.wcId,

@@ -12,6 +12,11 @@ export const ORDER_STATUSES = [
 
 export type OrderStatusCode = (typeof ORDER_STATUSES)[number];
 
+/** Statuses an admin may set by hand. Return statuses are applied when a return is completed. */
+export const MANUAL_ORDER_STATUSES = ORDER_STATUSES.filter(
+  (status) => status !== "PARTIALLY_RETURNED" && status !== "RETURNED",
+);
+
 export const ORDER_STATUS_LABELS: Record<OrderStatusCode, string> = {
   PENDING: "قيد الانتظار",
   CONFIRMED: "تم التأكيد",

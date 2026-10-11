@@ -5,10 +5,11 @@ import Link from "next/link";
 import { formatEGP } from "@/lib/pos/money";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
-  ORDER_STATUSES,
+  MANUAL_ORDER_STATUSES,
   ORDER_STATUS_LABELS,
   normalizeOrderStatus,
   orderStatusLabel,
+  type OrderStatusCode,
 } from "@/lib/orders/status";
 
 export interface OrderRow {
@@ -28,8 +29,16 @@ export interface OrderRow {
   }[];
 }
 
-function displayStatus(status: string): (typeof ORDER_STATUSES)[number] {
+function displayStatus(status: string): OrderStatusCode {
   return normalizeOrderStatus(status) ?? "PENDING";
+}
+
+function statusChoices(status: string): OrderStatusCode[] {
+  const current = displayStatus(status);
+  if (current === "PARTIALLY_RETURNED" || current === "RETURNED") {
+    return [current, ...MANUAL_ORDER_STATUSES];
+  }
+  return [...MANUAL_ORDER_STATUSES];
 }
 
 function formatOrderDate(iso: string): string {
@@ -174,8 +183,15 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                       }}
                       className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
                     >
-                      {ORDER_STATUSES.map((status) => (
-                        <option key={status} value={status}>
+                      {statusChoices(order.status).map((status) => (
+                        <option
+                          key={status}
+                          value={status}
+                          disabled={
+                            status === "PARTIALLY_RETURNED" ||
+                            status === "RETURNED"
+                          }
+                        >
                           {ORDER_STATUS_LABELS[status]}
                         </option>
                       ))}

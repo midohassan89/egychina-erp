@@ -23,6 +23,7 @@ import {
   ClipboardList,
   ShieldAlert,
   ShoppingCart,
+  Undo2,
   MapPin,
   Images,
   Languages,
@@ -135,6 +136,12 @@ const NAV_GROUPS: NavGroup[] = [
     icon: ShoppingCart,
     items: [
       { key: "orders", href: "/admin/orders", label: "الطلبات", icon: ShoppingCart },
+      {
+        key: "returns",
+        href: "/dashboard/returns",
+        label: "المرتجعات",
+        icon: Undo2,
+      },
       {
         key: "deliveryZones",
         href: "/admin/delivery-zones",

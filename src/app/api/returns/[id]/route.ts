@@ -70,7 +70,7 @@ export async function PATCH(
           select: {
             orderItemId: true,
             quantity: true,
-            orderItem: { select: { price: true } },
+            orderItem: { select: { price: true, productId: true } },
           },
         },
       },
@@ -83,6 +83,20 @@ export async function PATCH(
         data: { status: nextStatus },
         include: {
           items: { select: { id: true, orderItemId: true, quantity: true } },
+        },
+      });
+    }
+
+    for (const item of current.items) {
+      const product = await tx.product.update({
+        where: { id: item.orderItem.productId },
+        data: { stockQuantity: { increment: item.quantity } },
+        select: { stockQuantity: true },
+      });
+      await tx.product.update({
+        where: { id: item.orderItem.productId },
+        data: {
+          stockStatus: product.stockQuantity > 0 ? "instock" : "outofstock",
         },
       });
     }

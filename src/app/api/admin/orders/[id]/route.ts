@@ -34,6 +34,12 @@ export async function PATCH(
     if (!newStatus) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
+    if (newStatus === "PARTIALLY_RETURNED" || newStatus === "RETURNED") {
+      return NextResponse.json(
+        { error: "حالة المرتجع تُحدَّد تلقائياً عند اكتمال طلب الإرجاع" },
+        { status: 400 },
+      );
+    }
 
     const existing = await prisma.order.findUnique({
       where: { id },
