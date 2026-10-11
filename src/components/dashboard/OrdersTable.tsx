@@ -4,13 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatEGP } from "@/lib/pos/money";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
-
-export const ORDER_STATUSES = [
-  "قيد الانتظار",
-  "جاري التجهيز",
-  "مكتمل",
-  "ملغي",
-] as const;
+import {
+  ORDER_STATUSES,
+  ORDER_STATUS_LABELS,
+  normalizeOrderStatus,
+  orderStatusLabel,
+} from "@/lib/orders/status";
 
 export interface OrderRow {
   id: string;
@@ -30,11 +29,7 @@ export interface OrderRow {
 }
 
 function displayStatus(status: string): (typeof ORDER_STATUSES)[number] {
-  if (status === "PENDING") return "قيد الانتظار";
-  if (ORDER_STATUSES.includes(status as (typeof ORDER_STATUSES)[number])) {
-    return status as (typeof ORDER_STATUSES)[number];
-  }
-  return "قيد الانتظار";
+  return normalizeOrderStatus(status) ?? "PENDING";
 }
 
 function formatOrderDate(iso: string): string {
@@ -95,7 +90,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
         );
       }
 
-      toast(`تم تحديث الحالة إلى: ${status}`, "success");
+      toast(`تم تحديث الحالة إلى: ${orderStatusLabel(status)}`, "success");
     } catch (err) {
       setRows(previous);
       toast(
@@ -181,7 +176,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                     >
                       {ORDER_STATUSES.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {ORDER_STATUS_LABELS[status]}
                         </option>
                       ))}
                     </select>

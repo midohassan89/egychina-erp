@@ -3,13 +3,10 @@ import { auth } from "@/auth";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 import { sendExpoPush } from "@/lib/push/expo";
-
-const ORDER_STATUSES = [
-  "قيد الانتظار",
-  "جاري التجهيز",
-  "مكتمل",
-  "ملغي",
-] as const;
+import {
+  normalizeOrderStatus,
+  orderStatusLabel,
+} from "@/lib/orders/status";
 
 /** PATCH /api/admin/orders/[id] — update a storefront order status. */
 export async function PATCH(
@@ -31,9 +28,9 @@ export async function PATCH(
 
   try {
     const body = (await request.json()) as { status?: unknown };
-    const newStatus = String(body.status ?? "");
+    const newStatus = normalizeOrderStatus(String(body.status ?? ""));
     console.log("ADMIN STATUS UPDATE:", { orderId: id, newStatus });
-    if (!ORDER_STATUSES.includes(newStatus as (typeof ORDER_STATUSES)[number])) {
+    if (!newStatus) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
@@ -84,7 +81,7 @@ export async function PATCH(
           to: token,
           sound: "default",
           title: "تحديث حالة الطلب 📦",
-          body: `طلبك رقم #${order.id} أصبح الآن: ${newStatus}`,
+          body: `طلبك رقم #${order.id} أصبح الآن: ${orderStatusLabel(newStatus)}`,
           data: {
             type: "order_status",
             orderId: order.id,

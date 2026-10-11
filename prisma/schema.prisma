@@ -15,6 +15,18 @@ enum Role {
   DRIVER
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  PARTIALLY_RETURNED
+  RETURNED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -644,7 +656,7 @@ model Order {
   customerAddress   CustomerAddress? @relation(fields: [customerAddressId], references: [id], onDelete: SetNull)
   notes          String?
   totalAmount    Float
-  status         String      @default("PENDING")
+  status         OrderStatus @default(PENDING)
   customerId     String?
   customer       Customer?   @relation(fields: [customerId], references: [id])
   pointsEarned   Int?
