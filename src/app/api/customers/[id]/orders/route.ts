@@ -68,7 +68,7 @@ export async function GET(
         notes: order.notes,
         totalAmount: order.totalAmount,
         status: order.status,
-        pointsEarned: order.pointsEarned,
+        pointsEarned: order.pointsAwarded ? order.pointsEarned : 0,
         pointsRedeemed: order.pointsRedeemed,
         createdAt: order.createdAt.toISOString(),
         items: order.items.map((item) => ({

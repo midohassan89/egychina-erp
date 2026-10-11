@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import type { OrderStatusCode } from "@/lib/orders/status";
+import { normalizeOrderStatus, type OrderStatusCode } from "@/lib/orders/status";
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -8,6 +8,7 @@ const REVOKE_STATUSES = new Set<OrderStatusCode>(["RETURNED", "CANCELLED"]);
 
 export interface OrderPointsSnapshot {
   id: string;
+  status: string;
   customerId: string | null;
   pointsEarned: number | null;
   pointsAwarded: boolean;
@@ -25,8 +26,13 @@ export async function applyOrderStatusLoyalty(
 ) {
   const points = order.pointsEarned ?? 0;
   const canMovePoints = Boolean(order.customerId) && points > 0;
+  const previous = normalizeOrderStatus(order.status);
+  const enteringAwardState =
+    AWARD_STATUSES.has(newStatus) &&
+    previous !== "COMPLETED" &&
+    previous !== "DELIVERED";
 
-  if (canMovePoints && AWARD_STATUSES.has(newStatus) && !order.pointsAwarded) {
+  if (canMovePoints && enteringAwardState && !order.pointsAwarded) {
     await tx.customer.update({
       where: { id: order.customerId! },
       data: { pointsBalance: { increment: points } },
