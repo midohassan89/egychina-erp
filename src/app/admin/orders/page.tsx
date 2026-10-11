@@ -19,6 +19,7 @@ export default async function OrdersPage() {
     phone: order.phone,
     address: order.address,
     notes: order.notes,
+    deliveryTime: order.deliveryTime?.toISOString() ?? null,
     totalAmount: order.totalAmount,
     status: order.status,
     createdAt: order.createdAt.toISOString(),

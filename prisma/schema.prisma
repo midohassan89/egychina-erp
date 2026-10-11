@@ -635,6 +635,8 @@ model Order {
   phone          String
   /** Snapshot of delivery address at order time. */
   address        String
+  /** Optional scheduled delivery time chosen at checkout. */
+  deliveryTime   DateTime?
   /** Optional link to the saved CustomerAddress used at checkout. */
   customerAddressId String?
   customerAddress   CustomerAddress? @relation(fields: [customerAddressId], references: [id], onDelete: SetNull)

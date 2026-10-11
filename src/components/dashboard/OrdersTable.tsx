@@ -18,6 +18,7 @@ export interface OrderRow {
   phone: string;
   address: string;
   notes: string | null;
+  deliveryTime: string | null;
   totalAmount: number;
   status: string;
   createdAt: string;
@@ -146,6 +147,11 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                 </td>
                 <td className="max-w-xs px-4 py-3 text-slate-700">
                   <p>{order.address}</p>
+                  {order.deliveryTime && (
+                    <p className="mt-1 text-xs font-medium text-slate-800">
+                      وقت التوصيل المحدد: {formatOrderDate(order.deliveryTime)}
+                    </p>
+                  )}
                   {order.notes && (
                     <p className="mt-1 text-xs text-slate-500">{order.notes}</p>
                   )}

@@ -232,6 +232,8 @@ export async function POST(request: Request) {
       deliveryAddress?: unknown;
       customerAddressId?: unknown;
       addressId?: unknown;
+      deliveryTime?: unknown;
+      scheduledDeliveryTime?: unknown;
       notes?: unknown;
       instructions?: unknown;
       totalAmount?: unknown;
@@ -330,6 +332,22 @@ export async function POST(request: Request) {
 
     if (!finalAddress) {
       finalAddress = "العين السخنة";
+    }
+
+    const deliveryTimeRaw = pickString(
+      body.deliveryTime,
+      body.scheduledDeliveryTime,
+    );
+    let deliveryTime: Date | null = null;
+    if (deliveryTimeRaw) {
+      const parsed = new Date(deliveryTimeRaw);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "deliveryTime must be a valid date" },
+          { status: 400, headers: corsHeaders },
+        );
+      }
+      deliveryTime = parsed;
     }
 
     const notesRaw = pickString(body.notes, body.instructions);
@@ -510,6 +528,7 @@ export async function POST(request: Request) {
           customerName: finalName,
           phone: finalPhone,
           address: finalAddress,
+          ...(deliveryTime ? { deliveryTime } : {}),
           ...(linkedAddressId ? { customerAddressId: linkedAddressId } : {}),
           notes,
           totalAmount: finalTotal,
