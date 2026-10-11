@@ -16,6 +16,7 @@ function serializeAddress(address: {
   id: string;
   customerId: string;
   title: string;
+  recipientName: string | null;
   street: string;
   city: string;
   phoneNumber: string | null;
@@ -36,6 +37,7 @@ function serializeAddress(address: {
     id: address.id,
     customerId: address.customerId,
     title: address.title,
+    recipientName: address.recipientName,
     street: address.street,
     city: address.city,
     phoneNumber: address.phoneNumber,
@@ -57,6 +59,17 @@ function serializeAddress(address: {
 }
 
 /** Empty string clears the phone. Undefined means "not sent". */
+/** Empty string clears the value. Undefined means "not sent". */
+function parseOptionalText(
+  value: unknown,
+  maxLength: number,
+): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const text = String(value).trim().slice(0, maxLength);
+  return text || null;
+}
+
 function parsePhone(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -137,7 +150,7 @@ export async function GET(
   );
 }
 
-/** POST /api/customers/[id]/addresses — body: { title, street, city, phoneNumber?, zoneId?, isDefault? } */
+/** POST /api/customers/[id]/addresses — body: { title, street, city, recipientName?, phoneNumber?, zoneId?, isDefault? } */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -161,6 +174,7 @@ export async function POST(
     title?: unknown;
     street?: unknown;
     city?: unknown;
+    recipientName?: unknown;
     phoneNumber?: unknown;
     zoneId?: unknown;
     isDefault?: unknown;
@@ -177,6 +191,7 @@ export async function POST(
   const title = String(body.title ?? "").trim().slice(0, 80);
   const street = String(body.street ?? "").trim().slice(0, 300);
   const city = String(body.city ?? "").trim().slice(0, 120);
+  const recipientName = parseOptionalText(body.recipientName, 120) ?? null;
   const phoneNumber = parsePhone(body.phoneNumber) ?? null;
   if (!title || !street || !city) {
     return NextResponse.json(
@@ -207,6 +222,7 @@ export async function POST(
       data: {
         customerId: id,
         title,
+        recipientName,
         street,
         city,
         phoneNumber,
@@ -234,7 +250,7 @@ export async function POST(
   );
 }
 
-/** PUT /api/customers/[id]/addresses — body: { id, title?, street?, city?, phoneNumber?, zoneId?, isDefault? } */
+/** PUT /api/customers/[id]/addresses — body: { id, title?, street?, city?, recipientName?, phoneNumber?, zoneId?, isDefault? } */
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -253,6 +269,7 @@ export async function PUT(
     title?: unknown;
     street?: unknown;
     city?: unknown;
+    recipientName?: unknown;
     phoneNumber?: unknown;
     zoneId?: unknown;
     isDefault?: unknown;
@@ -311,6 +328,7 @@ export async function PUT(
     nextZoneId = zone.zoneId;
   }
   const nextPhone = parsePhone(body.phoneNumber);
+  const nextRecipient = parseOptionalText(body.recipientName, 120);
 
   const address = await prisma.$transaction(async (tx) => {
     if (body.isDefault === true) {
@@ -325,6 +343,7 @@ export async function PUT(
         ...(title !== undefined ? { title } : {}),
         ...(street !== undefined ? { street } : {}),
         ...(city !== undefined ? { city } : {}),
+        ...(nextRecipient !== undefined ? { recipientName: nextRecipient } : {}),
         ...(nextPhone !== undefined ? { phoneNumber: nextPhone } : {}),
         ...(nextZoneId !== undefined ? { zoneId: nextZoneId } : {}),
         ...(typeof body.isDefault === "boolean"

@@ -574,6 +574,8 @@ model Address {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   /** e.g. Home, Work */
   title       String
+  /** Person who receives the delivery. Optional so older addresses stay valid. */
+  recipientName String?
   street      String
   city        String
   /** Contact number for this address. */
