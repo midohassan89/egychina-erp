@@ -506,14 +506,18 @@ export async function POST(request: Request) {
             if (pointsRedeemed > customer.pointsBalance) {
               throw new Error("Insufficient points");
             }
-            await tx.customer.update({
-              where: { id: customer.id },
-              data: {
-                pointsBalance:
-                  customer.pointsBalance - pointsRedeemed + (pointsEarned ?? 0),
-                ...(expoPushToken ? { expoPushToken } : {}),
-              },
-            });
+            // Earned points stay on the order until it is delivered or completed.
+            if (pointsRedeemed > 0 || expoPushToken) {
+              await tx.customer.update({
+                where: { id: customer.id },
+                data: {
+                  ...(pointsRedeemed > 0
+                    ? { pointsBalance: customer.pointsBalance - pointsRedeemed }
+                    : {}),
+                  ...(expoPushToken ? { expoPushToken } : {}),
+                },
+              });
+            }
           } else if (expoPushToken) {
             await tx.customer.update({
               where: { id: customer.id },
@@ -547,22 +551,6 @@ export async function POST(request: Request) {
             customerId: linkedCustomerId,
             points: -pointsRedeemed,
             type: "REDEEM",
-            description: `Order ${created.id}`,
-          },
-        });
-      }
-
-      if (
-        !isGuest &&
-        linkedCustomerId &&
-        pointsEarned != null &&
-        pointsEarned > 0
-      ) {
-        await tx.pointsTransaction.create({
-          data: {
-            customerId: linkedCustomerId,
-            points: pointsEarned,
-            type: "EARN",
             description: `Order ${created.id}`,
           },
         });

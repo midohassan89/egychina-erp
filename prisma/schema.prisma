@@ -661,6 +661,8 @@ model Order {
   customer       Customer?   @relation(fields: [customerId], references: [id])
   pointsEarned   Int?
   pointsRedeemed Int?
+  /** Set when completion points have been added, so a status change cannot award them twice. */
+  pointsAwarded  Boolean     @default(false)
   createdAt      DateTime    @default(now())
   items          OrderItem[]
 

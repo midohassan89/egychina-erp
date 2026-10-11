@@ -7,6 +7,7 @@ import {
   normalizeOrderStatus,
   orderStatusLabel,
 } from "@/lib/orders/status";
+import { applyOrderStatusLoyalty } from "@/lib/orders/loyalty";
 
 /** PATCH /api/admin/orders/[id] — update a storefront order status. */
 export async function PATCH(
@@ -41,6 +42,8 @@ export async function PATCH(
         status: true,
         phone: true,
         customerId: true,
+        pointsEarned: true,
+        pointsAwarded: true,
         customer: { select: { expoPushToken: true } },
       },
     });
@@ -48,10 +51,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status: newStatus },
-    });
+    const order = await prisma.$transaction((tx) =>
+      applyOrderStatusLoyalty(tx, existing, newStatus),
+    );
 
     if (existing.status !== newStatus) {
       // Prefer linked customer, then look up by order phone

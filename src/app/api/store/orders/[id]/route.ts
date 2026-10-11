@@ -5,6 +5,7 @@ import {
   CUSTOMER_CANCELLABLE,
   normalizeOrderStatus,
 } from "@/lib/orders/status";
+import { applyOrderStatusLoyalty } from "@/lib/orders/loyalty";
 import { requireStoreApiKey } from "@/lib/store/storeAuth";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,14 @@ export async function PATCH(
 
   const order = await prisma.order.findUnique({
     where: { id },
-    select: { id: true, status: true, customerId: true, phone: true },
+    select: {
+      id: true,
+      status: true,
+      customerId: true,
+      phone: true,
+      pointsEarned: true,
+      pointsAwarded: true,
+    },
   });
   if (!order) {
     return NextResponse.json(
@@ -107,10 +115,9 @@ export async function PATCH(
     });
   }
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: { status: "CANCELLED" },
-  });
+  const updated = await prisma.$transaction((tx) =>
+    applyOrderStatusLoyalty(tx, order, "CANCELLED"),
+  );
 
   return NextResponse.json(
     { ok: true, id: updated.id, status: updated.status },
