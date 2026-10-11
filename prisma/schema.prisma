@@ -27,6 +27,14 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ReturnStatus {
+  PENDING
+  CONFIRMED
+  COLLECTING
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -554,6 +562,7 @@ model Customer {
 
   pointsTransactions PointsTransaction[]
   orders             Order[]
+  returnRequests     ReturnRequest[]
   /** Shared addresses for the mobile app and website. */
   addresses          Address[]
   /** Earlier full-address rows used by the store checkout API. */
@@ -665,6 +674,7 @@ model Order {
   pointsAwarded  Boolean     @default(false)
   createdAt      DateTime    @default(now())
   items          OrderItem[]
+  returnRequests ReturnRequest[]
 
   @@index([customerId])
   @@index([customerAddressId])
@@ -677,11 +687,42 @@ model OrderItem {
   quantity  Int
   price     Float
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product      @relation(fields: [productId], references: [id])
+  returnItems ReturnItem[]
 
   @@index([orderId])
   @@index([productId])
+}
+
+model ReturnRequest {
+  id             String       @id @default(cuid())
+  orderId        String
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id])
+  status         ReturnStatus @default(PENDING)
+  /** Set after completion points have been removed, so receiving the return cannot deduct them twice. */
+  pointsDeducted Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  items          ReturnItem[]
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model ReturnItem {
+  id              String        @id @default(cuid())
+  returnRequestId String
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  orderItemId     String
+  orderItem       OrderItem     @relation(fields: [orderItemId], references: [id])
+  quantity        Int
+
+  @@index([returnRequestId])
+  @@index([orderItemId])
 }
 
 /// Driver-submitted fleet expense (fuel, toll, oil, maintenance).

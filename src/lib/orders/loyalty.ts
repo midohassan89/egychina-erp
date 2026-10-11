@@ -46,6 +46,17 @@ export async function applyOrderStatusLoyalty(
   }
 
   if (canMovePoints && REVOKE_STATUSES.has(newStatus) && order.pointsAwarded) {
+    const settledReturn = await tx.returnRequest.findFirst({
+      where: { orderId: order.id, pointsDeducted: true },
+      select: { id: true },
+    });
+    if (settledReturn) {
+      return tx.order.update({
+        where: { id: order.id },
+        data: { status: newStatus },
+      });
+    }
+
     const customer = await tx.customer.findUnique({
       where: { id: order.customerId! },
       select: { pointsBalance: true },

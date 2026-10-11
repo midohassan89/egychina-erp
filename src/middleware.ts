@@ -28,7 +28,9 @@ export default auth((req) => {
     (pathname === "/api/settings" && req.method === "GET") ||
     (pathname === "/api/delivery-zones" &&
       (req.method === "GET" || req.method === "OPTIONS")) ||
-    /^\/api\/customers\/[^/]+\/(addresses|orders)\/?$/.test(pathname)
+    /^\/api\/customers\/[^/]+\/(addresses|orders)\/?$/.test(pathname) ||
+    (pathname === "/api/returns" &&
+      (req.method === "POST" || req.method === "OPTIONS"))
   ) {
     return NextResponse.next();
   }
