@@ -13,6 +13,7 @@ export interface AdminProductRow {
   imageUrl: string | null;
   isDeleted: boolean;
   isFavorite: boolean;
+  isWeighed: boolean;
   linkedProductId: string | null;
   bundleMultiplier: number | null;
   categoryId: string | null;

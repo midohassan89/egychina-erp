@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { roundQty } from "@/lib/pos/money";
 
 type StockDb = Prisma.TransactionClient | typeof prisma;
 
@@ -96,7 +97,7 @@ export async function applySaleStockChanges(options: {
   }
 
   for (const line of options.lines) {
-    const qty = Math.floor(Math.abs(Number(line.quantity) || 0));
+    const qty = roundQty(Math.abs(Number(line.quantity) || 0));
     if (qty <= 0) continue;
     const wcId = Number(line.wcProductId);
     if (!Number.isFinite(wcId) || wcId <= 0) continue;

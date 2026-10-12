@@ -56,13 +56,14 @@ export async function POST(request: Request) {
     const orderItemId =
       typeof raw.orderItemId === "string" ? raw.orderItemId.trim() : "";
     const quantity = Number(raw.quantity);
-    if (!orderItemId || !Number.isInteger(quantity) || quantity < 1) {
+    const roundedQty = Math.round(quantity * 1000) / 1000;
+    if (!orderItemId || !Number.isFinite(roundedQty) || roundedQty <= 0) {
       return NextResponse.json(
-        { error: "Each item needs an orderItemId and a quantity of at least 1" },
+        { error: "Each item needs an orderItemId and a quantity greater than 0" },
         { status: 400, headers: corsHeaders },
       );
     }
-    requested.set(orderItemId, (requested.get(orderItemId) ?? 0) + quantity);
+    requested.set(orderItemId, (requested.get(orderItemId) ?? 0) + roundedQty);
   }
 
   const order = await prisma.order.findUnique({
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
 
   for (const [orderItemId, quantity] of requested) {
     const allowed = purchased.get(orderItemId) ?? 0;
-    if ((reserved.get(orderItemId) ?? 0) + quantity > allowed) {
+    if ((reserved.get(orderItemId) ?? 0) + quantity > allowed + 0.0005) {
       return NextResponse.json(
         { error: "Return quantity exceeds the purchased quantity" },
         { status: 400, headers: corsHeaders },

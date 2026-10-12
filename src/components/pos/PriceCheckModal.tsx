@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Tag, X } from "lucide-react";
 import type { CachedProduct } from "@/types/woocommerce";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
-import { formatEGP, getCatalogSellingPrice } from "@/lib/pos/money";
+import { formatEGP, formatQty, getCatalogSellingPrice } from "@/lib/pos/money";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
 import {
   usePosKeyboardOptional,
@@ -17,6 +17,7 @@ interface PriceCheckResult {
   stock: number | null;
   stockStatus: string;
   isScale: boolean;
+  weightKg: number | null;
 }
 
 interface PriceCheckModalProps {
@@ -100,6 +101,7 @@ export function PriceCheckModal({
       stock: resolved.product.stock_quantity,
       stockStatus: resolved.product.stock_status,
       isScale: !!(resolved.isWeighted || resolved.isScalePriced),
+      weightKg: resolved.weightKg ?? null,
     });
 
     window.requestAnimationFrame(() => {
@@ -182,7 +184,9 @@ export function PriceCheckModal({
               </p>
               {result.isScale && (
                 <p className="mt-1 text-sm font-semibold text-sky-700">
-                  Scale barcode total
+                  {result.weightKg != null
+                    ? `Scale · ${formatQty(result.weightKg)} kg`
+                    : "Scale barcode total"}
                 </p>
               )}
               <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-base">

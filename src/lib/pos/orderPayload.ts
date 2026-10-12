@@ -12,22 +12,17 @@ function money(amount: number): string {
 
 /**
  * Persist cart rows for the local ledger / offline queue.
- * Scale lines: qty=1, unitPrice & lineTotal = locked custom price (never catalog).
+ * Weighed scale lines keep the calculated kilograms and the barcode line total.
  */
 export function cartToSaleLines(lines: CartLine[]): SaleLine[] {
   return lines.map((line) => {
     const isScale = line.isScalePriced || line.isWeighted;
-    const signedQty = isScale
-      ? line.qty < 0 || line.unitPrice < 0
-        ? -1
-        : 1
-      : line.qty;
     return {
       productId: line.product.id,
       name: line.product.name,
       nameZh: line.product.nameZh?.trim() || null,
       sku: line.product.sku ?? "",
-      qty: signedQty,
+      qty: line.qty,
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,
       isWeighted: isScale,
@@ -39,7 +34,7 @@ export function cartToSaleLines(lines: CartLine[]): SaleLine[] {
 /**
  * WooCommerce REST order payload.
  * Status `completed` so stock is deducted immediately.
- * Scale / custom-priced lines send quantity 1 with explicit subtotal/total.
+ * Weighed lines send the calculated quantity and the barcode line total.
  */
 export function saleLinesToOrderPayload(
   lines: SaleLine[],
@@ -47,7 +42,7 @@ export function saleLinesToOrderPayload(
   customerId: number | null,
 ): CreateOrderPayload {
   const line_items: CreateOrderLineItem[] = lines.map((line) => {
-    const quantity = line.isWeighted ? 1 : line.qty;
+    const quantity = Math.abs(line.qty);
     const totals = {
       quantity,
       subtotal: money(line.lineTotal),

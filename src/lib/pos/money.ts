@@ -17,10 +17,24 @@ export function roundMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 
+/** Weight and piece quantities, kept to grams (3 decimal places). */
+export function roundQty(value: number): number {
+  return Math.round((Number(value) || 0) * 1000) / 1000;
+}
+
+/** 1 stays "1"; 0.650 stays "0.65". */
+export function formatQty(qty: number): string {
+  const abs = Math.abs(Number(qty) || 0);
+  const text = Number.isInteger(abs)
+    ? String(abs)
+    : abs.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  return qty < 0 ? `-${text}` : text;
+}
+
 /**
  * Unit price for standard (non-scale) POS lines.
  * Uses sale_price when present and > 0; otherwise regular/catalog price.
- * Scale barcode lines must NOT use this — they keep the barcode-extracted total.
+ * Weighed scale lines use this as the price per kilogram. The barcode total is the line total.
  */
 export function getCatalogSellingPrice(product: {
   price: string | number;

@@ -82,6 +82,7 @@ export function productFromScalePlu(pluPadded: string): CachedProduct | null {
     status: "publish",
     type: "simple",
     isLocal: true,
+    isWeighed: true,
     meta_data: [{ key: "_op_barcode", value: pluPadded }],
     cachedAt: now,
   };

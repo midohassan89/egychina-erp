@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { LocalSale } from "@/types/woocommerce";
-import { formatEGP } from "@/lib/pos/money";
+import { formatEGP, formatQty } from "@/lib/pos/money";
 import { buildCode128Svg, receiptBarcodeValue } from "@/lib/pos/code128";
 import {
   isCashPayment,
@@ -21,8 +21,7 @@ function maskLoyaltyPhone(phone: string): string {
 }
 
 function qtyLabel(line: LocalSale["lines"][number]): string {
-  if (line.isWeighted) return "1";
-  return Number.isInteger(line.qty) ? String(line.qty) : line.qty.toFixed(3);
+  return formatQty(line.qty);
 }
 
 interface ReceiptTicketProps {

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   const items = (body.items ?? [])
     .map((row) => ({
       wcId: Number(row.wcId ?? row.productId),
-      qty: Math.floor(Math.abs(Number(row.qty))),
+      qty: Math.round(Math.abs(Number(row.qty)) * 1000) / 1000,
     }))
     .filter((row) => Number.isFinite(row.wcId) && row.wcId > 0 && row.qty > 0);
 

@@ -71,6 +71,7 @@ export async function PATCH(
       imageUrl?: string | null;
       isDeleted?: boolean;
       isFavorite?: boolean;
+      isWeighed?: boolean;
     };
 
     if (body.isDeleted === true) {
@@ -124,6 +125,7 @@ export async function PATCH(
       categoryId: body.categoryId,
       brandId: body.brandId,
       imageUrl: body.imageUrl,
+      isWeighed: body.isWeighed,
     });
 
     await logAuditAction(session.user.id, "UPDATE", "PRODUCT", id, {

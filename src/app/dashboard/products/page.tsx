@@ -397,6 +397,7 @@ function ProductsManagement() {
     imageUrl: string;
     nameEn: string;
     nameZh: string;
+    isWeighed: boolean;
   }) {
     if (!editProduct) return;
     setIsEditSaving(true);
@@ -417,6 +418,7 @@ function ProductsManagement() {
           imageUrl: values.imageUrl || null,
           nameEn: values.nameEn,
           nameZh: values.nameZh,
+          isWeighed: values.isWeighed,
         }),
       });
       const data = (await res.json()) as {

@@ -18,6 +18,7 @@ export interface ProductUpdateInput {
   categoryId?: string | null;
   brandId?: string | null;
   imageUrl?: string | null;
+  isWeighed?: boolean;
 }
 
 function serializeAdminProduct(p: Product) {
@@ -37,6 +38,7 @@ function serializeAdminProduct(p: Product) {
     imageUrl: p.imageUrl,
     isDeleted: p.isDeleted,
     isFavorite: p.isFavorite,
+    isWeighed: p.isWeighed,
     linkedProductId: p.linkedProductId,
     bundleMultiplier: p.bundleMultiplier,
     categoryId: p.categoryId,
@@ -87,6 +89,7 @@ export async function updateProductAndSync(
     categoryId?: string | null;
     brandId?: string | null;
     imageUrl?: string | null;
+    isWeighed?: boolean;
   } = {};
 
   if (input.name !== undefined) {
@@ -105,6 +108,9 @@ export async function updateProductAndSync(
   }
   if (input.barcode !== undefined) {
     data.barcode = input.barcode?.trim() ? input.barcode.trim() : null;
+  }
+  if (input.isWeighed !== undefined) {
+    data.isWeighed = Boolean(input.isWeighed);
   }
   if (input.price !== undefined) {
     if (!Number.isFinite(input.price) || input.price < 0) {
@@ -133,7 +139,7 @@ export async function updateProductAndSync(
     if (!Number.isFinite(input.stockQuantity) || input.stockQuantity < 0) {
       throw new ProductServiceError("Invalid stock quantity", 400);
     }
-    data.stockQuantity = Math.floor(input.stockQuantity);
+    data.stockQuantity = Math.round(input.stockQuantity * 1000) / 1000;
   }
 
   // Virtual bundle link (null clears bundle mode)
@@ -331,7 +337,7 @@ export async function restockProductsByWcId(
   const results: { wcId: number; stockQuantity: number }[] = [];
 
   for (const item of items) {
-    const qty = Math.floor(Math.abs(item.qty));
+    const qty = Math.round(Math.abs(item.qty) * 1000) / 1000;
     if (!Number.isFinite(item.wcId) || item.wcId <= 0 || qty <= 0) {
       throw new ProductServiceError("Invalid restock line", 400);
     }

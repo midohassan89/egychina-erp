@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { roundMoney } from "@/lib/pos/money";
+import { roundMoney, roundQty } from "@/lib/pos/money";
 import { resolveProductUnitCost } from "@/lib/inventory/resolveUnitCost";
 import type { PaymentMethod } from "@/types/woocommerce";
 
@@ -83,7 +83,7 @@ export async function persistSaleRecord(
   }[] = [];
 
   for (const line of input.lines) {
-    const qty = Math.max(1, Math.trunc(Math.abs(Number(line.quantity)) || 0));
+    const qty = roundQty(Math.abs(Number(line.quantity) || 0));
     if (qty <= 0) continue;
 
     const wcProductId =

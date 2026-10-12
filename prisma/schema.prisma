@@ -82,8 +82,11 @@ model Product {
   barcode       String?
   price         Float
   salePrice     Float?
-  stockQuantity Int      @default(0)
+  /** Kilograms or other weight on hand. Piece items stay whole numbers. */
+  stockQuantity Float    @default(0)
   stockStatus   String   @default("instock")
+  /** Scale item: the barcode embeds the line total, and quantity is weight. */
+  isWeighed     Boolean  @default(false)
   /** Pieces in one supplier carton/box. Purchase qty is packs; stock is qty × this. */
   purchasePackSize Int   @default(1)
   /** Last piece cost recorded by an opening-balance entry. */
@@ -506,7 +509,7 @@ model SaleLine {
   /** WooCommerce product id from POS cart */
   wcProductId Int?
   name        String
-  quantity    Int
+  quantity    Float
   unitPrice   Float
   /** Snapshot cost for COGS at time of sale */
   unitCost    Float   @default(0)
@@ -684,7 +687,7 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   productId String
-  quantity  Int
+  quantity  Float
   price     Float
 
   order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -719,7 +722,7 @@ model ReturnItem {
   returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
   orderItemId     String
   orderItem       OrderItem     @relation(fields: [orderItemId], references: [id])
-  quantity        Int
+  quantity        Float
 
   @@index([returnRequestId])
   @@index([orderItemId])

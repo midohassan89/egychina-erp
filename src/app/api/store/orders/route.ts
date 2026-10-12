@@ -392,7 +392,7 @@ export async function POST(request: Request) {
       const itemPrice = Number(item.price ?? item.unitPrice ?? 0);
       return {
         productId: String(item.productId ?? item.id ?? "").trim(),
-        quantity: Math.floor(Number(item.quantity ?? item.qty ?? 0)),
+        quantity: Math.round(Number(item.quantity ?? item.qty ?? 0) * 1000) / 1000,
         price: itemPrice,
       };
     });
@@ -402,13 +402,13 @@ export async function POST(request: Request) {
         (item) =>
           !item.productId ||
           !Number.isFinite(item.quantity) ||
-          item.quantity < 1 ||
+          item.quantity <= 0 ||
           !Number.isFinite(item.price) ||
           item.price < 0,
       )
     ) {
       return NextResponse.json(
-        { error: "Each item needs a productId, a quantity of at least 1, and a price" },
+        { error: "Each item needs a productId, a quantity greater than 0, and a price" },
         { status: 400, headers: corsHeaders },
       );
     }

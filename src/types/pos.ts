@@ -6,18 +6,21 @@ export type LineDiscountType = "percent" | "flat";
 export interface CartLine {
   lineId: string;
   product: CachedProduct;
-  /** Always 1 for scale-priced items. */
+  /**
+   * Pieces, or kilograms for a weighed scale item.
+   * The scale barcode does not contain the weight; it is total ÷ unit price.
+   */
   qty: number;
   /**
-   * Unit / line price used for this cart row.
-   * For scale barcodes this is the locked custom total — never the catalog price.
+   * Unit price for this cart row.
+   * Weighed scale lines keep the catalog price per kilogram.
    * May be overridden by the cashier via Edit Item.
    */
   unitPrice: number;
   /** Line subtotal charged to the customer (after discount). */
   lineTotal: number;
   /**
-   * True for scale-barcode lines: qty fixed at 1 by default.
+   * True for scale-barcode lines. Quantity is the calculated weight and is not stepped by ±1.
    */
   isScalePriced: boolean;
   /** @deprecated use isScalePriced — kept for compatibility */

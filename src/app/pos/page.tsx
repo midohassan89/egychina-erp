@@ -13,7 +13,7 @@ import { builtInQuickTapProducts } from "@/lib/pos/scaleCatalog";
 import { getOpBarcodes } from "@/lib/pos/opBarcode";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
 import { isCustomerLoyaltyScan, normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
-import { formatEGP } from "@/lib/pos/money";
+import { formatEGP, formatQty } from "@/lib/pos/money";
 import { CartPanel, cartItemDomId } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
 import { HeldCartsModal } from "@/components/pos/HeldCartsModal";
@@ -339,15 +339,19 @@ function POSPageInner() {
         cart.addScaleLine({
           product: result.product,
           customTotal: result.lineTotal,
+          qty: result.qty,
+          unitPrice: result.unitPrice,
           barcode: result.barcode,
           plu: result.plu,
         });
         // Scale lines are always appended as new rows.
         flashCartItem(result.product.id, true);
+        const weightLabel =
+          result.weightKg != null ? ` · ${formatQty(result.weightKg)} kg` : "";
         setScanMessage(
           returnMode
-            ? `Return ${result.product.name} · ${formatEGP(-Math.abs(result.lineTotal))}`
-            : `Added ${result.product.name} · ${formatEGP(result.lineTotal)}`,
+            ? `Return ${result.product.name}${weightLabel} · ${formatEGP(-Math.abs(result.lineTotal))}`
+            : `Added ${result.product.name}${weightLabel} · ${formatEGP(result.lineTotal)}`,
         );
       } else {
         const existingItem = cart.lines.find(

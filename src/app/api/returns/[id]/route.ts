@@ -162,7 +162,7 @@ export async function PATCH(
     const allReturned =
       orderItems.length > 0 &&
       orderItems.every(
-        (item) => (returnedQty.get(item.id) ?? 0) >= item.quantity,
+        (item) => (returnedQty.get(item.id) ?? 0) + 0.0005 >= item.quantity,
       );
 
     await tx.order.update({

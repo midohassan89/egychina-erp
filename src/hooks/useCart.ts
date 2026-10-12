@@ -7,7 +7,7 @@ import {
   type CartLine,
   type LineDiscountType,
 } from "@/types/pos";
-import { roundMoney, getCatalogSellingPrice } from "@/lib/pos/money";
+import { roundMoney, roundQty, getCatalogSellingPrice } from "@/lib/pos/money";
 
 function newLineId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -123,11 +123,23 @@ export function useCart(returnMode = false) {
     (input: {
       product: CachedProduct;
       customTotal: number;
+      qty?: number;
+      unitPrice?: number;
       barcode?: string;
       plu?: string;
     }): CartAddResult => {
       const absTotal = roundMoney(Math.abs(input.customTotal));
       const customTotal = returnMode ? -absTotal : absTotal;
+      const absQty =
+        input.qty != null && Number.isFinite(input.qty) && Math.abs(input.qty) > 0
+          ? roundQty(Math.abs(input.qty))
+          : 1;
+      const signedQty = returnMode ? -absQty : absQty;
+      const absUnit =
+        input.unitPrice != null && input.unitPrice > 0
+          ? Math.abs(input.unitPrice)
+          : absTotal;
+      const signedUnit = returnMode ? -absUnit : absUnit;
       const lineId = newLineId();
 
       setLines((prev) => [
@@ -135,11 +147,12 @@ export function useCart(returnMode = false) {
         {
           lineId,
           product: input.product,
-          qty: returnMode ? -1 : 1,
-          unitPrice: customTotal,
+          qty: signedQty,
+          unitPrice: signedUnit,
           lineTotal: customTotal,
           isScalePriced: true,
           isWeighted: true,
+          weightKg: absQty,
           barcode: input.barcode,
           plu: input.plu,
           discountType: null,
@@ -228,7 +241,8 @@ export function useCart(returnMode = false) {
           let nextQty = line.qty;
           if (patch.qty !== undefined) {
             if (line.isScalePriced) {
-              nextQty = isReturnLine ? -1 : 1;
+              const abs = roundQty(Math.abs(line.qty)) || 1;
+              nextQty = isReturnLine ? -abs : abs;
             } else {
               const abs = Math.max(1, Math.floor(Math.abs(patch.qty)));
               nextQty = isReturnLine ? -abs : abs;
@@ -242,11 +256,18 @@ export function useCart(returnMode = false) {
             nextPrice = Math.abs(patch.unitPrice);
           }
 
-          return withTotals(line, {
+          const next = withTotals(line, {
             ...patch,
             qty: nextQty,
             unitPrice: nextPrice,
           });
+          const priceUnchanged =
+            Math.abs(Math.abs(nextPrice) - Math.abs(line.unitPrice)) < 0.001;
+          if (line.isScalePriced && priceUnchanged && !next.discountType) {
+            const sign = line.lineTotal < 0 ? -1 : 1;
+            return { ...next, lineTotal: sign * Math.abs(line.lineTotal) };
+          }
+          return next;
         }),
       );
     },

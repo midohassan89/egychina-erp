@@ -55,6 +55,7 @@ export function prismaProductToCached(product: Product): CachedProduct {
       : [],
     cachedAt: now,
     isFavorite: product.isFavorite,
+    isWeighed: product.isWeighed,
     prismaId: product.id,
     linkedProductId: product.linkedProductId,
     bundleMultiplier: product.bundleMultiplier,

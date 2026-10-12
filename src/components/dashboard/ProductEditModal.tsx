@@ -27,6 +27,7 @@ interface ProductEditModalProps {
     imageUrl: string;
     nameEn: string;
     nameZh: string;
+    isWeighed: boolean;
   }) => Promise<void>;
 }
 
@@ -65,6 +66,7 @@ export function ProductEditModal({
   const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
   const [brandId, setBrandId] = useState(product.brandId ?? "");
   const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
+  const [isWeighed, setIsWeighed] = useState(Boolean(product.isWeighed));
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +88,7 @@ export function ProductEditModal({
     setCategoryId(product.categoryId ?? "");
     setBrandId(product.brandId ?? "");
     setImageUrl(product.imageUrl ?? "");
+    setIsWeighed(Boolean(product.isWeighed));
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
@@ -158,6 +161,7 @@ export function ProductEditModal({
                 imageUrl,
                 nameEn,
                 nameZh,
+                isWeighed,
               });
               return;
             }
@@ -173,6 +177,7 @@ export function ProductEditModal({
               imageUrl,
               nameEn,
               nameZh,
+              isWeighed,
             });
           }}
         >
@@ -269,6 +274,24 @@ export function ProductEditModal({
             </label>
           </div>
           {priceError && <p className="text-xs text-red-600">{priceError}</p>}
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+            <input
+              id="edit-product-is-weighed"
+              type="checkbox"
+              checked={isWeighed}
+              onChange={(e) => setIsWeighed(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-800">
+                Sold by weight
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Scale barcodes contain the total price. The POS divides that
+                price by the unit price to get the weight in kilograms.
+              </span>
+            </span>
+          </label>
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Barcode</span>
             <input

@@ -104,6 +104,8 @@ export interface CachedProduct extends WooCommerceProduct {
   linkedProductId?: string | null;
   /** Base units consumed when one bundle is sold. */
   bundleMultiplier?: number | null;
+  /** Sold by weight. Scale barcodes embed the line total. */
+  isWeighed?: boolean;
 }
 
 export interface CachedCategory extends WooCommerceCategory {

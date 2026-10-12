@@ -5,7 +5,7 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { Minus, Plus, Trash2, Pause, Clock } from "lucide-react";
 import type { CartLine, LineDiscountType } from "@/types/pos";
-import { formatEGP } from "@/lib/pos/money";
+import { formatEGP, formatQty } from "@/lib/pos/money";
 import { CartEditModal } from "@/components/pos/CartEditModal";
 
 export function cartItemDomId(productId: number): string {
@@ -269,7 +269,7 @@ export function CartPanel({
                         )}
                       >
                         {isScale
-                          ? `Scale${line.plu ? ` · PLU ${line.plu}` : ""}`
+                          ? `${formatQty(line.qty)} kg${line.plu ? ` · PLU ${line.plu}` : ""}`
                           : `${formatEGP(line.unitPrice)} each`}
                         {hasDiscount
                           ? ` · disc ${line.discountType === "percent" ? `${line.discountValue}%` : formatEGP(line.discountValue!)}`
@@ -306,9 +306,9 @@ export function CartPanel({
                               "scale-110 font-bold text-red-600",
                           )}
                         >
-                          {line.qty}
+                          {formatQty(line.qty)}
                         </span>{" "}
-                        · tap to edit price
+                        kg · tap to edit price
                       </span>
                     ) : (
                       <div className="flex items-center gap-1.5">

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { CartLine, LineDiscountType } from "@/types/pos";
 import { computeLineTotal } from "@/types/pos";
-import { formatEGP, roundMoney } from "@/lib/pos/money";
+import { formatEGP, formatQty, roundMoney, roundQty } from "@/lib/pos/money";
 import { clsx } from "clsx";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
 import {
@@ -59,13 +59,18 @@ export function CartEditModal({
   }, [open]);
 
   const preview = useMemo(() => {
-    const q = isScale ? 1 : Math.max(1, Math.floor(parseFloat(qty) || 1));
+    const weight = roundQty(Math.abs(line.qty)) || 1;
+    const q = isScale ? weight : Math.max(1, Math.floor(parseFloat(qty) || 1));
     const price = Math.max(0, parseFloat(unitPrice) || 0);
     const disc =
       discountType === "none" ? 0 : Math.max(0, parseFloat(discountValue) || 0);
     const type = discountType === "none" ? null : discountType;
+    const priceUnchanged = Math.abs(price - Math.abs(line.unitPrice)) < 0.001;
+    if (isScale && priceUnchanged && type == null) {
+      return Math.abs(line.lineTotal);
+    }
     return computeLineTotal(q, price, type, disc);
-  }, [qty, unitPrice, discountType, discountValue, isScale]);
+  }, [qty, unitPrice, discountType, discountValue, isScale, line]);
 
   if (!open) return null;
 
@@ -102,13 +107,13 @@ export function CartEditModal({
               type="text"
               inputMode="none"
               disabled={isScale}
-              value={isScale ? "1" : qty}
+              value={isScale ? formatQty(line.qty) : qty}
               onChange={setQty}
               className="w-full rounded-xl border border-slate-300 px-3 py-3 text-lg font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-100"
             />
             {isScale && (
               <span className="text-xs text-amber-700">
-                Scale items stay at qty 1
+                Weight comes from the scale price ÷ the price per kg
               </span>
             )}
           </label>
@@ -191,7 +196,7 @@ export function CartEditModal({
             type="button"
             onClick={() => {
               const q = isScale
-                ? 1
+                ? roundQty(Math.abs(line.qty)) || 1
                 : Math.max(1, Math.floor(parseFloat(qty) || 1));
               const price = roundMoney(Math.max(0, parseFloat(unitPrice) || 0));
               const disc =
