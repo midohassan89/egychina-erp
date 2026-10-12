@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
 
 interface CategoryRow {
   id: string;
@@ -14,6 +15,15 @@ interface CategoryRow {
 }
 
 export default function CategoriesPage() {
+  return (
+    <ToastProvider>
+      <CategoriesManagement />
+    </ToastProvider>
+  );
+}
+
+function CategoriesManagement() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,6 +33,7 @@ export default function CategoriesPage() {
   const [nameZh, setNameZh] = useState("");
   const [slug, setSlug] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +96,31 @@ export default function CategoriesPage() {
       setError(err instanceof Error ? err.message : "Could not save category");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteCategory(category: CategoryRow) {
+    if (category.productCount > 0 || deletingId) return;
+    if (!window.confirm("هل أنت متأكد من حذف هذا القسم؟")) return;
+
+    setDeletingId(category.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/categories/${category.id}`, {
+        method: "DELETE",
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Could not delete category");
+      if (editingId === category.id) resetForm();
+      toast("تم حذف القسم", "success");
+      await load();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not delete category";
+      setError(message);
+      toast(message, "error");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -203,13 +239,34 @@ export default function CategoriesPage() {
                     {category.productCount}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(category)}
-                      className="text-sm font-medium text-brand-700 hover:underline"
-                    >
-                      تعديل
-                    </button>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(category)}
+                        className="text-sm font-medium text-brand-700 hover:underline"
+                      >
+                        تعديل
+                      </button>
+                      <span
+                        title={
+                          category.productCount > 0
+                            ? "لا يمكن حذف قسم يحتوي على منتجات"
+                            : undefined
+                        }
+                      >
+                        <button
+                          type="button"
+                          disabled={
+                            category.productCount > 0 ||
+                            deletingId === category.id
+                          }
+                          onClick={() => void deleteCategory(category)}
+                          className="text-sm font-medium text-red-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+                        >
+                          {deletingId === category.id ? "جاري الحذف…" : "حذف"}
+                        </button>
+                      </span>
+                    </div>
                   </td>
                 </tr>
               ))

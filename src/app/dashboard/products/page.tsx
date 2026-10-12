@@ -39,6 +39,40 @@ import { clsx } from "clsx";
 import { formatQty } from "@/lib/pos/money";
 
 const PER_PAGE = 20;
+const EXPORT_PAGE_SIZE = 10_000;
+const EXPORT_ID_CHUNK = 150;
+
+function SelectionCheckbox({
+  checked,
+  indeterminate = false,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      aria-label={label}
+      onChange={onChange}
+      className="h-4 w-4 rounded border-slate-300"
+    />
+  );
+}
 
 function FilterChip({
   label,
@@ -137,6 +171,10 @@ function ProductsManagement() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("Working…");
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [selectingAll, setSelectingAll] = useState(false);
 
   const loadProducts = useCallback(
     async (
@@ -304,26 +342,115 @@ function ProductsManagement() {
     });
   }
 
-  async function fetchAllActiveProducts(): Promise<AdminProductRow[]> {
+  function productQuery(
+    pageNum: number,
+    perPage: number,
+    extra?: { ids?: string[]; idsOnly?: boolean },
+  ) {
     const params = new URLSearchParams({
-      page: "1",
-      perPage: "10000",
+      page: String(pageNum),
+      perPage: String(perPage),
     });
+    if (extra?.ids && extra.ids.length > 0) {
+      params.set("ids", extra.ids.join(","));
+      return params;
+    }
+    if (extra?.idsOnly) params.set("idsOnly", "1");
+    if (query) params.set("q", query);
+    if (view === "trash") params.set("trash", "1");
+    if (view === "weighed") params.set("weighed", "1");
+    if (view !== "trash" && categoryId) params.set("categoryId", categoryId);
+    if (view === "active" && brandId) params.set("brandId", brandId);
+    if (stockFilter === "instock" || stockFilter === "outofstock") {
+      params.set("stockStatus", stockFilter);
+    }
+    return params;
+  }
+
+  async function fetchProductPage(params: URLSearchParams) {
     const res = await fetch(`/api/products?${params.toString()}`);
-    const data = (await res.json()) as ProductsResponse;
+    const data = (await res.json()) as ProductsResponse & { ids?: string[] };
     if (!res.ok) {
       throw new Error(data.error ?? "Failed to load products for export");
     }
-    return data.products ?? [];
+    return data;
+  }
+
+  async function fetchFilteredProducts(): Promise<AdminProductRow[]> {
+    const all: AdminProductRow[] = [];
+    let pageNum = 1;
+    let pageCount = 1;
+    do {
+      const data = await fetchProductPage(
+        productQuery(pageNum, EXPORT_PAGE_SIZE),
+      );
+      all.push(...(data.products ?? []));
+      pageCount = data.pageCount ?? 1;
+      pageNum += 1;
+    } while (pageNum <= pageCount);
+    return all;
+  }
+
+  async function fetchProductsByIds(ids: string[]): Promise<AdminProductRow[]> {
+    const all: AdminProductRow[] = [];
+    for (let index = 0; index < ids.length; index += EXPORT_ID_CHUNK) {
+      const slice = ids.slice(index, index + EXPORT_ID_CHUNK);
+      const data = await fetchProductPage(
+        productQuery(1, slice.length, { ids: slice }),
+      );
+      all.push(...(data.products ?? []));
+    }
+    all.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    return all;
+  }
+
+  function toggleProductSelected(id: string) {
+    setSelectedProductIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function toggleSelectAll() {
+    const visibleIds = products.map((product) => product.id);
+    const allVisibleSelected =
+      visibleIds.length > 0 &&
+      visibleIds.every((id) => selectedProductIds.has(id));
+    const allFilteredSelected =
+      allVisibleSelected && selectedProductIds.size >= total && total > 0;
+    if (allFilteredSelected) {
+      setSelectedProductIds(new Set());
+      return;
+    }
+
+    setSelectingAll(true);
+    try {
+      const data = await fetchProductPage(productQuery(1, 1, { idsOnly: true }));
+      const ids = data.ids ?? [];
+      setSelectedProductIds((current) => {
+        const next = new Set(current);
+        for (const id of ids) next.add(id);
+        return next;
+      });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Could not select products", "error");
+    } finally {
+      setSelectingAll(false);
+    }
   }
 
   async function handleExportExcel() {
     setBulkBusy(true);
     setBulkMessage("Preparing Excel export…");
     try {
-      const all = await fetchAllActiveProducts();
-      downloadProductsExcel(all);
-      toast(`Exported ${all.length} products`, "success");
+      const rows =
+        selectedProductIds.size > 0
+          ? await fetchProductsByIds([...selectedProductIds])
+          : await fetchFilteredProducts();
+      downloadProductsExcel(rows);
+      toast(`Exported ${rows.length} products`, "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Export failed", "error");
     } finally {
@@ -594,7 +721,16 @@ function ProductsManagement() {
   }
   const from = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, total);
-  const colSpan = view === "weighed" ? 7 : 10;
+  const colSpan = view === "weighed" ? 8 : 11;
+  const visibleIds = products.map((product) => product.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selectedProductIds.has(id));
+  const allFilteredSelected =
+    allVisibleSelected && selectedProductIds.size >= total && total > 0;
+  const someVisibleSelected = visibleIds.some((id) =>
+    selectedProductIds.has(id),
+  );
   const categoryName =
     categories.find((category) => category.id === categoryId)?.name ?? "";
   const brandName = brands.find((brand) => brand.id === brandId)?.name ?? "";
@@ -776,6 +912,11 @@ function ProductsManagement() {
                 </select>
               </label>
 
+              {selectedProductIds.size > 0 && (
+                <span className="text-sm font-medium text-slate-600">
+                  تم تحديد {selectedProductIds.size.toLocaleString("ar-EG")} منتجات
+                </span>
+              )}
               {view === "active" && (
                 <>
                   <button
@@ -880,6 +1021,15 @@ function ProductsManagement() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               {view === "weighed" ? (
                 <tr>
+                  <th className="w-10 px-3 py-3">
+                    <SelectionCheckbox
+                      checked={allFilteredSelected}
+                      indeterminate={!allFilteredSelected && someVisibleSelected}
+                      disabled={isLoading || selectingAll || products.length === 0}
+                      label="تحديد كل المنتجات"
+                      onChange={() => void toggleSelectAll()}
+                    />
+                  </th>
                   <th className="px-4 py-3 font-semibold">الصورة</th>
                   <th className="px-4 py-3 font-semibold">اسم المنتج</th>
                   <th className="px-4 py-3 font-semibold">الباركود</th>
@@ -890,6 +1040,15 @@ function ProductsManagement() {
                 </tr>
               ) : (
               <tr>
+                <th className="w-10 px-3 py-3">
+                  <SelectionCheckbox
+                    checked={allFilteredSelected}
+                    indeterminate={!allFilteredSelected && someVisibleSelected}
+                    disabled={isLoading || selectingAll || products.length === 0}
+                    label="تحديد كل المنتجات"
+                    onChange={() => void toggleSelectAll()}
+                  />
+                </th>
                 <th className="px-4 py-3 font-semibold">★</th>
                 <th className="px-4 py-3 font-semibold">الصورة</th>
                 <th className="px-4 py-3 font-semibold">اسم المنتج</th>
@@ -931,6 +1090,8 @@ function ProductsManagement() {
                   <WeighedProductRow
                     key={product.id}
                     product={product}
+                    selected={selectedProductIds.has(product.id)}
+                    onToggleSelected={() => toggleProductSelected(product.id)}
                     onSaved={(patch) => {
                       applyWeighedPrices(product.id, patch);
                       if (patch.price !== undefined || patch.salePrice !== undefined) {
@@ -951,6 +1112,8 @@ function ProductsManagement() {
                     key={product.id}
                     product={product}
                     view={view}
+                    selected={selectedProductIds.has(product.id)}
+                    onToggleSelected={() => toggleProductSelected(product.id)}
                     busy={savingId === product.id}
                     onSavePrice={savePrice}
                     onSaveSalePrice={saveSalePrice}
@@ -1086,6 +1249,8 @@ function ProductsManagement() {
 function ProductRow({
   product,
   view,
+  selected,
+  onToggleSelected,
   busy,
   onSavePrice,
   onSaveSalePrice,
@@ -1098,6 +1263,8 @@ function ProductRow({
 }: {
   product: AdminProductRow;
   view: ViewMode;
+  selected: boolean;
+  onToggleSelected: () => void;
   busy: boolean;
   onSavePrice: (product: AdminProductRow, raw: string) => Promise<void>;
   onSaveSalePrice: (product: AdminProductRow, raw: string) => Promise<void>;
@@ -1124,6 +1291,13 @@ function ProductRow({
 
   return (
     <tr className={clsx("hover:bg-slate-50/80", busy && "opacity-60")}>
+      <td className="px-3 py-3">
+        <SelectionCheckbox
+          checked={selected}
+          label={`تحديد ${product.name}`}
+          onChange={onToggleSelected}
+        />
+      </td>
       <td className="px-3 py-3">
         <button
           type="button"
@@ -1400,9 +1574,13 @@ function WeighedPriceField({
 
 function WeighedProductRow({
   product,
+  selected,
+  onToggleSelected,
   onSaved,
 }: {
   product: AdminProductRow;
+  selected: boolean;
+  onToggleSelected: () => void;
   onSaved: (
     patch: Partial<Pick<AdminProductRow, "price" | "salePrice" | "buyingCost" | "lastPurchasePrice">>,
   ) => void;
@@ -1492,6 +1670,13 @@ function WeighedProductRow({
 
   return (
     <tr className="hover:bg-slate-50/80">
+      <td className="px-3 py-3">
+        <SelectionCheckbox
+          checked={selected}
+          label={`تحديد ${product.name}`}
+          onChange={onToggleSelected}
+        />
+      </td>
       <td className="px-4 py-3">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

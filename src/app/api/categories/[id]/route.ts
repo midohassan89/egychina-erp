@@ -82,3 +82,42 @@ export async function PUT(
     );
   }
 }
+
+/** DELETE /api/categories/[id] — only empty departments can be removed. */
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isEditor(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await context.params;
+
+  const productCount = await prisma.product.count({
+    where: { categoryId: id },
+  });
+  if (productCount > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "لا يمكن حذف قسم يحتوي على منتجات. يرجى نقل المنتجات أو حذفها أولاً.",
+      },
+      { status: 400 },
+    );
+  }
+
+  try {
+    await prisma.category.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Could not delete category" },
+      { status: 400 },
+    );
+  }
+}

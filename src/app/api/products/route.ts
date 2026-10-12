@@ -54,6 +54,12 @@ export async function GET(request: Request) {
     const categoryId = searchParams.get("categoryId")?.trim() ?? "";
     const brandId = searchParams.get("brandId")?.trim() ?? "";
     const stockStatusFilter = searchParams.get("stockStatus")?.trim() ?? "";
+    const idsOnly = searchParams.get("idsOnly") === "1";
+    const idList = (searchParams.get("ids") ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0 && id.length <= 64)
+      .slice(0, 200);
     const perPageRaw = Number(searchParams.get("perPage") ?? 20);
     const perPage = Math.min(
       10_000,
@@ -86,7 +92,22 @@ export async function GET(request: Request) {
       filters.push({ brandId });
     }
 
-    const where: Prisma.ProductWhereInput = { AND: filters };
+    const where: Prisma.ProductWhereInput =
+      pageParam && idList.length > 0
+        ? { id: { in: idList } }
+        : { AND: filters };
+
+    if (pageParam && idsOnly) {
+      const idRows = await prisma.product.findMany({
+        where,
+        orderBy: { name: "asc" },
+        select: { id: true },
+      });
+      return NextResponse.json({
+        ids: idRows.map((row) => row.id),
+        total: idRows.length,
+      });
+    }
 
     // POS / full catalog (CachedProduct shape) — never include trash
     if (!pageParam) {
@@ -173,24 +194,26 @@ export async function GET(request: Request) {
         take: perPage,
         include: { brand: true, category: true },
       }),
-      trash
+      trash || idList.length > 0
         ? Promise.resolve([])
         : prisma.category.findMany({
             where: { products: { some: categoryOptionScope } },
             orderBy: { name: "asc" },
             select: { id: true, name: true },
           }),
-      trash
+      trash || idList.length > 0
         ? Promise.resolve([])
         : prisma.brand.findMany({
             where: { products: { some: brandOptionScope } },
             orderBy: { name: "asc" },
             select: { id: true, name: true },
           }),
-      prisma.product.groupBy({
-        by: ["stockStatus"],
-        where: stockOptionScope,
-      }),
+      idList.length > 0
+        ? Promise.resolve([])
+        : prisma.product.groupBy({
+            by: ["stockStatus"],
+            where: stockOptionScope,
+          }),
     ]);
 
     const lastPurchaseCost = new Map<string, number>();
