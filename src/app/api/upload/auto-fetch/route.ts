@@ -14,10 +14,33 @@ export const dynamic = "force-dynamic";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "products");
 const MAX_CANDIDATES = 5;
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36";
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
+  "Accept-Encoding": "gzip, deflate, br",
+  Connection: "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Cache-Control": "max-age=0",
+};
 const NO_IMAGE =
   "عفواً، لم نتمكن من جلب صورة صالحة لهذا المنتج. يرجى إضافتها يدوياً.";
+
+function isBlockedImageUrl(imageUrl: string): boolean {
+  const value = imageUrl.toLowerCase();
+  return (
+    value.includes("bing.com/th?") ||
+    value.includes("bing.net/th?") ||
+    value.includes("transparent.png") ||
+    value.includes("base64")
+  );
+}
 
 function bingImageUrls(html: string): string[] {
   const $ = cheerio.load(html);
@@ -32,6 +55,7 @@ function bingImageUrls(html: string): string[] {
       if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
         return;
       }
+      if (isBlockedImageUrl(imageUrl)) return;
       urls.push(imageUrl);
     } catch {
       // Skip a result whose metadata is not valid JSON.
@@ -49,7 +73,7 @@ async function downloadWebp(imageUrl: string): Promise<Buffer | null> {
       maxContentLength: 8 * 1024 * 1024,
       maxRedirects: 3,
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": BROWSER_HEADERS["User-Agent"],
         Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
       },
     });
@@ -109,13 +133,18 @@ export async function POST(request: Request) {
     const searchResponse = await axios.get<string>(searchUrl, {
       responseType: "text",
       timeout: 15000,
-      headers: { "User-Agent": USER_AGENT },
+      headers: BROWSER_HEADERS,
     });
 
-    const candidateUrls = bingImageUrls(searchResponse.data).slice(0, MAX_CANDIDATES);
+    const candidateUrls = bingImageUrls(searchResponse.data);
     await mkdir(UPLOAD_DIR, { recursive: true });
 
+    let attempts = 0;
     for (const imageUrl of candidateUrls) {
+      if (isBlockedImageUrl(imageUrl)) continue;
+      if (attempts >= MAX_CANDIDATES) break;
+      attempts += 1;
+
       const webp = await downloadWebp(imageUrl);
       if (!webp) continue;
 
