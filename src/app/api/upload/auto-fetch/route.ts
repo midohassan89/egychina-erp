@@ -13,7 +13,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "products");
-const MAX_CANDIDATES = 5;
+const BLOCKED_IMAGE_TERMS = [
+  "bing.com/th?",
+  "bing.net/th?",
+  "transparent.png",
+  "base64",
+  "clipart",
+  "vector",
+  "pngtree",
+  "freepik",
+  "shutterstock",
+  "cartoon",
+];
 const BROWSER_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -34,12 +45,7 @@ const NO_IMAGE =
 
 function isBlockedImageUrl(imageUrl: string): boolean {
   const value = imageUrl.toLowerCase();
-  return (
-    value.includes("bing.com/th?") ||
-    value.includes("bing.net/th?") ||
-    value.includes("transparent.png") ||
-    value.includes("base64")
-  );
+  return BLOCKED_IMAGE_TERMS.some((term) => value.includes(term));
 }
 
 function bingImageUrls(html: string): string[] {
@@ -128,8 +134,11 @@ export async function POST(request: Request) {
 
   try {
     const exactName = productName.replace(/"/g, "").trim();
+    const enhancedQuery = exactName + " منتج";
     const searchUrl =
-      "https://www.bing.com/images/search?q=" + encodeURIComponent(exactName);
+      "https://www.bing.com/images/search?q=" +
+      encodeURIComponent(enhancedQuery) +
+      "&qft=+filterui:photo-photo";
     const searchResponse = await axios.get<string>(searchUrl, {
       responseType: "text",
       timeout: 15000,
@@ -139,11 +148,8 @@ export async function POST(request: Request) {
     const candidateUrls = bingImageUrls(searchResponse.data);
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    let attempts = 0;
     for (const imageUrl of candidateUrls) {
       if (isBlockedImageUrl(imageUrl)) continue;
-      if (attempts >= MAX_CANDIDATES) break;
-      attempts += 1;
 
       const webp = await downloadWebp(imageUrl);
       if (!webp) continue;
