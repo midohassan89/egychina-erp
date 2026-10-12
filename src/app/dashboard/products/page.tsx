@@ -59,6 +59,7 @@ interface ProductsResponse {
   perPage: number;
   pageCount: number;
   categories?: { id: string; name: string }[];
+  brands?: { id: string; name: string }[];
   error?: string;
 }
 
@@ -88,6 +89,8 @@ function ProductsManagement() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     [],
   );
+  const [brandId, setBrandId] = useState("");
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -115,6 +118,7 @@ function ProductsManagement() {
       mode: ViewMode,
       stock: StockFilter = "all",
       category = "",
+      brand = "",
     ) => {
       setIsLoading(true);
       setError(null);
@@ -127,6 +131,7 @@ function ProductsManagement() {
         if (mode === "trash") params.set("trash", "1");
         if (mode === "weighed") params.set("weighed", "1");
         if (mode !== "trash" && category) params.set("categoryId", category);
+        if (mode === "active" && brand) params.set("brandId", brand);
         if (stock === "instock" || stock === "outofstock") {
           params.set("stockStatus", stock);
         }
@@ -144,6 +149,9 @@ function ProductsManagement() {
         if (mode !== "trash" && Array.isArray(data.categories)) {
           setCategories(data.categories);
         }
+        if (mode === "active" && Array.isArray(data.brands)) {
+          setBrands(data.brands);
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load products",
@@ -158,8 +166,31 @@ function ProductsManagement() {
   );
 
   useEffect(() => {
-    void loadProducts(page, query, view, stockFilter, categoryId);
-  }, [loadProducts, page, query, view, stockFilter, categoryId]);
+    void loadProducts(page, query, view, stockFilter, categoryId, brandId);
+  }, [loadProducts, page, query, view, stockFilter, categoryId, brandId]);
+
+  useEffect(() => {
+    if (view === "trash" || isLoading) return;
+    if (
+      categoryId &&
+      !categories.some((category) => category.id === categoryId)
+    ) {
+      startTransition(() => {
+        setCategoryId("");
+        setPage(1);
+      });
+    }
+  }, [categories, categoryId, isLoading, view]);
+
+  useEffect(() => {
+    if (view !== "active" || isLoading) return;
+    if (brandId && !brands.some((brand) => brand.id === brandId)) {
+      startTransition(() => {
+        setBrandId("");
+        setPage(1);
+      });
+    }
+  }, [brands, brandId, isLoading, view]);
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -183,12 +214,20 @@ function ProductsManagement() {
       setView(mode);
       setPage(1);
       setCategoryId("");
+      setBrandId("");
     });
   }
 
   function changeCategory(next: string) {
     startTransition(() => {
       setCategoryId(next);
+      setPage(1);
+    });
+  }
+
+  function changeBrand(next: string) {
+    startTransition(() => {
+      setBrandId(next);
       setPage(1);
     });
   }
@@ -617,6 +656,25 @@ function ProductsManagement() {
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {view === "active" && (
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="whitespace-nowrap font-medium">
+                    العلامة التجارية
+                  </span>
+                  <select
+                    value={brandId}
+                    onChange={(e) => changeBrand(e.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    <option value="">كل العلامات التجارية</option>
+                    {brands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
                       </option>
                     ))}
                   </select>

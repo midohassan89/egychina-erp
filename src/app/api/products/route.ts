@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     const trash = searchParams.get("trash") === "1";
     const weighed = searchParams.get("weighed") === "1";
     const categoryId = searchParams.get("categoryId")?.trim() ?? "";
+    const brandId = searchParams.get("brandId")?.trim() ?? "";
     const stockStatusFilter = searchParams.get("stockStatus")?.trim() ?? "";
     const perPageRaw = Number(searchParams.get("perPage") ?? 20);
     const perPage = Math.min(
@@ -79,6 +80,10 @@ export async function GET(request: Request) {
 
     if (categoryId) {
       filters.push({ categoryId });
+    }
+
+    if (brandId) {
+      filters.push({ brandId });
     }
 
     const where: Prisma.ProductWhereInput = { AND: filters };
@@ -110,7 +115,35 @@ export async function GET(request: Request) {
     }
 
     const page = Math.max(1, Number(pageParam) || 1);
-    const [total, rows, weighedCategories] = await Promise.all([
+    const catalogScope: Prisma.ProductWhereInput = weighed
+      ? { isWeighed: true, isDeleted: false }
+      : { isDeleted: false };
+    const sharedOptionFilters: Prisma.ProductWhereInput[] = [catalogScope];
+    if (q) {
+      sharedOptionFilters.push({
+        OR: [
+          { name: { contains: q } },
+          { barcode: { contains: q } },
+          { sku: { contains: q } },
+        ],
+      });
+    }
+    if (stockStatusFilter === "instock" || stockStatusFilter === "outofstock") {
+      sharedOptionFilters.push({ stockStatus: stockStatusFilter });
+    }
+    const categoryOptionScope: Prisma.ProductWhereInput = {
+      AND: [
+        ...sharedOptionFilters,
+        ...(brandId ? [{ brandId }] : []),
+      ],
+    };
+    const brandOptionScope: Prisma.ProductWhereInput = {
+      AND: [
+        ...sharedOptionFilters,
+        ...(categoryId ? [{ categoryId }] : []),
+      ],
+    };
+    const [total, rows, weighedCategories, catalogBrands] = await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
         where,
@@ -122,13 +155,14 @@ export async function GET(request: Request) {
       trash
         ? Promise.resolve([])
         : prisma.category.findMany({
-            where: {
-              products: {
-                some: weighed
-                  ? { isWeighed: true, isDeleted: false }
-                  : { isDeleted: false },
-              },
-            },
+            where: { products: { some: categoryOptionScope } },
+            orderBy: { name: "asc" },
+            select: { id: true, name: true },
+          }),
+      trash
+        ? Promise.resolve([])
+        : prisma.brand.findMany({
+            where: { products: { some: brandOptionScope } },
             orderBy: { name: "asc" },
             select: { id: true, name: true },
           }),
@@ -187,7 +221,9 @@ export async function GET(request: Request) {
       perPage,
       pageCount: Math.max(1, Math.ceil(total / perPage)),
       trash,
-      ...(!trash ? { categories: weighedCategories } : {}),
+      ...(!trash
+        ? { categories: weighedCategories, brands: catalogBrands }
+        : {}),
       source: "prisma",
     });
   } catch (error) {
