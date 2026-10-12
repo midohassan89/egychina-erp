@@ -15,6 +15,7 @@ interface Row {
   name: string;
   status: RowState;
   url: string | null;
+  error: string | null;
 }
 
 export function AutoFetchPanel({
@@ -28,6 +29,7 @@ export function AutoFetchPanel({
       name: product.name,
       status: "pending",
       url: null,
+      error: null,
     })),
   );
   const [running, setRunning] = useState(false);
@@ -43,7 +45,7 @@ export function AutoFetchPanel({
     setRunning(true);
     const pending = rows.filter((row) => row.status !== "success");
     for (const product of pending) {
-      patch(product.id, { status: "loading", url: null });
+      patch(product.id, { status: "loading", url: null, error: null });
       try {
         const res = await fetch("/api/upload/auto-fetch", {
           method: "POST",
@@ -53,12 +55,20 @@ export function AutoFetchPanel({
             productName: product.name,
           }),
         });
-        const body = (await res.json()) as { success?: boolean; url?: string };
+        const body = (await res.json()) as {
+          success?: boolean;
+          url?: string;
+          error?: string;
+        };
         if (!res.ok || !body.success || !body.url) {
-          patch(product.id, { status: "failed", url: null });
+          patch(product.id, {
+            status: "failed",
+            url: null,
+            error: body.error?.trim() || null,
+          });
           continue;
         }
-        patch(product.id, { status: "success", url: body.url });
+        patch(product.id, { status: "success", url: body.url, error: null });
       } catch {
         patch(product.id, { status: "failed", url: null });
       }
@@ -114,7 +124,14 @@ export function AutoFetchPanel({
                       <span className="font-semibold text-emerald-700">تم ✅</span>
                     )}
                     {row.status === "failed" && (
-                      <span className="font-semibold text-red-700">فشل ❌</span>
+                      <span className="font-semibold text-red-700">
+                        فشل ❌
+                        {row.error ? (
+                          <span className="mt-1 block text-xs font-normal">
+                            {row.error}
+                          </span>
+                        ) : null}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">

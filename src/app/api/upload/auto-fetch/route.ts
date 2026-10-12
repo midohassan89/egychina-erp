@@ -2,8 +2,10 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import axios from "axios";
+import { wrapper } from "axios-cookiejar-support";
 import * as cheerio from "cheerio";
 import sharp from "sharp";
+import { CookieJar } from "tough-cookie";
 import { v4 as uuid } from "uuid";
 import { auth } from "@/auth";
 import { isEditor } from "@/lib/auth/roles";
@@ -27,25 +29,40 @@ const BLOCKED_IMAGE_TERMS = [
 ];
 const BROWSER_HEADERS = {
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
   Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-  "Accept-Language": "ar,en-US;q=0.9,en;q=0.8",
-  "Accept-Encoding": "gzip, deflate, br",
-  Connection: "keep-alive",
-  "Upgrade-Insecure-Requests": "1",
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "Accept-Language": "ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Accept-Encoding": "gzip, deflate, br, zstd",
+  Referer: "https://www.bing.com/",
+  DNT: "1",
   "Sec-Fetch-Dest": "document",
   "Sec-Fetch-Mode": "navigate",
-  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-Site": "same-origin",
   "Sec-Fetch-User": "?1",
-  "Cache-Control": "max-age=0",
+  "Upgrade-Insecure-Requests": "1",
+  "sec-ch-ua": '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
 };
 const NO_IMAGE =
   "عفواً، لم نتمكن من جلب صورة صالحة لهذا المنتج. يرجى إضافتها يدوياً.";
+const IP_BLOCKED =
+  "تم حظر عنوان IP الخاص بالخادم مؤقتاً من محرك البحث. حاول مرة أخرى بعد قليل.";
+
+const jar = new CookieJar();
+const client = wrapper(axios.create({ jar }));
 
 function isBlockedImageUrl(imageUrl: string): boolean {
   const value = imageUrl.toLowerCase();
   return BLOCKED_IMAGE_TERMS.some((term) => value.includes(term));
+}
+
+function keepImageUrl(imageUrl: string): string | null {
+  const value = imageUrl.trim();
+  if (!value.startsWith("http://") && !value.startsWith("https://")) return null;
+  if (isBlockedImageUrl(value)) return null;
+  return value;
 }
 
 function bingImageUrls(html: string): string[] {
@@ -57,17 +74,85 @@ function bingImageUrls(html: string): string[] {
     if (!raw) return;
     try {
       const meta = JSON.parse(raw) as { murl?: string };
-      const imageUrl = String(meta.murl || "").trim();
-      if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-        return;
-      }
-      if (isBlockedImageUrl(imageUrl)) return;
-      urls.push(imageUrl);
+      const imageUrl = keepImageUrl(String(meta.murl || ""));
+      if (imageUrl) urls.push(imageUrl);
     } catch {
       // Skip a result whose metadata is not valid JSON.
     }
   });
 
+  return urls;
+}
+
+function htmlImageUrls(html: string): string[] {
+  const $ = cheerio.load(html);
+  const urls: string[] = [];
+  $("img").each((_, element) => {
+    const imageUrl = keepImageUrl($(element).attr("src") || "");
+    if (imageUrl) urls.push(imageUrl);
+  });
+  return urls;
+}
+
+async function searchBing(query: string): Promise<string[]> {
+  await client.get("https://www.bing.com/", {
+    headers: BROWSER_HEADERS,
+    responseType: "text",
+    timeout: 15000,
+  });
+
+  const searchUrl =
+    "https://www.bing.com/images/search?q=" +
+    encodeURIComponent(query) +
+    "&qft=+filterui:photo-photo&cc=EG&setmkt=ar-EG";
+  const searchResponse = await client.get<string>(searchUrl, {
+    headers: BROWSER_HEADERS,
+    responseType: "text",
+    timeout: 15000,
+  });
+
+  return bingImageUrls(String(searchResponse.data));
+}
+
+async function searchDuckDuckGo(query: string): Promise<string[]> {
+  const pageUrl =
+    "https://duckduckgo.com/?q=" + encodeURIComponent(query) + "&iax=images&ia=images";
+  const page = await client.get<string>(pageUrl, {
+    headers: {
+      ...BROWSER_HEADERS,
+      Referer: "https://duckduckgo.com/",
+      "Sec-Fetch-Site": "none",
+    },
+    responseType: "text",
+    timeout: 15000,
+  });
+  const html = String(page.data);
+  const urls = htmlImageUrls(html);
+  const vqd = html.match(/vqd=["']([^"']+)["']/)?.[1] || "";
+  const dp = html.match(/[?&]dp=([^&"']+)/)?.[1] || "";
+  if (!vqd) return urls;
+
+  const response = await client.get<{ results?: Array<{ image?: string }> }>(
+    "https://duckduckgo.com/i.js",
+    {
+      params: { l: "wt-wt", o: "json", q: query, vqd, f: ",,,,", p: "1", dp },
+      headers: {
+        ...BROWSER_HEADERS,
+        Accept: "application/json, text/javascript, */*; q=0.01",
+        Referer: pageUrl,
+        "X-Requested-With": "XMLHttpRequest",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      timeout: 15000,
+    },
+  );
+
+  for (const result of response.data?.results ?? []) {
+    const imageUrl = keepImageUrl(String(result.image || ""));
+    if (imageUrl) urls.push(imageUrl);
+  }
   return urls;
 }
 
@@ -100,7 +185,7 @@ async function downloadWebp(imageUrl: string): Promise<Buffer | null> {
   }
 }
 
-/** POST /api/upload/auto-fetch — Bing Images → local WebP, first working result. */
+/** POST /api/upload/auto-fetch — product photo → local WebP, first working result. */
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -135,17 +220,26 @@ export async function POST(request: Request) {
   try {
     const exactName = productName.replace(/"/g, "").trim();
     const enhancedQuery = exactName + " منتج";
-    const searchUrl =
-      "https://www.bing.com/images/search?q=" +
-      encodeURIComponent(enhancedQuery) +
-      "&qft=+filterui:photo-photo";
-    const searchResponse = await axios.get<string>(searchUrl, {
-      responseType: "text",
-      timeout: 15000,
-      headers: BROWSER_HEADERS,
-    });
 
-    const candidateUrls = bingImageUrls(searchResponse.data);
+    let candidateUrls: string[] = [];
+    try {
+      candidateUrls = await searchBing(enhancedQuery);
+    } catch (error) {
+      console.error("[api/upload/auto-fetch] bing", error);
+    }
+
+    if (candidateUrls.length === 0) {
+      try {
+        candidateUrls = await searchDuckDuckGo(enhancedQuery);
+      } catch (error) {
+        console.error("[api/upload/auto-fetch] duckduckgo", error);
+      }
+    }
+
+    if (candidateUrls.length === 0) {
+      return NextResponse.json({ error: IP_BLOCKED }, { status: 400 });
+    }
+
     await mkdir(UPLOAD_DIR, { recursive: true });
 
     for (const imageUrl of candidateUrls) {
