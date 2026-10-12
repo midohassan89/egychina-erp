@@ -50,6 +50,8 @@ export async function GET(request: Request) {
     const q = searchParams.get("q")?.trim() ?? "";
     const pageParam = searchParams.get("page");
     const trash = searchParams.get("trash") === "1";
+    const weighed = searchParams.get("weighed") === "1";
+    const categoryId = searchParams.get("categoryId")?.trim() ?? "";
     const stockStatusFilter = searchParams.get("stockStatus")?.trim() ?? "";
     const perPageRaw = Number(searchParams.get("perPage") ?? 20);
     const perPage = Math.min(
@@ -57,7 +59,9 @@ export async function GET(request: Request) {
       Math.max(1, Number.isFinite(perPageRaw) ? perPageRaw : 20),
     );
 
-    const filters: Prisma.ProductWhereInput[] = [{ isDeleted: trash }];
+    const filters: Prisma.ProductWhereInput[] = [
+      weighed ? { isDeleted: false, isWeighed: true } : { isDeleted: trash },
+    ];
 
     if (q) {
       filters.push({
@@ -71,6 +75,10 @@ export async function GET(request: Request) {
 
     if (stockStatusFilter === "instock" || stockStatusFilter === "outofstock") {
       filters.push({ stockStatus: stockStatusFilter });
+    }
+
+    if (categoryId) {
+      filters.push({ categoryId });
     }
 
     const where: Prisma.ProductWhereInput = { AND: filters };
@@ -102,7 +110,7 @@ export async function GET(request: Request) {
     }
 
     const page = Math.max(1, Number(pageParam) || 1);
-    const [total, rows] = await Promise.all([
+    const [total, rows, weighedCategories] = await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
         where,
@@ -111,9 +119,35 @@ export async function GET(request: Request) {
         take: perPage,
         include: { brand: true, category: true },
       }),
+      weighed
+        ? prisma.category.findMany({
+            where: {
+              products: { some: { isWeighed: true, isDeleted: false } },
+            },
+            orderBy: { name: "asc" },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
     ]);
 
-    const products = rows.map((p) => ({
+    const lastPurchaseCost = new Map<string, number>();
+    if (weighed && rows.length > 0) {
+      const purchases = await prisma.purchaseInvoiceItem.findMany({
+        where: { productId: { in: rows.map((row) => row.id) } },
+        orderBy: { id: "desc" },
+        select: { productId: true, unitCost: true },
+      });
+      for (const purchase of purchases) {
+        if (!lastPurchaseCost.has(purchase.productId)) {
+          lastPurchaseCost.set(purchase.productId, purchase.unitCost);
+        }
+      }
+    }
+
+    const products = rows.map((p) => {
+      const invoiceCost = lastPurchaseCost.get(p.id);
+      const lastPurchasePrice = invoiceCost ?? p.buyingCost;
+      return {
       id: p.id,
       wcId: p.wcId,
       name: p.name,
@@ -124,6 +158,7 @@ export async function GET(request: Request) {
       price: p.price,
       salePrice: p.salePrice,
       buyingCost: p.buyingCost,
+      lastPurchasePrice,
       purchasePackSize: p.purchasePackSize,
       stockQuantity: p.stockQuantity,
       stockStatus: p.stockStatus,
@@ -138,7 +173,8 @@ export async function GET(request: Request) {
       categoryName: p.category?.name ?? null,
       brandName: p.brand?.name ?? null,
       updatedAt: p.updatedAt.toISOString(),
-    }));
+    };
+    });
 
     return NextResponse.json({
       products,
@@ -147,6 +183,7 @@ export async function GET(request: Request) {
       perPage,
       pageCount: Math.max(1, Math.ceil(total / perPage)),
       trash,
+      ...(weighed ? { categories: weighedCategories } : {}),
       source: "prisma",
     });
   } catch (error) {

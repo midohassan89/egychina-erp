@@ -114,11 +114,13 @@ export async function updatePurchaseInvoice(
   }
 
   const newQtyByProduct = new Map<string, number>();
+  const costByProduct = new Map<string, number>();
   for (const row of normalized) {
     newQtyByProduct.set(
       row.productId,
       (newQtyByProduct.get(row.productId) ?? 0) + row.quantity,
     );
+    costByProduct.set(row.productId, row.unitCost);
   }
 
   const allProductIds = [
@@ -187,6 +189,13 @@ export async function updatePurchaseInvoice(
       stockAfter.set(productId, {
         wcId: product.wcId,
         stockQuantity: product.stockQuantity,
+      });
+    }
+
+    for (const [productId, unitCost] of costByProduct) {
+      await tx.product.update({
+        where: { id: productId },
+        data: { buyingCost: unitCost },
       });
     }
 

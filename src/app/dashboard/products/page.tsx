@@ -10,11 +10,13 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  Check,
   Download,
   Loader2,
   Package,
   Pencil,
   Plus,
+  Scale,
   Search,
   Star,
   Trash2,
@@ -33,6 +35,7 @@ import {
 } from "@/lib/products/excel";
 import type { AdminProductRow } from "@/types/adminProduct";
 import { clsx } from "clsx";
+import { formatQty } from "@/lib/pos/money";
 
 const PER_PAGE = 20;
 
@@ -55,10 +58,11 @@ interface ProductsResponse {
   page: number;
   perPage: number;
   pageCount: number;
+  categories?: { id: string; name: string }[];
   error?: string;
 }
 
-type ViewMode = "active" | "trash";
+type ViewMode = "active" | "weighed" | "trash";
 type StockFilter = "all" | "instock" | "outofstock";
 
 export default function DashboardProductsPage() {
@@ -80,6 +84,10 @@ function ProductsManagement() {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<ViewMode>("active");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -106,6 +114,7 @@ function ProductsManagement() {
       q: string,
       mode: ViewMode,
       stock: StockFilter = "all",
+      category = "",
     ) => {
       setIsLoading(true);
       setError(null);
@@ -116,6 +125,10 @@ function ProductsManagement() {
         });
         if (q) params.set("q", q);
         if (mode === "trash") params.set("trash", "1");
+        if (mode === "weighed") {
+          params.set("weighed", "1");
+          if (category) params.set("categoryId", category);
+        }
         if (stock === "instock" || stock === "outofstock") {
           params.set("stockStatus", stock);
         }
@@ -130,6 +143,9 @@ function ProductsManagement() {
         setTotal(data.total ?? 0);
         setPage(data.page ?? pageNum);
         setPageCount(data.pageCount ?? 1);
+        if (mode === "weighed" && Array.isArray(data.categories)) {
+          setCategories(data.categories);
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load products",
@@ -144,8 +160,8 @@ function ProductsManagement() {
   );
 
   useEffect(() => {
-    void loadProducts(page, query, view, stockFilter);
-  }, [loadProducts, page, query, view, stockFilter]);
+    void loadProducts(page, query, view, stockFilter, categoryId);
+  }, [loadProducts, page, query, view, stockFilter, categoryId]);
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,6 +183,14 @@ function ProductsManagement() {
   function switchView(mode: ViewMode) {
     startTransition(() => {
       setView(mode);
+      setPage(1);
+      if (mode !== "weighed") setCategoryId("");
+    });
+  }
+
+  function changeCategory(next: string) {
+    startTransition(() => {
+      setCategoryId(next);
       setPage(1);
     });
   }
@@ -456,9 +480,19 @@ function ProductsManagement() {
     }
   }
 
+  function applyWeighedPrices(
+    productId: string,
+    patch: Partial<Pick<AdminProductRow, "price" | "salePrice" | "buyingCost" | "lastPurchasePrice">>,
+  ) {
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === productId ? { ...product, ...patch } : product,
+      ),
+    );
+  }
   const from = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, total);
-  const colSpan = 10;
+  const colSpan = view === "weighed" ? 7 : 10;
 
   return (
     <div className="relative space-y-6">
@@ -511,6 +545,19 @@ function ProductsManagement() {
           </button>
           <button
             type="button"
+            onClick={() => switchView("weighed")}
+            className={clsx(
+              "inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
+              view === "weighed"
+                ? "border-slate-200 bg-white text-slate-900"
+                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
+            )}
+          >
+            <Scale className="h-3.5 w-3.5" />
+            منتجات الميزان
+          </button>
+          <button
+            type="button"
             onClick={() => switchView("trash")}
             className={clsx(
               "inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
@@ -560,6 +607,23 @@ function ProductsManagement() {
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
+              {view === "weighed" && (
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="whitespace-nowrap font-medium">القسم</span>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => changeCategory(e.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  >
+                    <option value="">كل الأقسام</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <span className="whitespace-nowrap font-medium">المخزون</span>
                 <select
@@ -612,7 +676,13 @@ function ProductsManagement() {
           <p className="text-sm text-slate-500">
             {isLoading || isPending
               ? "جاري التحميل…"
-              : `${total.toLocaleString("ar-EG")} ${view === "trash" ? "في سلة المهملات" : "منتج"}`}
+              : `${total.toLocaleString("ar-EG")} ${
+                  view === "trash"
+                    ? "في سلة المهملات"
+                    : view === "weighed"
+                      ? "منتج ميزان"
+                      : "منتج"
+                }`}
             {stockFilter !== "all" ? (
               <span className="text-slate-400">
                 {" "}
@@ -629,8 +699,24 @@ function ProductsManagement() {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table
+            className={clsx(
+              "w-full text-left text-sm",
+              view === "weighed" ? "min-w-[1180px]" : "min-w-[1100px]",
+            )}
+          >
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              {view === "weighed" ? (
+                <tr>
+                  <th className="px-4 py-3 font-semibold">الصورة</th>
+                  <th className="px-4 py-3 font-semibold">اسم المنتج</th>
+                  <th className="px-4 py-3 font-semibold">الباركود</th>
+                  <th className="px-4 py-3 font-semibold">الكمية</th>
+                  <th className="px-4 py-3 font-semibold">السعر الأساسي</th>
+                  <th className="px-4 py-3 font-semibold">سعر التخفيض</th>
+                  <th className="px-4 py-3 font-semibold">آخر سعر شراء</th>
+                </tr>
+              ) : (
               <tr>
                 <th className="px-4 py-3 font-semibold">★</th>
                 <th className="px-4 py-3 font-semibold">الصورة</th>
@@ -643,6 +729,7 @@ function ProductsManagement() {
                 <th className="px-4 py-3 font-semibold">الكمية</th>
                 <th className="px-4 py-3 font-semibold">الإجراءات</th>
               </tr>
+              )}
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading && products.length === 0 ? (
@@ -659,10 +746,33 @@ function ProductsManagement() {
                   <td colSpan={colSpan} className="px-4 py-16 text-center">
                     <Package className="mx-auto h-10 w-10 text-slate-300" />
                     <p className="mt-3 font-medium text-slate-600">
-                      {view === "trash" ? "سلة المهملات فارغة" : "لا توجد منتجات"}
+                      {view === "trash"
+                        ? "سلة المهملات فارغة"
+                        : view === "weighed"
+                          ? "لا توجد منتجات ميزان"
+                          : "لا توجد منتجات"}
                     </p>
                   </td>
                 </tr>
+              ) : view === "weighed" ? (
+                products.map((product) => (
+                  <WeighedProductRow
+                    key={product.id}
+                    product={product}
+                    onSaved={(patch) => {
+                      applyWeighedPrices(product.id, patch);
+                      if (patch.price !== undefined || patch.salePrice !== undefined) {
+                        void offerLinkedPrices(
+                          product,
+                          patch.price ?? product.price,
+                          patch.salePrice !== undefined
+                            ? patch.salePrice
+                            : product.salePrice,
+                        );
+                      }
+                    }}
+                  />
+                ))
               ) : (
                 products.map((product) => (
                   <ProductRow
@@ -1049,6 +1159,220 @@ function ProductRow({
             </>
           )}
         </div>
+      </td>
+    </tr>
+  );
+}
+
+function moneyDraft(value: number | null | undefined) {
+  return value != null && Number.isFinite(value) ? value.toFixed(2) : "";
+}
+
+function purchasePriceOf(product: AdminProductRow) {
+  const value = product.lastPurchasePrice ?? product.buyingCost ?? 0;
+  return Number.isFinite(value) ? value : 0;
+}
+
+function WeighedPriceField({
+  label,
+  value,
+  allowEmpty,
+  saving,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  allowEmpty?: boolean;
+  saving: boolean;
+  onSave: (raw: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        min={0}
+        step="0.01"
+        disabled={saving}
+        value={draft}
+        placeholder={allowEmpty ? "—" : undefined}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSave(draft);
+        }}
+        aria-label={label}
+        className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => onSave(draft)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+        title={`حفظ ${label}`}
+        aria-label={`حفظ ${label}`}
+      >
+        {saving ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Check className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+function WeighedProductRow({
+  product,
+  onSaved,
+}: {
+  product: AdminProductRow;
+  onSaved: (
+    patch: Partial<Pick<AdminProductRow, "price" | "salePrice" | "buyingCost" | "lastPurchasePrice">>,
+  ) => void;
+}) {
+  const { toast } = useToast();
+  const [savingField, setSavingField] = useState<"price" | "sale" | "cost" | null>(null);
+  const barcode = product.barcode?.trim() || product.sku?.trim() || "—";
+
+  async function saveField(
+    field: "price" | "sale" | "cost",
+    raw: string,
+  ) {
+    const trimmed = raw.trim();
+    const payload: { price?: number; salePrice?: number | null; buyingCost?: number } = {};
+
+    if (field === "sale" && trimmed === "") {
+      if (product.salePrice == null) return;
+      payload.salePrice = null;
+    } else {
+      const amount = Number(trimmed);
+      if (!Number.isFinite(amount) || amount < 0) {
+        toast(
+          field === "price"
+            ? "السعر الأساسي غير صالح"
+            : field === "sale"
+              ? "سعر التخفيض غير صالح"
+              : "سعر الشراء غير صالح",
+          "error",
+        );
+        return;
+      }
+      if (field === "price") {
+        if (amount === product.price) return;
+        payload.price = amount;
+      } else if (field === "sale") {
+        const next = amount > 0 ? amount : null;
+        if (next === product.salePrice) return;
+        payload.salePrice = next;
+      } else if (amount === purchasePriceOf(product)) {
+        return;
+      } else {
+        payload.buyingCost = amount;
+      }
+    }
+
+    setSavingField(field);
+    try {
+      const res = await fetch(`/api/products/${product.id}/purchase-price`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        price?: number;
+        salePrice?: number | null;
+        buyingCost?: number;
+      };
+      if (!res.ok) throw new Error(body.error || "تعذر حفظ السعر");
+
+      onSaved({
+        ...(payload.price !== undefined ? { price: body.price ?? payload.price } : {}),
+        ...(payload.salePrice !== undefined
+          ? { salePrice: body.salePrice ?? payload.salePrice }
+          : {}),
+        ...(payload.buyingCost !== undefined
+          ? {
+              buyingCost: body.buyingCost ?? payload.buyingCost,
+              lastPurchasePrice: body.buyingCost ?? payload.buyingCost,
+            }
+          : {}),
+      });
+      toast(
+        field === "price"
+          ? "تم حفظ السعر الأساسي"
+          : field === "sale"
+            ? "تم حفظ سعر التخفيض"
+            : "تم حفظ سعر الشراء",
+        "success",
+      );
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "تعذر حفظ السعر", "error");
+    } finally {
+      setSavingField(null);
+    }
+  }
+
+  return (
+    <tr className="hover:bg-slate-50/80">
+      <td className="px-4 py-3">
+        {product.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.imageUrl}
+            alt=""
+            className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300">
+            <Package className="h-5 w-5" />
+          </div>
+        )}
+      </td>
+      <td className="max-w-xs px-4 py-3">
+        <Link
+          href={`/dashboard/products/${product.id}`}
+          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline"
+        >
+          {product.name}
+        </Link>
+        {product.categoryName ? (
+          <p className="mt-0.5 text-xs text-slate-400">{product.categoryName}</p>
+        ) : null}
+      </td>
+      <td className="px-4 py-3 font-mono text-xs text-slate-600">{barcode}</td>
+      <td className="px-4 py-3 tabular-nums text-slate-700">
+        {formatQty(product.stockQuantity)} كجم
+      </td>
+      <td className="px-4 py-3">
+        <WeighedPriceField
+          label="السعر الأساسي"
+          value={moneyDraft(product.price)}
+          saving={savingField === "price"}
+          onSave={(raw) => void saveField("price", raw)}
+        />
+      </td>
+      <td className="px-4 py-3">
+        <WeighedPriceField
+          label="سعر التخفيض"
+          value={moneyDraft(product.salePrice)}
+          allowEmpty
+          saving={savingField === "sale"}
+          onSave={(raw) => void saveField("sale", raw)}
+        />
+      </td>
+      <td className="px-4 py-3">
+        <WeighedPriceField
+          label="آخر سعر شراء"
+          value={moneyDraft(purchasePriceOf(product))}
+          saving={savingField === "cost"}
+          onSave={(raw) => void saveField("cost", raw)}
+        />
       </td>
     </tr>
   );

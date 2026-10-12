@@ -125,11 +125,13 @@ export async function createPurchaseInvoice(input: CreatePurchaseInput) {
   const productById = new Map(products.map((p) => [p.id, p]));
 
   const qtyByProduct = new Map<string, number>();
+  const costByProduct = new Map<string, number>();
   for (const row of normalized) {
     qtyByProduct.set(
       row.productId,
       (qtyByProduct.get(row.productId) ?? 0) + row.quantity,
     );
+    costByProduct.set(row.productId, row.unitCost);
   }
 
   const stockAfter = new Map<string, { wcId: number; stockQuantity: number }>();
@@ -168,6 +170,7 @@ export async function createPurchaseInvoice(input: CreatePurchaseInput) {
         data: {
           stockQuantity: nextQty,
           stockStatus,
+          buyingCost: costByProduct.get(productId) ?? current.buyingCost,
         },
       });
 

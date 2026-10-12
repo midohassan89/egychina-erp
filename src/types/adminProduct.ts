@@ -8,6 +8,9 @@ export interface AdminProductRow {
   barcode: string | null;
   price: number;
   salePrice: number | null;
+  buyingCost: number;
+  /** Latest purchase-invoice piece cost, otherwise buyingCost. */
+  lastPurchasePrice: number;
   stockQuantity: number;
   stockStatus: string;
   imageUrl: string | null;
