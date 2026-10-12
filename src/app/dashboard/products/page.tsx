@@ -21,6 +21,7 @@ import {
   Star,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { PermanentDeleteDialog } from "@/components/dashboard/PermanentDeleteDialog";
@@ -38,6 +39,28 @@ import { clsx } from "clsx";
 import { formatQty } from "@/lib/pos/money";
 
 const PER_PAGE = 20;
+
+function FilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800">
+      <span>{label}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+        aria-label={`إزالة ${label}`}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
 
 interface ImportErrorRow {
   row: number;
@@ -60,6 +83,7 @@ interface ProductsResponse {
   pageCount: number;
   categories?: { id: string; name: string }[];
   brands?: { id: string; name: string }[];
+  stockStatuses?: StockFilter[];
   error?: string;
 }
 
@@ -91,6 +115,9 @@ function ProductsManagement() {
   );
   const [brandId, setBrandId] = useState("");
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
+  const [stockStatuses, setStockStatuses] = useState<
+    Array<Exclude<StockFilter, "all">>
+  >(["instock", "outofstock"]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -152,6 +179,14 @@ function ProductsManagement() {
         if (mode === "active" && Array.isArray(data.brands)) {
           setBrands(data.brands);
         }
+        if (Array.isArray(data.stockStatuses)) {
+          setStockStatuses(
+            data.stockStatuses.filter(
+              (status): status is Exclude<StockFilter, "all"> =>
+                status === "instock" || status === "outofstock",
+            ),
+          );
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load products",
@@ -170,8 +205,18 @@ function ProductsManagement() {
   }, [loadProducts, page, query, view, stockFilter, categoryId, brandId]);
 
   useEffect(() => {
-    if (view === "trash" || isLoading) return;
+    if (isLoading) return;
+    const stockIsInvalid =
+      stockFilter !== "all" && !stockStatuses.includes(stockFilter);
+    if (stockIsInvalid) {
+      startTransition(() => {
+        setStockFilter("all");
+        setPage(1);
+      });
+      return;
+    }
     if (
+      view !== "trash" &&
       categoryId &&
       !categories.some((category) => category.id === categoryId)
     ) {
@@ -180,17 +225,26 @@ function ProductsManagement() {
         setPage(1);
       });
     }
-  }, [categories, categoryId, isLoading, view]);
-
-  useEffect(() => {
-    if (view !== "active" || isLoading) return;
-    if (brandId && !brands.some((brand) => brand.id === brandId)) {
+    if (
+      view === "active" &&
+      brandId &&
+      !brands.some((brand) => brand.id === brandId)
+    ) {
       startTransition(() => {
         setBrandId("");
         setPage(1);
       });
     }
-  }, [brands, brandId, isLoading, view]);
+  }, [
+    brands,
+    brandId,
+    categories,
+    categoryId,
+    isLoading,
+    stockFilter,
+    stockStatuses,
+    view,
+  ]);
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -236,6 +290,17 @@ function ProductsManagement() {
     startTransition(() => {
       setStockFilter(next);
       setPage(1);
+    });
+  }
+
+  function clearAllFilters() {
+    setSearchInput("");
+    startTransition(() => {
+      setPage(1);
+      setQuery("");
+      setCategoryId("");
+      setBrandId("");
+      setStockFilter("all");
     });
   }
 
@@ -530,6 +595,18 @@ function ProductsManagement() {
   const from = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, total);
   const colSpan = view === "weighed" ? 7 : 10;
+  const categoryName =
+    categories.find((category) => category.id === categoryId)?.name ?? "";
+  const brandName = brands.find((brand) => brand.id === brandId)?.name ?? "";
+  const stockLabel =
+    stockFilter === "instock"
+      ? "متوفر"
+      : stockFilter === "outofstock"
+        ? "غير متوفر"
+        : "";
+  const hasActiveFilters = Boolean(
+    categoryId || brandId || stockLabel || query,
+  );
 
   return (
     <div className="relative space-y-6">
@@ -690,8 +767,12 @@ function ProductsManagement() {
                   className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 >
                   <option value="all">الكل</option>
-                  <option value="instock">متوفر</option>
-                  <option value="outofstock">غير متوفر</option>
+                  {stockStatuses.includes("instock") && (
+                    <option value="instock">متوفر</option>
+                  )}
+                  {stockStatuses.includes("outofstock") && (
+                    <option value="outofstock">غير متوفر</option>
+                  )}
                 </select>
               </label>
 
@@ -739,13 +820,48 @@ function ProductsManagement() {
                       ? "منتج ميزان"
                       : "منتج"
                 }`}
-            {stockFilter !== "all" ? (
-              <span className="text-slate-400">
-                {" "}
-                · {stockFilter === "instock" ? "متوفر" : "غير متوفر"}
-              </span>
+            {stockLabel ? (
+              <span className="text-slate-400"> · {stockLabel}</span>
             ) : null}
           </p>
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">
+                تصفية حسب:
+              </span>
+              {query && (
+                <FilterChip
+                  label={`بحث: ${query}`}
+                  onRemove={handleClearSearch}
+                />
+              )}
+              {categoryId && (
+                <FilterChip
+                  label={`القسم: ${categoryName || "—"}`}
+                  onRemove={() => changeCategory("")}
+                />
+              )}
+              {brandId && (
+                <FilterChip
+                  label={`العلامة التجارية: ${brandName || "—"}`}
+                  onRemove={() => changeBrand("")}
+                />
+              )}
+              {stockLabel && (
+                <FilterChip
+                  label={`المخزون: ${stockLabel}`}
+                  onRemove={() => changeStockFilter("all")}
+                />
+              )}
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="rounded-lg px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50"
+              >
+                إزالة الفلاتر
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (

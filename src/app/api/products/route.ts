@@ -143,7 +143,28 @@ export async function GET(request: Request) {
         ...(categoryId ? [{ categoryId }] : []),
       ],
     };
-    const [total, rows, weighedCategories, catalogBrands] = await Promise.all([
+    const stockOptionScope: Prisma.ProductWhereInput = {
+      AND: [
+        weighed
+          ? { isWeighed: true, isDeleted: false }
+          : { isDeleted: trash },
+        ...(q
+          ? [
+              {
+                OR: [
+                  { name: { contains: q } },
+                  { barcode: { contains: q } },
+                  { sku: { contains: q } },
+                ],
+              },
+            ]
+          : []),
+        ...(categoryId ? [{ categoryId }] : []),
+        ...(brandId ? [{ brandId }] : []),
+      ],
+    };
+    const [total, rows, weighedCategories, catalogBrands, stockGroups] =
+      await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
         where,
@@ -166,6 +187,10 @@ export async function GET(request: Request) {
             orderBy: { name: "asc" },
             select: { id: true, name: true },
           }),
+      prisma.product.groupBy({
+        by: ["stockStatus"],
+        where: stockOptionScope,
+      }),
     ]);
 
     const lastPurchaseCost = new Map<string, number>();
@@ -224,6 +249,9 @@ export async function GET(request: Request) {
       ...(!trash
         ? { categories: weighedCategories, brands: catalogBrands }
         : {}),
+      stockStatuses: (["instock", "outofstock"] as const).filter((status) =>
+        stockGroups.some((group) => group.stockStatus === status),
+      ),
       source: "prisma",
     });
   } catch (error) {
