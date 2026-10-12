@@ -22,6 +22,7 @@ const productSelect = {
   imageUrl: true,
   isDeleted: true,
   isFavorite: true,
+  isActive: true,
   isWeighed: true,
   linkedProductId: true,
   bundleMultiplier: true,
@@ -80,8 +81,10 @@ export async function GET(request: Request) {
       });
     }
 
-    if (stockStatusFilter === "instock" || stockStatusFilter === "outofstock") {
-      filters.push({ stockStatus: stockStatusFilter });
+    if (stockStatusFilter === "instock") {
+      filters.push({ stockQuantity: { gt: 0 } });
+    } else if (stockStatusFilter === "outofstock") {
+      filters.push({ stockQuantity: { lte: 0 } });
     }
 
     if (categoryId) {
@@ -149,8 +152,10 @@ export async function GET(request: Request) {
         ],
       });
     }
-    if (stockStatusFilter === "instock" || stockStatusFilter === "outofstock") {
-      sharedOptionFilters.push({ stockStatus: stockStatusFilter });
+    if (stockStatusFilter === "instock") {
+      sharedOptionFilters.push({ stockQuantity: { gt: 0 } });
+    } else if (stockStatusFilter === "outofstock") {
+      sharedOptionFilters.push({ stockQuantity: { lte: 0 } });
     }
     const categoryOptionScope: Prisma.ProductWhereInput = {
       AND: [
@@ -184,7 +189,7 @@ export async function GET(request: Request) {
         ...(brandId ? [{ brandId }] : []),
       ],
     };
-    const [total, rows, weighedCategories, catalogBrands, stockGroups] =
+    const [total, rows, weighedCategories, catalogBrands, inStockCount, outOfStockCount] =
       await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
@@ -209,10 +214,14 @@ export async function GET(request: Request) {
             select: { id: true, name: true },
           }),
       idList.length > 0
-        ? Promise.resolve([])
-        : prisma.product.groupBy({
-            by: ["stockStatus"],
-            where: stockOptionScope,
+        ? Promise.resolve(0)
+        : prisma.product.count({
+            where: { AND: [stockOptionScope, { stockQuantity: { gt: 0 } }] },
+          }),
+      idList.length > 0
+        ? Promise.resolve(0)
+        : prisma.product.count({
+            where: { AND: [stockOptionScope, { stockQuantity: { lte: 0 } }] },
           }),
     ]);
 
@@ -247,7 +256,8 @@ export async function GET(request: Request) {
       lastPurchasePrice,
       purchasePackSize: p.purchasePackSize,
       stockQuantity: p.stockQuantity,
-      stockStatus: p.stockStatus,
+      stockStatus: p.stockQuantity > 0 ? "instock" : "outofstock",
+      isActive: p.isActive,
       imageUrl: p.imageUrl,
       isDeleted: p.isDeleted,
       isFavorite: p.isFavorite,
@@ -272,9 +282,10 @@ export async function GET(request: Request) {
       ...(!trash
         ? { categories: weighedCategories, brands: catalogBrands }
         : {}),
-      stockStatuses: (["instock", "outofstock"] as const).filter((status) =>
-        stockGroups.some((group) => group.stockStatus === status),
-      ),
+      stockStatuses: [
+        ...(inStockCount > 0 ? (["instock"] as const) : []),
+        ...(outOfStockCount > 0 ? (["outofstock"] as const) : []),
+      ],
       source: "prisma",
     });
   } catch (error) {

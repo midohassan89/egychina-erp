@@ -13,6 +13,8 @@ export interface AdminProductRow {
   lastPurchasePrice: number;
   stockQuantity: number;
   stockStatus: string;
+  /** Website and app visibility. POS does not use this flag. */
+  isActive: boolean;
   imageUrl: string | null;
   isDeleted: boolean;
   isFavorite: boolean;

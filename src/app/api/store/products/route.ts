@@ -23,12 +23,16 @@ export async function GET(req: NextRequest) {
 
     const where = {
       isDeleted: false,
+      isActive: true,
       ...(categoryId ? { categoryId } : {}),
       ...(brandId ? { brandId } : {}),
       ...(search ? { name: { contains: search } } : {}),
     };
 
-    const filters: Prisma.Sql[] = [Prisma.sql`p.isDeleted = 0`];
+    const filters: Prisma.Sql[] = [
+      Prisma.sql`p.isDeleted = 0`,
+      Prisma.sql`p.isActive = 1`,
+    ];
 
     if (categoryId) {
       filters.push(Prisma.sql`p.categoryId = ${categoryId}`);

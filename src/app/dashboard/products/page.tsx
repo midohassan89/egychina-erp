@@ -33,6 +33,8 @@ import {
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   downloadProductsExcel,
+  downloadWeighedProductsExcel,
+  parsePriceImportSheet,
 } from "@/lib/products/excel";
 import type { AdminProductRow } from "@/types/adminProduct";
 import { clsx } from "clsx";
@@ -71,6 +73,67 @@ function SelectionCheckbox({
       onChange={onChange}
       className="h-4 w-4 rounded border-slate-300"
     />
+  );
+}
+
+function StockBadge({ quantity }: { quantity: number }) {
+  const inStock = quantity > 0;
+  return (
+    <span
+      className={clsx(
+        "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+        inStock ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
+      )}
+    >
+      {inStock ? "متوفر" : "غير متوفر"}
+    </span>
+  );
+}
+
+function VisibilityToggle({
+  active,
+  disabled,
+  onToggle,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onToggle}
+      aria-pressed={active}
+      title={
+        active
+          ? "مفعل — اضغط للإخفاء من الموقع والتطبيق"
+          : "مخفي — اضغط للإظهار في الموقع والتطبيق"
+      }
+      className="inline-flex items-center gap-2 disabled:opacity-50"
+    >
+      <span
+        className={clsx(
+          "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
+          active ? "bg-emerald-500" : "bg-slate-300",
+        )}
+      >
+        <span
+          className={clsx(
+            "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+            active && "translate-x-5",
+          )}
+        />
+      </span>
+      <span
+        className={clsx(
+          "text-xs font-semibold",
+          active ? "text-emerald-700" : "text-slate-500",
+        )}
+      >
+        {active ? "مفعل" : "مخفي"}
+      </span>
+    </button>
   );
 }
 
@@ -135,6 +198,7 @@ export default function DashboardProductsPage() {
 function ProductsManagement() {
   const { toast } = useToast();
   const importInputRef = useRef<HTMLInputElement>(null);
+  const priceImportInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<AdminProductRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -353,6 +417,7 @@ function ProductsManagement() {
     });
     if (extra?.ids && extra.ids.length > 0) {
       params.set("ids", extra.ids.join(","));
+      if (view === "weighed") params.set("weighed", "1");
       return params;
     }
     if (extra?.idsOnly) params.set("idsOnly", "1");
@@ -449,7 +514,11 @@ function ProductsManagement() {
         selectedProductIds.size > 0
           ? await fetchProductsByIds([...selectedProductIds])
           : await fetchFilteredProducts();
-      downloadProductsExcel(rows);
+      if (view === "weighed") {
+        downloadWeighedProductsExcel(rows);
+      } else {
+        downloadProductsExcel(rows);
+      }
       toast(`Exported ${rows.length} products`, "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Export failed", "error");
@@ -493,6 +562,42 @@ function ProductsManagement() {
     } finally {
       setBulkBusy(false);
       if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  async function handlePriceImport(file: File) {
+    setBulkBusy(true);
+    setBulkMessage("جاري استيراد الأسعار…");
+    try {
+      const rows = parsePriceImportSheet(await file.arrayBuffer());
+      const res = await fetch("/api/products/import-prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        updatedCount?: number;
+        skippedCount?: number;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "تعذر استيراد الأسعار");
+      }
+      const updatedCount = data.updatedCount ?? 0;
+      const skippedCount = data.skippedCount ?? 0;
+      const summary =
+        skippedCount > 0
+          ? `تم تحديث ${updatedCount} منتج، وتم تخطي ${skippedCount}`
+          : `تم تحديث ${updatedCount} منتج`;
+      toast(summary, updatedCount > 0 ? "success" : "error");
+      if (updatedCount > 0) {
+        await loadProducts(page, query, view, stockFilter, categoryId, brandId);
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "تعذر استيراد الأسعار", "error");
+    } finally {
+      setBulkBusy(false);
+      if (priceImportInputRef.current) priceImportInputRef.current.value = "";
     }
   }
 
@@ -609,16 +714,32 @@ function ProductsManagement() {
     if (saved) await offerLinkedPrices(product, product.price, normalized);
   }
 
-  async function toggleStock(product: AdminProductRow) {
-    const stockStatus =
-      product.stockStatus === "instock" ? "outofstock" : "instock";
-    await patchProduct(
-      product.id,
-      { stockStatus },
-      stockStatus === "instock"
-        ? "Marked In Stock (synced)"
-        : "Marked Out of Stock (synced)",
-    );
+  async function toggleVisibility(product: AdminProductRow) {
+    const next = !product.isActive;
+    setSavingId(product.id);
+    try {
+      const res = await fetch(`/api/products/${product.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: next }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "تعذر تحديث حالة العرض");
+      patchLocal(product.id, { isActive: next });
+      toast(
+        next
+          ? "المنتج ظاهر في الموقع والتطبيق"
+          : "المنتج مخفي من الموقع والتطبيق",
+        "success",
+      );
+    } catch (err) {
+      toast(
+        err instanceof Error ? err.message : "تعذر تحديث حالة العرض",
+        "error",
+      );
+    } finally {
+      setSavingId(null);
+    }
   }
 
   async function softDelete(product: AdminProductRow) {
@@ -721,7 +842,7 @@ function ProductsManagement() {
   }
   const from = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const to = Math.min(page * PER_PAGE, total);
-  const colSpan = view === "weighed" ? 8 : 11;
+  const colSpan = view === "weighed" ? 9 : 12;
   const visibleIds = products.map((product) => product.id);
   const allVisibleSelected =
     visibleIds.length > 0 &&
@@ -917,7 +1038,7 @@ function ProductsManagement() {
                   تم تحديد {selectedProductIds.size.toLocaleString("ar-EG")} منتجات
                 </span>
               )}
-              {view === "active" && (
+              {view !== "trash" && (
                 <>
                   <button
                     type="button"
@@ -931,6 +1052,31 @@ function ProductsManagement() {
                   <button
                     type="button"
                     disabled={bulkBusy}
+                    title="تحديث السعر الأساسي وسعر التخفيض وآخر سعر شراء حسب الباركود أو كود الصنف"
+                    onClick={() => priceImportInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    استيراد من Excel
+                  </button>
+                  <input
+                    ref={priceImportInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handlePriceImport(file);
+                    }}
+                  />
+                </>
+              )}
+              {view === "active" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={bulkBusy}
+                    title="استيراد كتالوج المنتجات"
                     onClick={() => importInputRef.current?.click()}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                   >
@@ -1015,7 +1161,7 @@ function ProductsManagement() {
           <table
             className={clsx(
               "w-full text-left text-sm",
-              view === "weighed" ? "min-w-[1180px]" : "min-w-[1100px]",
+              view === "weighed" ? "min-w-[1280px]" : "min-w-[1240px]",
             )}
           >
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1034,6 +1180,7 @@ function ProductsManagement() {
                   <th className="px-4 py-3 font-semibold">اسم المنتج</th>
                   <th className="px-4 py-3 font-semibold">الباركود</th>
                   <th className="px-4 py-3 font-semibold">الكمية</th>
+                  <th className="px-4 py-3 font-semibold">حالة العرض</th>
                   <th className="px-4 py-3 font-semibold">السعر الأساسي</th>
                   <th className="px-4 py-3 font-semibold">سعر التخفيض</th>
                   <th className="px-4 py-3 font-semibold">آخر سعر شراء</th>
@@ -1057,6 +1204,7 @@ function ProductsManagement() {
                 <th className="px-4 py-3 font-semibold">السعر</th>
                 <th className="px-4 py-3 font-semibold">سعر التخفيض</th>
                 <th className="px-4 py-3 font-semibold">حالة المخزون</th>
+                <th className="px-4 py-3 font-semibold">حالة العرض</th>
                 <th className="px-4 py-3 font-semibold">الكمية</th>
                 <th className="px-4 py-3 font-semibold">الإجراءات</th>
               </tr>
@@ -1092,6 +1240,8 @@ function ProductsManagement() {
                     product={product}
                     selected={selectedProductIds.has(product.id)}
                     onToggleSelected={() => toggleProductSelected(product.id)}
+                    visibilityBusy={savingId === product.id}
+                    onToggleVisibility={() => void toggleVisibility(product)}
                     onSaved={(patch) => {
                       applyWeighedPrices(product.id, patch);
                       if (patch.price !== undefined || patch.salePrice !== undefined) {
@@ -1117,7 +1267,7 @@ function ProductsManagement() {
                     busy={savingId === product.id}
                     onSavePrice={savePrice}
                     onSaveSalePrice={saveSalePrice}
-                    onToggleStock={toggleStock}
+                    onToggleVisibility={() => void toggleVisibility(product)}
                     onToggleFavorite={() => void toggleFavorite(product)}
                     onEdit={() => setEditProduct(product)}
                     onSoftDelete={() => void softDelete(product)}
@@ -1254,7 +1404,7 @@ function ProductRow({
   busy,
   onSavePrice,
   onSaveSalePrice,
-  onToggleStock,
+  onToggleVisibility,
   onToggleFavorite,
   onEdit,
   onSoftDelete,
@@ -1268,7 +1418,7 @@ function ProductRow({
   busy: boolean;
   onSavePrice: (product: AdminProductRow, raw: string) => Promise<void>;
   onSaveSalePrice: (product: AdminProductRow, raw: string) => Promise<void>;
-  onToggleStock: (product: AdminProductRow) => Promise<void>;
+  onToggleVisibility: () => void;
   onToggleFavorite: () => void;
   onEdit: () => void;
   onSoftDelete: () => void;
@@ -1279,8 +1429,6 @@ function ProductRow({
   const [saleDraft, setSaleDraft] = useState(
     product.salePrice != null ? String(product.salePrice) : "",
   );
-  const inStock = product.stockStatus !== "outofstock";
-
   useEffect(() => {
     setPriceDraft(String(product.price));
   }, [product.price]);
@@ -1388,45 +1536,14 @@ function ProductRow({
         )}
       </td>
       <td className="px-4 py-3">
-        {view === "active" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onToggleStock(product)}
-            className="inline-flex items-center gap-2"
-            title={
-              inStock
-                ? "متوفر — اضغط لتعليم غير متوفر"
-                : "غير متوفر — اضغط لتعليم متوفر"
-            }
-          >
-            <span
-              className={clsx(
-                "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
-                inStock ? "bg-emerald-500" : "bg-slate-300",
-              )}
-            >
-              <span
-                className={clsx(
-                  "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                  inStock && "translate-x-5",
-                )}
-              />
-            </span>
-            <span
-              className={clsx(
-                "text-xs font-semibold",
-                inStock ? "text-emerald-700" : "text-slate-500",
-              )}
-            >
-              {inStock ? "متوفر" : "غير متوفر"}
-            </span>
-          </button>
-        ) : (
-          <span className="text-xs font-semibold text-slate-500">
-            {inStock ? "متوفر" : "غير متوفر"}
-          </span>
-        )}
+        <StockBadge quantity={product.stockQuantity} />
+      </td>
+      <td className="px-4 py-3">
+        <VisibilityToggle
+          active={product.isActive}
+          disabled={busy}
+          onToggle={onToggleVisibility}
+        />
       </td>
       <td className="px-4 py-3">
         {product.linkedProductId ? (
@@ -1576,11 +1693,15 @@ function WeighedProductRow({
   product,
   selected,
   onToggleSelected,
+  visibilityBusy,
+  onToggleVisibility,
   onSaved,
 }: {
   product: AdminProductRow;
   selected: boolean;
   onToggleSelected: () => void;
+  visibilityBusy: boolean;
+  onToggleVisibility: () => void;
   onSaved: (
     patch: Partial<Pick<AdminProductRow, "price" | "salePrice" | "buyingCost" | "lastPurchasePrice">>,
   ) => void;
@@ -1705,6 +1826,13 @@ function WeighedProductRow({
       <td className="px-4 py-3 font-mono text-xs text-slate-600">{barcode}</td>
       <td className="px-4 py-3 tabular-nums text-slate-700">
         {formatQty(product.stockQuantity)} كجم
+      </td>
+      <td className="px-4 py-3">
+        <VisibilityToggle
+          active={product.isActive}
+          disabled={visibilityBusy}
+          onToggle={onToggleVisibility}
+        />
       </td>
       <td className="px-4 py-3">
         <WeighedPriceField

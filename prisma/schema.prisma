@@ -94,6 +94,8 @@ model Product {
   imageUrl      String?
   isDeleted     Boolean  @default(false)
   isFavorite    Boolean  @default(false)
+  /** Website and app visibility. The POS catalog does not use this flag. */
+  isActive      Boolean  @default(true)
   /** Virtual bundle: base single-unit product this pack sells from. */
   linkedProductId  String?
   /** How many base units one sold bundle consumes (e.g. 3). */
