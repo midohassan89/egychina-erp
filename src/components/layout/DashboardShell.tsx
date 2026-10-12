@@ -93,7 +93,7 @@ const NAV_GROUPS: NavGroup[] = [
       { key: "brands", href: "/admin/brands", label: "العلامات التجارية", icon: Award },
       {
         key: "autoImages",
-        href: "/admin/auto-images",
+        href: "/dashboard/tools/auto-fetch",
         label: "أداة جلب الصور",
         icon: Images,
       },

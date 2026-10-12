@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { AutoImageList } from "./AutoImageList";
+import { AutoFetchPanel } from "./AutoFetchPanel";
 
-export default async function AutoImagesPage() {
+export default async function AutoFetchPage() {
   const products = await prisma.product.findMany({
     where: {
       isDeleted: false,
@@ -14,12 +14,12 @@ export default async function AutoImagesPage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">جلب صور المنتجات</h1>
+        <h1 className="text-2xl font-bold text-slate-900">جلب الصور التلقائي</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Products with no image. Each fetch searches Google Images and saves the URL.
+          المنتجات التي لا تملك صورة. يتم جلب صورة واحدة في كل مرة وحفظها محلياً.
         </p>
       </div>
-      <AutoImageList products={products} />
+      <AutoFetchPanel products={products} />
     </div>
   );
 }

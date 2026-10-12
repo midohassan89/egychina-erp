@@ -20,7 +20,7 @@ const ACCEPT = "image/png, image/jpeg, image/webp";
  * - Edit Product
  * - Add Product (Purchases quick-add)
  *
- * "جلب من الإنترنت" → POST /api/admin/fetch-image (5-URL fallback loop + sharp).
+ * "إعادة جلب تلقائي" → POST /api/upload/auto-fetch.
  */
 export function ImagePicker({
   value,
@@ -87,7 +87,7 @@ export function ImagePicker({
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           {fetching && <Loader2 className="h-4 w-4 animate-spin" />}
-          جلب من الإنترنت
+          إعادة جلب تلقائي
         </button>
         <button
           type="button"

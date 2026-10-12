@@ -1,9 +1,9 @@
 /**
  * Shared client helpers for product image fetch/upload.
- * Used by ImagePicker (Add / Edit / Purchases quick-add) and admin auto-images.
+ * Used by ImagePicker (Add / Edit / Purchases quick-add).
  */
 
-export const FETCH_IMAGE_API = "/api/admin/fetch-image";
+export const FETCH_IMAGE_API = "/api/upload/auto-fetch";
 export const UPLOAD_IMAGE_API = "/api/admin/upload-image";
 
 /** Matches the API's final fallback when the 5-URL loop fails. */
@@ -30,18 +30,18 @@ export async function fetchProductImageFromWeb(options: {
     }),
   });
 
-  let body: { error?: string; imageUrl?: string } = {};
+  let body: { error?: string; url?: string; success?: boolean } = {};
   try {
-    body = (await res.json()) as { error?: string; imageUrl?: string };
+    body = (await res.json()) as { error?: string; url?: string; success?: boolean };
   } catch {
     // Non-JSON response
   }
 
-  if (!res.ok || !body.imageUrl) {
+  if (!res.ok || !body.url) {
     throw new Error(body.error?.trim() || FETCH_IMAGE_FALLBACK_ERROR);
   }
 
-  return body.imageUrl;
+  return body.url;
 }
 
 export async function uploadProductImageFile(file: File): Promise<string> {
