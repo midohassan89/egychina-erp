@@ -125,10 +125,8 @@ function ProductsManagement() {
         });
         if (q) params.set("q", q);
         if (mode === "trash") params.set("trash", "1");
-        if (mode === "weighed") {
-          params.set("weighed", "1");
-          if (category) params.set("categoryId", category);
-        }
+        if (mode === "weighed") params.set("weighed", "1");
+        if (mode !== "trash" && category) params.set("categoryId", category);
         if (stock === "instock" || stock === "outofstock") {
           params.set("stockStatus", stock);
         }
@@ -143,7 +141,7 @@ function ProductsManagement() {
         setTotal(data.total ?? 0);
         setPage(data.page ?? pageNum);
         setPageCount(data.pageCount ?? 1);
-        if (mode === "weighed" && Array.isArray(data.categories)) {
+        if (mode !== "trash" && Array.isArray(data.categories)) {
           setCategories(data.categories);
         }
       } catch (err) {
@@ -184,7 +182,7 @@ function ProductsManagement() {
     startTransition(() => {
       setView(mode);
       setPage(1);
-      if (mode !== "weighed") setCategoryId("");
+      setCategoryId("");
     });
   }
 
@@ -541,7 +539,7 @@ function ProductsManagement() {
                 : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
             )}
           >
-            المنتجات النشطة
+            كل المنتجات
           </button>
           <button
             type="button"
@@ -607,7 +605,7 @@ function ProductsManagement() {
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
-              {view === "weighed" && (
+              {view !== "trash" && (
                 <label className="flex items-center gap-2 text-sm text-slate-600">
                   <span className="whitespace-nowrap font-medium">القسم</span>
                   <select

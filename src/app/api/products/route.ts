@@ -119,15 +119,19 @@ export async function GET(request: Request) {
         take: perPage,
         include: { brand: true, category: true },
       }),
-      weighed
-        ? prisma.category.findMany({
+      trash
+        ? Promise.resolve([])
+        : prisma.category.findMany({
             where: {
-              products: { some: { isWeighed: true, isDeleted: false } },
+              products: {
+                some: weighed
+                  ? { isWeighed: true, isDeleted: false }
+                  : { isDeleted: false },
+              },
             },
             orderBy: { name: "asc" },
             select: { id: true, name: true },
-          })
-        : Promise.resolve([]),
+          }),
     ]);
 
     const lastPurchaseCost = new Map<string, number>();
@@ -183,7 +187,7 @@ export async function GET(request: Request) {
       perPage,
       pageCount: Math.max(1, Math.ceil(total / perPage)),
       trash,
-      ...(weighed ? { categories: weighedCategories } : {}),
+      ...(!trash ? { categories: weighedCategories } : {}),
       source: "prisma",
     });
   } catch (error) {
