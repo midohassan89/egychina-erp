@@ -12,6 +12,7 @@ import { Search, Star, Tag } from "lucide-react";
 import { clsx } from "clsx";
 import type { CachedCategory, CachedProduct } from "@/types/woocommerce";
 import { getOpBarcodes, productHasOpBarcode } from "@/lib/pos/opBarcode";
+import { isScaleBarcode } from "@/lib/pos/resolveBarcode";
 import {
   isCustomerLoyaltyScan,
   normalizeLoyaltyPhone,
@@ -96,7 +97,13 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
       if (scanLocked) return;
       const value = raw.trim();
       if (!value) return;
-      const ok = onBarcodeEnter(value);
+      let ok = false;
+      try {
+        ok = onBarcodeEnter(value);
+      } catch (error) {
+        console.error("[pos] barcode scan failed", error);
+        ok = false;
+      }
       setQuery("");
       // On not-found, parent shows a blocking modal — do NOT refocus yet.
       if (ok) {
@@ -133,11 +140,22 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
         return;
       }
 
-      const exactMatches = products.filter((p) =>
-        productHasOpBarcode(p, value),
+      const digits = value.replace(/\D/g, "");
+      // Scale labels embed the price. Look up the PLU, not the full 13 digits.
+      if (isScaleBarcode(digits)) {
+        submitBarcode(digits);
+        return;
+      }
+
+      const exactMatches = products.filter(
+        (p) => productHasOpBarcode(p, value) || (p.sku ?? "").trim() === value,
       );
       if (exactMatches.length === 1) {
         submitBarcode(value);
+        return;
+      }
+      if (digits.length >= 6) {
+        submitBarcode(digits);
         return;
       }
 

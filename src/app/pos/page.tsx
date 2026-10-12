@@ -280,6 +280,35 @@ function POSPageInner() {
     (rawInput: string): boolean => {
       if (shiftLocked || notFoundBarcode || priceCheckOpen) return false;
 
+      try {
+        return scanBarcode(rawInput);
+      } catch (error) {
+        console.error("[pos] barcode scan failed", error);
+        playErrorBeep();
+        closeKeyboard();
+        setNotFoundBarcode(rawInput.trim() || "—");
+        setScanError("المنتج غير متوفر");
+        setScanMessage(null);
+        return false;
+      }
+    },
+    // scanBarcode is recreated with this callback; deps are listed below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      catalog,
+      cart.lines,
+      cart.addProduct,
+      cart.addScaleLine,
+      shiftLocked,
+      returnMode,
+      flashCartItem,
+      notFoundBarcode,
+      priceCheckOpen,
+      closeKeyboard,
+    ],
+  );
+
+  function scanBarcode(rawInput: string): boolean {
       const scanned = rawInput.trim();
       const cleanPhone = normalizeLoyaltyPhone(scanned);
       if (isCustomerLoyaltyScan(cleanPhone)) {
@@ -325,12 +354,12 @@ function POSPageInner() {
 
       const result = resolveScannedBarcode(rawInput, catalog);
 
-      if ("error" in result) {
+      if ("error" in result || !result.product) {
         const code = rawInput.trim().replace(/\D/g, "") || rawInput.trim();
         playErrorBeep();
         closeKeyboard();
         setNotFoundBarcode(code);
-        setScanError(null);
+        setScanError("المنتج غير متوفر");
         setScanMessage(null);
         return false;
       }
@@ -369,20 +398,7 @@ function POSPageInner() {
 
       setScanError(null);
       return true;
-    },
-    [
-      catalog,
-      cart.lines,
-      cart.addProduct,
-      cart.addScaleLine,
-      shiftLocked,
-      returnMode,
-      flashCartItem,
-      notFoundBarcode,
-      priceCheckOpen,
-      closeKeyboard,
-    ],
-  );
+  }
 
   useEffect(() => {
     let scanBuffer = "";
@@ -404,7 +420,12 @@ function POSPageInner() {
       const now = Date.now();
       if (event.key === "Enter") {
         const code = scanBuffer.trim();
-        const fromScanner = code.length > 0 && lastKeyAt > 0 && now - lastKeyAt < 50;
+        const gap = lastKeyAt > 0 ? now - lastKeyAt : Number.POSITIVE_INFINITY;
+        const digits = code.replace(/\D/g, "");
+        const fromScanner =
+          code.length > 0 &&
+          lastKeyAt > 0 &&
+          (gap < 80 || (digits.length >= 8 && gap < 500));
         if (!fromScanner) {
           scanBuffer = "";
           lastKeyAt = 0;
@@ -429,7 +450,13 @@ function POSPageInner() {
 
         scanBuffer = "";
         lastKeyAt = 0;
-        handleBarcodeEnter(code);
+        try {
+          handleBarcodeEnter(code);
+        } catch (error) {
+          console.error("[pos] barcode scan failed", error);
+          setNotFoundBarcode(code);
+          setScanError("المنتج غير متوفر");
+        }
         return;
       }
 

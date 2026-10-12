@@ -1,16 +1,41 @@
 import type { CachedProduct } from "@/types/woocommerce";
 import type { BarcodeScanResult } from "@/types/pos";
-import { findProductByExactPlu, findProductByOpBarcode } from "./opBarcode";
-import { productFromScalePlu } from "./scaleCatalog";
+import { getOpBarcodes } from "./opBarcode";
 import { getCatalogSellingPrice, parsePrice, roundMoney, roundQty } from "./money";
 
 /** In-store scale labels: prefix + 5-digit PLU + 5-digit price (cents) + check digit. */
 const SCALE_PREFIXES = ["20", "21", "23"];
+const NOT_FOUND = "المنتج غير متوفر";
 
-function isScaleBarcode(code: string): boolean {
+export function isScaleBarcode(code: string): boolean {
+  const digits = code.replace(/\D/g, "");
   return (
-    /^\d{13}$/.test(code) && SCALE_PREFIXES.some((prefix) => code.startsWith(prefix))
+    digits.length === 13 && SCALE_PREFIXES.some((prefix) => digits.startsWith(prefix))
   );
+}
+
+function looseCode(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits.replace(/^0+/, "") || digits;
+}
+
+/** Match a PLU or barcode against sku and stored barcodes only — never a longer code. */
+function findProductByCode(
+  products: CachedProduct[],
+  code: string,
+): CachedProduct | undefined {
+  const raw = code.trim();
+  const loose = looseCode(raw);
+  if (!raw) return undefined;
+
+  return products.find((product) => {
+    const stored = [product.sku ?? "", ...getOpBarcodes(product)];
+    return stored.some((value) => {
+      const text = value.trim();
+      if (!text) return false;
+      return text === raw || (loose.length > 0 && looseCode(text) === loose);
+    });
+  });
 }
 
 /**
@@ -24,35 +49,37 @@ export function resolveScannedBarcode(
   rawInput: string,
   products: CachedProduct[],
 ): BarcodeScanResult | { error: string } {
-  const code = rawInput.trim();
-  if (!code) {
-    return { error: "Empty barcode" };
-  }
+  try {
+    const code = rawInput.trim();
+    if (!code) {
+      return { error: "Empty barcode" };
+    }
 
-  if (isScaleBarcode(code)) {
-    return resolveScaleBarcode(code, products);
-  }
+    const catalog = Array.isArray(products) ? products : [];
+    const digits = code.replace(/\D/g, "");
 
-  // TASK 3: Standard barcode — exact `_op_barcode` match
-  const digits = code.replace(/\D/g, "");
-  const lookup = digits.length >= 8 ? digits : code;
-  const product = findProductByOpBarcode(products, lookup);
+    if (isScaleBarcode(digits)) {
+      return resolveScaleBarcode(digits, catalog);
+    }
 
-  if (!product) {
+    const product = findProductByCode(catalog, digits.length >= 8 ? digits : code);
+    if (!product) {
+      return { error: NOT_FOUND };
+    }
+
+    const unitPrice = getCatalogSellingPrice(product) || parsePrice(product.price);
     return {
-      error: `Product not found for barcode ${lookup} (checked _op_barcode)`,
+      barcode: digits || code,
+      product,
+      qty: 1,
+      unitPrice,
+      lineTotal: roundMoney(unitPrice),
+      isWeighted: false,
     };
+  } catch (error) {
+    console.error("[pos] barcode resolve failed", error);
+    return { error: NOT_FOUND };
   }
-
-  const unitPrice = parsePrice(product.price);
-  return {
-    barcode: lookup,
-    product,
-    qty: 1,
-    unitPrice,
-    lineTotal: roundMoney(unitPrice),
-    isWeighted: false,
-  };
 }
 
 /**
@@ -66,55 +93,47 @@ function resolveScaleBarcode(
   code: string,
   products: CachedProduct[],
 ): BarcodeScanResult | { error: string } {
-  const plu = code.substring(2, 7);
-  const priceRaw = code.substring(7, 12);
-  const lineTotal = roundMoney(parseInt(priceRaw, 10) / 100);
+  const itemCode = code.substring(2, 7);
+  const totalPrice = roundMoney(parseFloat(code.substring(7, 12)) / 100);
 
-  if (lineTotal <= 0) {
-    return { error: "Scale barcode has zero price" };
+  if (!itemCode || !Number.isFinite(totalPrice) || totalPrice <= 0) {
+    return { error: NOT_FOUND };
   }
 
-  const product =
-    findProductByExactPlu(products, plu) ??
-    productFromScalePlu(plu) ??
-    undefined;
-
+  const product = findProductByCode(products, itemCode);
   if (!product) {
-    return {
-      error: `Unknown PLU ${plu} — no product with _op_barcode matching this PLU`,
-    };
+    return { error: NOT_FOUND };
   }
 
-  if (product.isWeighed) {
-    const unitPrice = getCatalogSellingPrice(product);
-    if (unitPrice <= 0) {
-      return { error: `Weighed product ${product.name} has no unit price` };
+  if (product.isWeighed === true) {
+    const unitPrice = getCatalogSellingPrice(product) || parsePrice(product.price);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      return { error: NOT_FOUND };
     }
-    const qty = roundQty(lineTotal / unitPrice);
-    if (qty <= 0) {
-      return { error: "Scale barcode has zero weight" };
+    const calculatedQty = roundQty(totalPrice / unitPrice);
+    if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) {
+      return { error: NOT_FOUND };
     }
     return {
       barcode: code,
       product,
-      qty,
+      qty: calculatedQty,
       unitPrice,
-      lineTotal,
+      lineTotal: totalPrice,
       isWeighted: true,
       isScalePriced: true,
-      weightKg: qty,
-      plu,
+      weightKg: calculatedQty,
+      plu: itemCode,
     };
   }
 
+  const unitPrice = getCatalogSellingPrice(product) || parsePrice(product.price);
   return {
     barcode: code,
     product,
     qty: 1,
-    unitPrice: lineTotal,
-    lineTotal,
-    isWeighted: true,
-    isScalePriced: true,
-    plu,
+    unitPrice,
+    lineTotal: roundMoney(unitPrice),
+    isWeighted: false,
   };
 }

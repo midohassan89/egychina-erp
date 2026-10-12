@@ -52,10 +52,10 @@ export function ProductNotFoundModal({
               id="pos-not-found-title"
               className="text-2xl font-extrabold tracking-tight"
             >
-              Product Not Found
+              المنتج غير متوفر
             </h2>
             <p className="mt-1 text-base font-semibold text-red-100">
-              منتج غير موجود — يجب تأكيد الخطأ قبل المتابعة
+              Product not found — يجب تأكيد الخطأ قبل المتابعة
             </p>
           </div>
         </div>

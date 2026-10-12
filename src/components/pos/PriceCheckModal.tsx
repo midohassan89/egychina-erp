@@ -77,7 +77,15 @@ export function PriceCheckModal({
     const code = raw.trim();
     if (!code) return;
 
-    const resolved = resolveScannedBarcode(code, products);
+    let resolved: ReturnType<typeof resolveScannedBarcode>;
+    try {
+      resolved = resolveScannedBarcode(code, products);
+    } catch (error) {
+      console.error("[pos] barcode scan failed", error);
+      setResult(null);
+      setNotFound(code.replace(/\D/g, "") || code);
+      return;
+    }
     setQuery("");
 
     if ("error" in resolved) {
