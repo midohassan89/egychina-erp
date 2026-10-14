@@ -3,15 +3,13 @@ import type { BarcodeScanResult } from "@/types/pos";
 import { getOpBarcodes } from "./opBarcode";
 import { getCatalogSellingPrice, parsePrice, roundMoney, roundQty } from "./money";
 
-/** In-store scale labels: prefix + 5-digit PLU + 5-digit price (cents) + check digit. */
-const SCALE_PREFIXES = ["20", "21", "23"];
+/** In-store scale labels: 20 + 5-digit PLU + 5-digit price (cents) + check digit. */
+const SCALE_PREFIX = "20";
 const NOT_FOUND = "المنتج غير متوفر";
 
 export function isScaleBarcode(code: string): boolean {
   const digits = code.replace(/\D/g, "");
-  return (
-    digits.length === 13 && SCALE_PREFIXES.some((prefix) => digits.startsWith(prefix))
-  );
+  return digits.length === 13 && digits.startsWith(SCALE_PREFIX);
 }
 
 function looseCode(value: string): string {
@@ -41,9 +39,10 @@ function findProductByCode(
 /**
  * Resolve a barcode typed/scanned into the search box (Enter to submit).
  *
- * Scale (13 digits, prefix 20/21/23): PLU + embedded total price.
- * Weighed products convert that total into kilograms using the catalog unit price.
- * Otherwise: exact `_op_barcode` match → cart qty 1.
+ * Scale (13 digits starting with 20): PLU + embedded total price.
+ * The prefix alone selects this path. The product's isWeighed flag is not consulted.
+ * Weight = embedded total / catalog unit price.
+ * Otherwise: exact barcode match → cart qty 1.
  */
 export function resolveScannedBarcode(
   rawInput: string,
@@ -105,35 +104,23 @@ function resolveScaleBarcode(
     return { error: NOT_FOUND };
   }
 
-  if (product.isWeighed === true) {
-    const unitPrice = getCatalogSellingPrice(product) || parsePrice(product.price);
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      return { error: NOT_FOUND };
-    }
-    const calculatedQty = roundQty(totalPrice / unitPrice);
-    if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) {
-      return { error: NOT_FOUND };
-    }
-    return {
-      barcode: code,
-      product,
-      qty: calculatedQty,
-      unitPrice,
-      lineTotal: totalPrice,
-      isWeighted: true,
-      isScalePriced: true,
-      weightKg: calculatedQty,
-      plu: itemCode,
-    };
-  }
-
   const unitPrice = getCatalogSellingPrice(product) || parsePrice(product.price);
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return { error: NOT_FOUND };
+  }
+  const calculatedQty = roundQty(totalPrice / unitPrice);
+  if (!Number.isFinite(calculatedQty) || calculatedQty <= 0) {
+    return { error: NOT_FOUND };
+  }
   return {
     barcode: code,
     product,
-    qty: 1,
+    qty: calculatedQty,
     unitPrice,
-    lineTotal: roundMoney(unitPrice),
-    isWeighted: false,
+    lineTotal: totalPrice,
+    isWeighted: true,
+    isScalePriced: true,
+    weightKg: calculatedQty,
+    plu: itemCode,
   };
 }
