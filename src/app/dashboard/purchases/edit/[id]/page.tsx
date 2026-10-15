@@ -21,11 +21,7 @@ import {
   fetchLinkedVirtualProducts,
   LinkedProductsPriceModal,
 } from "@/components/dashboard/LinkedProductsPriceModal";
-
-interface SupplierOption {
-  id: number;
-  name: string;
-}
+import { SupplierSelect } from "@/components/dashboard/SupplierSelect";
 
 interface ProductOption {
   id: string;
@@ -212,7 +208,6 @@ export default function EditPurchaseInvoicePage({
   const invoiceId = Number(idParam);
   const router = useRouter();
 
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [date, setDate] = useState("");
@@ -242,15 +237,6 @@ export default function EditPurchaseInvoicePage({
   const lastSyncedPrices = useRef(new Map<string, string>());
   const lastSyncedPackSizes = useRef(new Map<string, number>());
   const priceSyncGen = useRef(new Map<string, number>());
-
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/suppliers");
-      if (!res.ok) return;
-      const body = (await res.json()) as { suppliers?: SupplierOption[] };
-      setSuppliers(body.suppliers ?? []);
-    })();
-  }, []);
 
   useEffect(() => {
     if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
@@ -765,24 +751,12 @@ export default function EditPurchaseInvoicePage({
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3">
-          <label className="block sm:col-span-1">
+          <div className="sm:col-span-1">
             <span className="mb-1 block text-sm font-medium text-slate-700">
-              Supplier
+              المورد
             </span>
-            <select
-              required
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="">Select supplier…</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            <SupplierSelect value={supplierId} onChange={setSupplierId} />
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">

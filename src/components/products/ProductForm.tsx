@@ -659,16 +659,16 @@ function ProductFormFields({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
+          <div className="space-y-1.5">
             <span className="text-sm font-medium text-slate-700">التصنيف</span>
             <CategorySelect value={categoryId} onChange={setCategoryId} />
-          </label>
-          <label className="block space-y-1.5">
+          </div>
+          <div className="space-y-1.5">
             <span className="text-sm font-medium text-slate-700">
               العلامة التجارية
             </span>
             <BrandSelect value={brandId} onChange={setBrandId} />
-          </label>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

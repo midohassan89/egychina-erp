@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useRef,
   useState,
   useTransition,
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -160,19 +162,6 @@ function FilterChip({
   );
 }
 
-interface ImportErrorRow {
-  row: number;
-  name: string;
-  reason: string;
-}
-
-interface ImportResult {
-  createdCount: number;
-  updatedCount: number;
-  skippedCount: number;
-  errors: ImportErrorRow[];
-}
-
 interface ProductsResponse {
   products: AdminProductRow[];
   total: number;
@@ -187,25 +176,51 @@ interface ProductsResponse {
 
 type ViewMode = "active" | "weighed" | "trash";
 type StockFilter = "all" | "instock" | "outofstock";
+type ProductSort = "desc" | "asc" | "az";
+
+function readProductSort(value: string | null): ProductSort {
+  if (value === "asc" || value === "az") return value;
+  return "desc";
+}
+
+function readPage(value: string | null): number {
+  const page = Number(value);
+  if (!Number.isFinite(page) || page < 1) return 1;
+  return Math.floor(page);
+}
 
 export default function DashboardProductsPage() {
   return (
     <ToastProvider>
-      <ProductsManagement />
+      <Suspense
+        fallback={
+          <p className="p-6 text-sm text-slate-500">جاري تحميل المنتجات…</p>
+        }
+      >
+        <ProductsManagement />
+      </Suspense>
     </ToastProvider>
   );
 }
 
 function ProductsManagement() {
   const { toast } = useToast();
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const priceImportInputRef = useRef<HTMLInputElement>(null);
+  const searchTimer = useRef<number | null>(null);
   const [products, setProducts] = useState<AdminProductRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => readPage(searchParams.get("page")));
   const [pageCount, setPageCount] = useState(1);
-  const [searchInput, setSearchInput] = useState("");
-  const [query, setQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("search") ?? "",
+  );
+  const [query, setQuery] = useState(() => searchParams.get("search") ?? "");
+  const [sort, setSort] = useState<ProductSort>(() =>
+    readProductSort(searchParams.get("sort")),
+  );
   const [view, setView] = useState<ViewMode>("active");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [categoryId, setCategoryId] = useState("");
@@ -235,7 +250,6 @@ function ProductsManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("Working…");
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -249,6 +263,7 @@ function ProductsManagement() {
       stock: StockFilter = "all",
       category = "",
       brand = "",
+      sortMode: ProductSort = "desc",
     ) => {
       setIsLoading(true);
       setError(null);
@@ -265,6 +280,7 @@ function ProductsManagement() {
         if (stock === "instock" || stock === "outofstock") {
           params.set("stockStatus", stock);
         }
+        if (sortMode !== "desc") params.set("sort", sortMode);
 
         const res = await fetch(`/api/products?${params.toString()}`);
         const data = (await res.json()) as ProductsResponse;
@@ -272,10 +288,12 @@ function ProductsManagement() {
           throw new Error(data.error ?? "Failed to load products");
         }
 
+        const nextPageCount = data.pageCount ?? 1;
+        const nextPage = data.page ?? pageNum;
         setProducts(data.products ?? []);
         setTotal(data.total ?? 0);
-        setPage(data.page ?? pageNum);
-        setPageCount(data.pageCount ?? 1);
+        setPage(nextPage > nextPageCount ? nextPageCount : nextPage);
+        setPageCount(nextPageCount);
         if (mode !== "trash" && Array.isArray(data.categories)) {
           setCategories(data.categories);
         }
@@ -304,8 +322,21 @@ function ProductsManagement() {
   );
 
   useEffect(() => {
-    void loadProducts(page, query, view, stockFilter, categoryId, brandId);
-  }, [loadProducts, page, query, view, stockFilter, categoryId, brandId]);
+    void loadProducts(page, query, view, stockFilter, categoryId, brandId, sort);
+  }, [loadProducts, page, query, view, stockFilter, categoryId, brandId, sort]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (query) params.set("search", query);
+    else params.delete("search");
+    if (page > 1) params.set("page", String(page));
+    else params.delete("page");
+    if (sort !== "desc") params.set("sort", sort);
+    else params.delete("sort");
+    const next = params.toString();
+    if (next === searchParams.toString()) return;
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [page, pathname, query, router, searchParams, sort]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -349,20 +380,41 @@ function ProductsManagement() {
     view,
   ]);
 
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const next = searchInput.trim();
+  function commitSearch(value: string) {
+    const next = value.trim();
     startTransition(() => {
-      setPage(1);
       setQuery(next);
+      setPage((currentPage) => (query === next ? currentPage : 1));
     });
   }
 
+  function handleSearchInput(value: string) {
+    setSearchInput(value);
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => {
+      commitSearch(value);
+    }, 400);
+  }
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    commitSearch(searchInput);
+  }
+
   function handleClearSearch() {
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
     setSearchInput("");
     startTransition(() => {
       setPage(1);
       setQuery("");
+    });
+  }
+
+  function changeSort(next: ProductSort) {
+    startTransition(() => {
+      setSort(next);
+      setPage(1);
     });
   }
 
@@ -397,6 +449,7 @@ function ProductsManagement() {
   }
 
   function clearAllFilters() {
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
     setSearchInput("");
     startTransition(() => {
       setPage(1);
@@ -406,6 +459,12 @@ function ProductsManagement() {
       setStockFilter("all");
     });
   }
+
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    };
+  }, []);
 
   function productQuery(
     pageNum: number,
@@ -430,6 +489,7 @@ function ProductsManagement() {
     if (stockFilter === "instock" || stockFilter === "outofstock") {
       params.set("stockStatus", stockFilter);
     }
+    if (sort !== "desc") params.set("sort", sort);
     return params;
   }
 
@@ -525,44 +585,6 @@ function ProductsManagement() {
       toast(err instanceof Error ? err.message : "Export failed", "error");
     } finally {
       setBulkBusy(false);
-    }
-  }
-
-  async function handleImportExcel(file: File) {
-    setBulkBusy(true);
-    setBulkMessage("Importing Excel…");
-    try {
-      const form = new FormData();
-      form.set("file", file);
-      const res = await fetch("/api/admin/products/import", {
-        method: "POST",
-        body: form,
-      });
-      const data = (await res.json()) as {
-        error?: string;
-        success?: boolean;
-        createdCount?: number;
-        updatedCount?: number;
-        skippedCount?: number;
-        errors?: ImportErrorRow[];
-      };
-      if (!res.ok || data.success === false) {
-        throw new Error(data.error ?? "Import failed");
-      }
-
-      setImportResult({
-        createdCount: data.createdCount ?? 0,
-        updatedCount: data.updatedCount ?? 0,
-        skippedCount: data.skippedCount ?? 0,
-        errors: data.errors ?? [],
-      });
-      await loadProducts(1, query, view, stockFilter);
-      setPage(1);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Import failed", "error");
-    } finally {
-      setBulkBusy(false);
-      if (importInputRef.current) importInputRef.current.value = "";
     }
   }
 
@@ -931,22 +953,34 @@ function ProductsManagement() {
         </div>
 
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex flex-1 flex-col gap-2 sm:max-w-md sm:flex-row"
+              className="flex w-full min-w-0 flex-col gap-2 sm:min-w-[20rem] sm:flex-1 sm:flex-row sm:items-center"
             >
-              <div className="relative flex-1">
+              <div className="relative w-full min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
                   value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  onChange={(e) => handleSearchInput(e.target.value)}
                   placeholder="بحث بالاسم أو الباركود…"
-                  className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="block w-full min-w-0 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
-              <div className="flex gap-2">
+              <label className="flex w-full items-center gap-2 text-sm text-slate-600 sm:w-auto">
+                <span className="whitespace-nowrap font-medium">الترتيب</span>
+                <select
+                  value={sort}
+                  onChange={(e) => changeSort(e.target.value as ProductSort)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 sm:w-auto"
+                >
+                  <option value="desc">الأحدث</option>
+                  <option value="asc">الأقدم</option>
+                  <option value="az">أ-ي</option>
+                </select>
+              </label>
+              <div className="flex w-full gap-2 sm:w-auto">
                 <button
                   type="submit"
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -965,7 +999,7 @@ function ProductsManagement() {
               </div>
             </form>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {view !== "trash" && (
                 <label className="flex items-center gap-2 text-sm text-slate-600">
                   <span className="whitespace-nowrap font-medium">القسم</span>
@@ -1055,30 +1089,6 @@ function ProductsManagement() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) void handlePriceImport(file);
-                    }}
-                  />
-                </>
-              )}
-              {view === "active" && (
-                <>
-                  <button
-                    type="button"
-                    disabled={bulkBusy}
-                    title="استيراد كتالوج المنتجات"
-                    onClick={() => importInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    استيراد Excel
-                  </button>
-                  <input
-                    ref={importInputRef}
-                    type="file"
-                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleImportExcel(file);
                     }}
                   />
                 </>
@@ -1331,55 +1341,6 @@ function ProductsManagement() {
         />
       )}
 
-      {importResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="flex max-h-[min(85dvh,720px)] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-bold text-slate-900">نتيجة الاستيراد</h2>
-              <button
-                type="button"
-                onClick={() => setImportResult(null)}
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                إغلاق
-              </button>
-            </div>
-            <div className="space-y-2 px-5 py-4 text-sm font-semibold">
-              <p className="text-emerald-700">
-                🟢 تم إضافة: {importResult.createdCount} صنف جديد
-              </p>
-              <p className="text-blue-700">
-                🔵 تم تعديل: {importResult.updatedCount} صنف موجود
-              </p>
-              <p className="text-red-700">
-                🔴 تم تخطي: {importResult.skippedCount} صنف
-              </p>
-            </div>
-            {importResult.errors.length > 0 && (
-              <div className="min-h-0 flex-1 overflow-y-auto border-t border-slate-200 px-5 py-4">
-                <table className="min-w-full text-right text-sm">
-                  <thead className="sticky top-0 bg-white text-xs font-semibold text-slate-500">
-                    <tr>
-                      <th className="px-2 py-2">رقم الصف</th>
-                      <th className="px-2 py-2">اسم المنتج</th>
-                      <th className="px-2 py-2">سبب الخطأ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {importResult.errors.map((item) => (
-                      <tr key={`${item.row}-${item.name}`}>
-                        <td className="px-2 py-2 tabular-nums text-slate-700">{item.row}</td>
-                        <td className="px-2 py-2 font-medium text-slate-900">{item.name}</td>
-                        <td className="px-2 py-2 text-red-700">{item.reason}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

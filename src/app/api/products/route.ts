@@ -59,6 +59,13 @@ export async function GET(request: Request) {
     const categoryId = searchParams.get("categoryId")?.trim() ?? "";
     const brandId = searchParams.get("brandId")?.trim() ?? "";
     const stockStatusFilter = searchParams.get("stockStatus")?.trim() ?? "";
+    const sort = searchParams.get("sort")?.trim() ?? "";
+    const adminOrderBy: Prisma.ProductOrderByWithRelationInput[] =
+      sort === "asc"
+        ? [{ createdAt: "asc" }, { id: "asc" }]
+        : sort === "az"
+          ? [{ name: "asc" }, { id: "asc" }]
+          : [{ createdAt: "desc" }, { id: "desc" }];
     const idsOnly = searchParams.get("idsOnly") === "1";
     const idList = (searchParams.get("ids") ?? "")
       .split(",")
@@ -108,7 +115,7 @@ export async function GET(request: Request) {
     if (pageParam && idsOnly) {
       const idRows = await prisma.product.findMany({
         where,
-        orderBy: { name: "asc" },
+        orderBy: adminOrderBy,
         select: { id: true },
       });
       return NextResponse.json({
@@ -134,7 +141,10 @@ export async function GET(request: Request) {
               }
             : {}),
         },
-        orderBy: { name: "asc" },
+        orderBy: [
+          { saleLines: { _count: "desc" } },
+          { name: "asc" },
+        ],
         select: {
           ...productSelect,
           packages: {
@@ -236,7 +246,7 @@ export async function GET(request: Request) {
       prisma.product.count({ where }),
       prisma.product.findMany({
         where,
-        orderBy: { name: "asc" },
+        orderBy: adminOrderBy,
         skip: (page - 1) * perPage,
         take: perPage,
         include: { brand: true, category: true, packages: true },

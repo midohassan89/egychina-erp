@@ -25,15 +25,11 @@ import {
 } from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 import { QuickAddProductModal } from "@/components/dashboard/QuickAddProductModal";
+import { SupplierSelect } from "@/components/dashboard/SupplierSelect";
 import {
   fetchLinkedVirtualProducts,
   LinkedProductsPriceModal,
 } from "@/components/dashboard/LinkedProductsPriceModal";
-
-interface SupplierOption {
-  id: number;
-  name: string;
-}
 
 interface ProductOption {
   id: string;
@@ -261,7 +257,6 @@ export default function NewPurchaseInvoicePage() {
 function NewPurchaseInvoicePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -344,15 +339,6 @@ function NewPurchaseInvoicePageInner() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [lines.length]);
-
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/suppliers");
-      if (!res.ok) return;
-      const body = (await res.json()) as { suppliers?: SupplierOption[] };
-      setSuppliers(body.suppliers ?? []);
-    })();
-  }, []);
 
   useEffect(() => {
     const q = productQuery.trim();
@@ -1012,32 +998,12 @@ function NewPurchaseInvoicePageInner() {
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3">
-          <label className="block sm:col-span-1">
+          <div className="sm:col-span-1">
             <span className="mb-1 block text-sm font-medium text-slate-700">
               المورد
             </span>
-            <select
-              required
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="">اختر المورد…</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            {suppliers.length === 0 && (
-              <Link
-                href="/dashboard/suppliers"
-                className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline"
-              >
-                أنشئ مورداً أولاً
-              </Link>
-            )}
-          </label>
+            <SupplierSelect value={supplierId} onChange={setSupplierId} />
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
