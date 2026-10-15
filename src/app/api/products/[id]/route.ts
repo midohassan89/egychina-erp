@@ -64,14 +64,13 @@ export async function PATCH(
       salePrice?: number | null;
       stockStatus?: StockStatus;
       stockQuantity?: number;
-      linkedProductId?: string | null;
-      bundleMultiplier?: number | null;
       categoryId?: string | null;
       brandId?: string | null;
       imageUrl?: string | null;
       isDeleted?: boolean;
       isFavorite?: boolean;
       isWeighed?: boolean;
+      packages?: unknown;
     };
 
     if (body.isDeleted === true) {
@@ -120,12 +119,11 @@ export async function PATCH(
       price: body.price,
       salePrice: body.salePrice,
       stockStatus: body.stockStatus,
-      linkedProductId: body.linkedProductId,
-      bundleMultiplier: body.bundleMultiplier,
       categoryId: body.categoryId,
       brandId: body.brandId,
       imageUrl: body.imageUrl,
       isWeighed: body.isWeighed,
+      packages: body.packages,
     });
 
     await logAuditAction(session.user.id, "UPDATE", "PRODUCT", id, {
@@ -137,8 +135,6 @@ export async function PATCH(
         price: body.price,
         salePrice: body.salePrice,
         stockStatus: body.stockStatus,
-        linkedProductId: body.linkedProductId,
-        bundleMultiplier: body.bundleMultiplier,
         categoryId: body.categoryId,
         brandId: body.brandId,
       },

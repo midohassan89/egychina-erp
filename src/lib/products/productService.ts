@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import type { Product } from "@prisma/client";
+import type { Product, ProductPackage } from "@prisma/client";
+import {
+  assertPackageBarcodesFree,
+  normalizeProductPackages,
+  packageUniqueMessage,
+  PackageInputError,
+} from "@/lib/products/packages";
 
 export type StockStatus = "instock" | "outofstock";
 
@@ -13,15 +19,27 @@ export interface ProductUpdateInput {
   salePrice?: number | null;
   stockStatus?: StockStatus;
   stockQuantity?: number;
-  linkedProductId?: string | null;
-  bundleMultiplier?: number | null;
   categoryId?: string | null;
   brandId?: string | null;
   imageUrl?: string | null;
   isWeighed?: boolean;
+  /** When present, replaces the product's packages. */
+  packages?: unknown;
 }
 
-function serializeAdminProduct(p: Product) {
+function serializePackages(packages: ProductPackage[]) {
+  return packages.map((row) => ({
+    id: row.id,
+    barcode: row.barcode,
+    name: row.name,
+    nameEn: row.nameEn,
+    nameZh: row.nameZh,
+    packSize: row.packSize,
+    price: row.price,
+  }));
+}
+
+function serializeAdminProduct(p: Product, packages?: ProductPackage[]) {
   return {
     id: p.id,
     wcId: p.wcId,
@@ -46,6 +64,7 @@ function serializeAdminProduct(p: Product) {
     categoryName: null,
     brandName: null,
     updatedAt: p.updatedAt.toISOString(),
+    ...(packages ? { packages: serializePackages(packages) } : {}),
   };
 }
 
@@ -84,8 +103,6 @@ export async function updateProductAndSync(
     salePrice?: number | null;
     stockStatus?: string;
     stockQuantity?: number;
-    linkedProductId?: string | null;
-    bundleMultiplier?: number | null;
     categoryId?: string | null;
     brandId?: string | null;
     imageUrl?: string | null;
@@ -142,62 +159,6 @@ export async function updateProductAndSync(
     data.stockQuantity = Math.round(input.stockQuantity * 1000) / 1000;
   }
 
-  // Virtual bundle link (null clears bundle mode)
-  if (input.linkedProductId !== undefined) {
-    const linkedRaw =
-      input.linkedProductId == null
-        ? ""
-        : String(input.linkedProductId).trim();
-    if (!linkedRaw) {
-      data.linkedProductId = null;
-      data.bundleMultiplier = null;
-    } else {
-      if (linkedRaw === id) {
-        throw new ProductServiceError("A product cannot link to itself", 400);
-      }
-      const mult = Math.floor(
-        Number(
-          input.bundleMultiplier !== undefined
-            ? input.bundleMultiplier
-            : existing.bundleMultiplier,
-        ),
-      );
-      if (!Number.isFinite(mult) || mult < 1) {
-        throw new ProductServiceError(
-          "Bundle multiplier must be a positive integer (e.g. 3)",
-          400,
-        );
-      }
-      const base = await prisma.product.findFirst({
-        where: { id: linkedRaw, isDeleted: false },
-        select: { id: true, linkedProductId: true },
-      });
-      if (!base) {
-        throw new ProductServiceError("Linked base product not found", 404);
-      }
-      if (base.linkedProductId) {
-        throw new ProductServiceError(
-          "Cannot link a bundle to another virtual bundle — pick a single unit",
-          400,
-        );
-      }
-      data.linkedProductId = base.id;
-      data.bundleMultiplier = mult;
-      // Bundles do not hold inventory
-      data.stockQuantity = 0;
-      data.stockStatus = "instock";
-    }
-  } else if (input.bundleMultiplier !== undefined && existing.linkedProductId) {
-    const mult = Math.floor(Number(input.bundleMultiplier));
-    if (!Number.isFinite(mult) || mult < 1) {
-      throw new ProductServiceError(
-        "Bundle multiplier must be a positive integer (e.g. 3)",
-        400,
-      );
-    }
-    data.bundleMultiplier = mult;
-  }
-
   if (input.imageUrl !== undefined) {
     const imageUrl = input.imageUrl?.trim() ?? "";
     if (!imageUrl) {
@@ -242,7 +203,25 @@ export async function updateProductAndSync(
     }
   }
 
-  if (Object.keys(data).length === 0) {
+  let packageWrites: ReturnType<typeof normalizeProductPackages> | undefined;
+  if (input.packages !== undefined) {
+    try {
+      packageWrites = normalizeProductPackages(input.packages);
+      const nextBarcode =
+        data.barcode !== undefined ? data.barcode : existing.barcode;
+      await assertPackageBarcodesFree(packageWrites, {
+        productId: id,
+        productBarcode: nextBarcode,
+      });
+    } catch (error) {
+      if (error instanceof PackageInputError) {
+        throw new ProductServiceError(error.message, 400);
+      }
+      throw error;
+    }
+  }
+
+  if (Object.keys(data).length === 0 && packageWrites === undefined) {
     throw new ProductServiceError("No changes provided", 400);
   }
 
@@ -251,12 +230,34 @@ export async function updateProductAndSync(
     data.salePrice !== undefined ? data.salePrice : existing.salePrice;
   assertSaleNotAboveRegular(nextRegular, nextSale);
 
-  const updated = await prisma.product.update({
-    where: { id },
-    data,
-  });
+  try {
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        ...data,
+        ...(packageWrites !== undefined
+          ? {
+              packages: {
+                deleteMany: {},
+                ...(packageWrites.length > 0
+                  ? { create: packageWrites }
+                  : {}),
+              },
+            }
+          : {}),
+      },
+      include: { packages: true },
+    });
 
-  return serializeAdminProduct(updated);
+    return serializeAdminProduct(
+      updated,
+      packageWrites !== undefined ? updated.packages : undefined,
+    );
+  } catch (error) {
+    const unique = packageUniqueMessage(error);
+    if (unique) throw new ProductServiceError(unique, 409);
+    throw error;
+  }
 }
 
 /** Toggle favorite — local Prisma only (not synced to WooCommerce). */

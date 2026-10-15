@@ -45,6 +45,12 @@ interface ProductOption {
   price: number;
   salePrice: number | null;
   purchasePackSize?: number;
+  /** Set when the search text is this product's carton barcode. */
+  scannedPackage?: {
+    barcode: string;
+    name: string;
+    packSize: number;
+  } | null;
 }
 
 interface LineDraft {
@@ -199,12 +205,24 @@ function clearPurchaseDraft() {
   }
 }
 
+function cartonSizeFor(product: ProductOption): number {
+  const scanned = Math.floor(Number(product.scannedPackage?.packSize));
+  if (product.scannedPackage && Number.isFinite(scanned) && scanned >= 1) {
+    return scanned;
+  }
+  return Math.max(1, Math.floor(Number(product.purchasePackSize)) || 1);
+}
+
 function pickBestProduct(
   products: ProductOption[],
   query: string,
 ): ProductOption | undefined {
   const q = query.trim().toLowerCase();
   if (!q || products.length === 0) return undefined;
+  const packageHit = products.find(
+    (p) => p.scannedPackage?.barcode?.toLowerCase() === q,
+  );
+  if (packageHit) return packageHit;
   const exact = products.find(
     (p) =>
       p.barcode?.toLowerCase() === q ||
@@ -418,10 +436,7 @@ function NewPurchaseInvoicePageInner() {
 
   const addProduct = useCallback(async (product: ProductOption) => {
     const lastPieceCost = await fetchLastPurchaseCost(product.id);
-    const packSize = Math.max(
-      1,
-      Math.floor(Number(product.purchasePackSize)) || 1,
-    );
+    const packSize = cartonSizeFor(product);
     const packCost = roundMoney(lastPieceCost * packSize);
 
     setLines((prev) => {
@@ -432,6 +447,25 @@ function NewPurchaseInvoicePageInner() {
           1,
           (Math.floor(Number(existing.quantity)) || 0) + 1,
         );
+        if (product.scannedPackage) {
+          const nextPack = cartonSizeFor(product);
+          const oldPack = piecesPerPack(existing.packSize);
+          const piece =
+            oldPack > 0 ? (Number(existing.unitCost) || 0) / oldPack : 0;
+          const packCost = roundMoney(piece * nextPack);
+          lastSyncedPackSizes.current.set(product.id, nextPack);
+          return prev.map((l) =>
+            l.productId === product.id
+              ? {
+                  ...l,
+                  quantity: String(qty),
+                  packSize: String(nextPack),
+                  unitCost: String(packCost),
+                  lineTotal: String(roundMoney(qty * packCost)),
+                }
+              : l,
+          );
+        }
         const cost = Number(existing.unitCost) || 0;
         return prev.map((l) =>
           l.productId === product.id
@@ -1082,8 +1116,9 @@ function NewPurchaseInvoicePageInner() {
                             {p.name}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {p.barcode || p.sku || `WC #${p.wcId}`} · المخزون{" "}
-                            {p.stockQuantity}
+                            {p.scannedPackage
+                              ? `${p.scannedPackage.name} · حجم الكرتونة ${p.scannedPackage.packSize}`
+                              : `${p.barcode || p.sku || `WC #${p.wcId}`} · المخزون ${p.stockQuantity}`}
                           </span>
                         </span>
                         <Plus className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />

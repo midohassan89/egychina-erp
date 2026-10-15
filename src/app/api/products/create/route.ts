@@ -39,17 +39,24 @@ export async function POST(request: Request) {
     const stockStatusRaw = String(form.get("stockStatus") ?? "instock");
     const stockStatus =
       stockStatusRaw === "outofstock" ? "outofstock" : "instock";
-    const linkedProductIdRaw = String(form.get("linkedProductId") ?? "").trim();
-    const linkedProductId = linkedProductIdRaw || null;
-    const multRaw = String(form.get("bundleMultiplier") ?? "").trim();
-    const bundleMultiplier =
-      multRaw === "" ? null : parseInt(multRaw, 10);
     const categoryIdRaw = String(form.get("categoryId") ?? "").trim();
     const categoryId = categoryIdRaw || null;
     const brandIdRaw = String(form.get("brandId") ?? "").trim();
     const brandId = brandIdRaw || null;
 
     const imageUrlRaw = String(form.get("imageUrl") ?? "").trim();
+    const packagesField = form.get("packages");
+    let packages: unknown = undefined;
+    if (packagesField != null && String(packagesField).trim() !== "") {
+      try {
+        packages = JSON.parse(String(packagesField));
+      } catch {
+        return NextResponse.json(
+          { error: "قائمة العبوات غير صالحة" },
+          { status: 400 },
+        );
+      }
+    }
 
     const product = await createProductOnErpAndWoo({
       name,
@@ -60,14 +67,10 @@ export async function POST(request: Request) {
       barcode,
       stockQuantity: 0,
       stockStatus,
-      linkedProductId,
-      bundleMultiplier:
-        bundleMultiplier != null && Number.isFinite(bundleMultiplier)
-          ? bundleMultiplier
-          : null,
       categoryId,
       brandId,
       imageUrl: imageUrlRaw || null,
+      packages,
     });
 
     return NextResponse.json({

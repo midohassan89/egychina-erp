@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
-import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
@@ -49,9 +48,6 @@ export function QuickAddProductModal({
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [isVirtual, setIsVirtual] = useState(false);
-  const [linkedProductId, setLinkedProductId] = useState("");
-  const [bundleMultiplier, setBundleMultiplier] = useState("3");
   const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,9 +65,7 @@ export function QuickAddProductModal({
     setNameEn("");
     setNameZh("");
     setCategoryId("");
-    setIsVirtual(false);
-    setLinkedProductId("");
-    setBundleMultiplier("3");
+    setBrandId("");
     setImageUrl("");
     setError(null);
     setSubmitting(false);
@@ -92,17 +86,6 @@ export function QuickAddProductModal({
       setError("Barcode is required");
       return;
     }
-    if (isVirtual) {
-      if (!linkedProductId) {
-        setError("Select the parent product for this carton");
-        return;
-      }
-      const mult = Math.floor(Number(bundleMultiplier));
-      if (!Number.isFinite(mult) || mult < 1) {
-        setError("Conversion rate must be at least 1 piece");
-        return;
-      }
-    }
 
     setSubmitting(true);
     try {
@@ -118,13 +101,6 @@ export function QuickAddProductModal({
       form.set("stockQuantity", "0");
       form.set("stockStatus", "instock");
       if (imageUrl) form.set("imageUrl", imageUrl);
-      if (isVirtual) {
-        form.set("linkedProductId", linkedProductId);
-        form.set(
-          "bundleMultiplier",
-          String(Math.floor(Number(bundleMultiplier))),
-        );
-      }
 
       const res = await fetch("/api/products/create", {
         method: "POST",
@@ -256,27 +232,6 @@ export function QuickAddProductModal({
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </label>
-
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={isVirtual}
-              onChange={(e) => setIsVirtual(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            Is virtual product / carton?
-          </label>
-
-          {isVirtual && (
-            <VirtualBundleLinkFields
-              linkedProductId={linkedProductId}
-              onLinkedProductIdChange={setLinkedProductId}
-              bundleMultiplier={bundleMultiplier}
-              onBundleMultiplierChange={setBundleMultiplier}
-              parentLabel="Parent product"
-              multiplierLabel="Conversion rate (piece count)"
-            />
-          )}
 
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">

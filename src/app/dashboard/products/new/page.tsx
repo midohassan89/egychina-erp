@@ -8,8 +8,13 @@ import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal"
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
-import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { ImagePicker } from "@/components/ui/ImagePicker";
+import {
+  packageDraftsToPayload,
+  ProductPackagesFields,
+  validatePackageDrafts,
+  type PackageDraft,
+} from "@/components/dashboard/ProductPackagesFields";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   checkBarcodeAvailable,
@@ -44,12 +49,11 @@ function NewProductForm() {
   const [stockStatus, setStockStatus] = useState<"instock" | "outofstock">(
     "instock",
   );
-  const [isBundle, setIsBundle] = useState(false);
-  const [linkedProductId, setLinkedProductId] = useState("");
-  const [bundleMultiplier, setBundleMultiplier] = useState("3");
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [packages, setPackages] = useState<PackageDraft[]>([]);
+  const [packageError, setPackageError] = useState<string | null>(null);
 
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
   const [barcodeChecking, setBarcodeChecking] = useState(false);
@@ -152,17 +156,13 @@ function NewProductForm() {
       return;
     }
 
-    if (isBundle) {
-      if (!linkedProductId) {
-        toast("Select the base single-unit product for this bundle", "error");
-        return;
-      }
-      const mult = Math.floor(Number(bundleMultiplier));
-      if (!Number.isFinite(mult) || mult < 1) {
-        toast("Bundle multiplier must be at least 1 (e.g. 3)", "error");
-        return;
-      }
+    const packageMessage = validatePackageDrafts(packages, barcode, name);
+    if (packageMessage) {
+      setPackageError(packageMessage);
+      toast(packageMessage, "error");
+      return;
     }
+    setPackageError(null);
 
     setSubmitting(true);
     try {
@@ -176,18 +176,18 @@ function NewProductForm() {
         sale != null && Number.isFinite(sale) && sale > 0 ? String(sale) : "",
       );
       form.set("barcode", barcode.trim());
-      if (isBundle) {
-        form.set("linkedProductId", linkedProductId);
-        form.set("bundleMultiplier", String(Math.floor(Number(bundleMultiplier))));
-        form.set("stockStatus", "instock");
-      } else {
-        form.set("stockStatus", stockStatus);
-      }
+      form.set("stockStatus", stockStatus);
       form.set("stockQuantity", "0");
       if (categoryId) form.set("categoryId", categoryId);
       if (brandId) form.set("brandId", brandId);
 
       if (imageUrl) form.set("imageUrl", imageUrl);
+      form.set(
+        "packages",
+        JSON.stringify(
+          packageDraftsToPayload(packages, { name, nameEn, nameZh }),
+        ),
+      );
 
       const res = await fetch("/api/products/create", {
         method: "POST",
@@ -383,70 +383,49 @@ function NewProductForm() {
           )}
         </div>
 
-        <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-          <div className="flex items-start gap-3">
+        <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              Stock Quantity
+            </span>
             <input
-              id="create-product-is-bundle"
-              type="checkbox"
-              checked={isBundle}
-              onChange={(e) => setIsBundle(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              type="number"
+              readOnly
+              value="0"
+              className="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-gray-100 px-3 py-2.5 text-sm text-gray-500 outline-none"
             />
-            <label
-              htmlFor="create-product-is-bundle"
-              className="cursor-pointer select-none"
+            <span className="block text-xs text-gray-500">
+              الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
+            </span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              Stock Status
+            </span>
+            <select
+              value={stockStatus}
+              onChange={(e) =>
+                setStockStatus(e.target.value as "instock" | "outofstock")
+              }
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
-              <span className="block text-sm font-semibold text-slate-800">
-                Is this a Bundle/Pack? (Virtual Product)
-              </span>
-              <span className="mt-0.5 block text-xs text-slate-500">
-                Sell with a pack barcode while inventory is tracked only on the
-                single base unit.
-              </span>
-            </label>
-          </div>
-
-          {isBundle ? (
-            <VirtualBundleLinkFields
-              linkedProductId={linkedProductId}
-              onLinkedProductIdChange={setLinkedProductId}
-              bundleMultiplier={bundleMultiplier}
-              onBundleMultiplierChange={setBundleMultiplier}
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-700">
-                  Stock Quantity
-                </span>
-                <input
-                  type="number"
-                  readOnly
-                  value="0"
-                  className="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-gray-100 px-3 py-2.5 text-sm text-gray-500 outline-none"
-                />
-                <span className="block text-xs text-gray-500">
-                  الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
-                </span>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-700">
-                  Stock Status
-                </span>
-                <select
-                  value={stockStatus}
-                  onChange={(e) =>
-                    setStockStatus(e.target.value as "instock" | "outofstock")
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                >
-                  <option value="instock">In Stock</option>
-                  <option value="outofstock">Out of Stock</option>
-                </select>
-              </label>
-            </div>
-          )}
+              <option value="instock">In Stock</option>
+              <option value="outofstock">Out of Stock</option>
+            </select>
+          </label>
         </div>
+
+        <ProductPackagesFields
+          packages={packages}
+          productName={name}
+          productNameEn={nameEn}
+          productNameZh={nameZh}
+          onChange={(next) => {
+            setPackages(next);
+            setPackageError(null);
+          }}
+        />
+        {packageError && <p className="text-xs text-red-600">{packageError}</p>}
 
         <div className="space-y-1.5">
           <span className="text-sm font-medium text-slate-700">

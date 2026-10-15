@@ -118,6 +118,7 @@ model Product {
   saleLines           SaleLine[]
   openingBalanceItems OpeningBalanceItem[]
   orderItems          OrderItem[]
+  packages            ProductPackage[]
 
   @@index([barcode])
   @@index([sku])
@@ -127,6 +128,28 @@ model Product {
   @@index([linkedProductId])
   @@index([categoryId])
   @@index([brandId])
+}
+
+/// Alternate sellable barcode for a base product (كرتونة، صندوق، …).
+/// Does not replace Product.purchasePackSize or OpeningBalanceItem.packSize.
+model ProductPackage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /** External barcode printed on the carton or box. */
+  barcode   String  @unique
+  /** Arabic display name, copied from the old bundle product when migrated. */
+  name      String
+  /** English display name. */
+  nameEn    String?
+  /** Chinese display name. */
+  nameZh    String?
+  /** How many base units this package contains. */
+  packSize  Int
+  /** Optional selling price. Null means base price × packSize. */
+  price     Float?
+
+  @@index([productId])
 }
 
 model Supplier {

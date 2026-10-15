@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  createProductOnErpAndWoo,
+  CreateProductError,
+} from "@/lib/products/createProduct";
 import { prismaProductToCached } from "@/lib/products/mapProduct";
 import type { Prisma } from "@prisma/client";
 
@@ -77,6 +81,7 @@ export async function GET(request: Request) {
           { name: { contains: q } },
           { barcode: { contains: q } },
           { sku: { contains: q } },
+          { packages: { some: { barcode: { contains: q } } } },
         ],
       });
     }
@@ -149,6 +154,7 @@ export async function GET(request: Request) {
           { name: { contains: q } },
           { barcode: { contains: q } },
           { sku: { contains: q } },
+          { packages: { some: { barcode: { contains: q } } } },
         ],
       });
     }
@@ -181,6 +187,7 @@ export async function GET(request: Request) {
                   { name: { contains: q } },
                   { barcode: { contains: q } },
                   { sku: { contains: q } },
+                  { packages: { some: { barcode: { contains: q } } } },
                 ],
               },
             ]
@@ -189,7 +196,23 @@ export async function GET(request: Request) {
         ...(brandId ? [{ brandId }] : []),
       ],
     };
-    const [total, rows, weighedCategories, catalogBrands, inStockCount, outOfStockCount] =
+    const exactBarcodeWhere: Prisma.ProductWhereInput | null = q
+      ? {
+          AND: [
+            weighed
+              ? { isDeleted: false, isWeighed: true }
+              : { isDeleted: trash },
+            {
+              OR: [
+                { barcode: q },
+                { sku: q },
+                { packages: { some: { barcode: q } } },
+              ],
+            },
+          ],
+        }
+      : null;
+    const [total, rows, exactRows, weighedCategories, catalogBrands, inStockCount, outOfStockCount] =
       await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
@@ -197,8 +220,15 @@ export async function GET(request: Request) {
         orderBy: { name: "asc" },
         skip: (page - 1) * perPage,
         take: perPage,
-        include: { brand: true, category: true },
+        include: { brand: true, category: true, packages: true },
       }),
+      exactBarcodeWhere
+        ? prisma.product.findMany({
+            where: exactBarcodeWhere,
+            include: { brand: true, category: true, packages: true },
+            take: 5,
+          })
+        : Promise.resolve([]),
       trash || idList.length > 0
         ? Promise.resolve([])
         : prisma.category.findMany({
@@ -225,10 +255,19 @@ export async function GET(request: Request) {
           }),
     ]);
 
+    const seenIds = new Set<string>();
+    const orderedRows = [];
+    for (const row of idList.length > 0 ? rows : [...exactRows, ...rows]) {
+      if (seenIds.has(row.id)) continue;
+      seenIds.add(row.id);
+      orderedRows.push(row);
+      if (orderedRows.length >= perPage) break;
+    }
+
     const lastPurchaseCost = new Map<string, number>();
-    if (weighed && rows.length > 0) {
+    if (weighed && orderedRows.length > 0) {
       const purchases = await prisma.purchaseInvoiceItem.findMany({
-        where: { productId: { in: rows.map((row) => row.id) } },
+        where: { productId: { in: orderedRows.map((row) => row.id) } },
         orderBy: { id: "desc" },
         select: { productId: true, unitCost: true },
       });
@@ -239,7 +278,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const products = rows.map((p) => {
+    const products = orderedRows.map((p) => {
       const invoiceCost = lastPurchaseCost.get(p.id);
       const lastPurchasePrice = invoiceCost ?? p.buyingCost;
       return {
@@ -268,6 +307,28 @@ export async function GET(request: Request) {
       brandId: p.brandId,
       categoryName: p.category?.name ?? null,
       brandName: p.brand?.name ?? null,
+      scannedPackage: (() => {
+        const matched = q
+          ? p.packages.find((row) => row.barcode === q)
+          : undefined;
+        if (!matched || p.barcode === q) return null;
+        return {
+          barcode: matched.barcode,
+          name: matched.name,
+          nameEn: matched.nameEn,
+          nameZh: matched.nameZh,
+          packSize: matched.packSize,
+        };
+      })(),
+      packages: p.packages.map((row) => ({
+        id: row.id,
+        barcode: row.barcode,
+        name: row.name,
+        nameEn: row.nameEn,
+        nameZh: row.nameZh,
+        packSize: row.packSize,
+        price: row.price,
+      })),
       updatedAt: p.updatedAt.toISOString(),
     };
     });
@@ -292,6 +353,70 @@ export async function GET(request: Request) {
     console.error("[api/products]", error);
     return NextResponse.json(
       { error: "Failed to load products" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * POST JSON — create a product and optional packages.
+ * The dashboard form posts multipart data to /api/products/create instead.
+ */
+export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const role = session.user.role;
+  if (role !== "MANAGER" && role !== "ACCOUNTANT" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  try {
+    const body = (await request.json()) as {
+      name?: string;
+      nameEn?: string | null;
+      nameZh?: string | null;
+      price?: number;
+      salePrice?: number | null;
+      barcode?: string;
+      stockStatus?: string;
+      categoryId?: string | null;
+      brandId?: string | null;
+      imageUrl?: string | null;
+      packages?: unknown;
+    };
+
+    const product = await createProductOnErpAndWoo({
+      name: body.name ?? "",
+      nameEn: body.nameEn,
+      nameZh: body.nameZh,
+      price: Number(body.price),
+      salePrice: body.salePrice,
+      barcode: body.barcode ?? "",
+      stockQuantity: 0,
+      stockStatus: body.stockStatus === "outofstock" ? "outofstock" : "instock",
+      categoryId: body.categoryId,
+      brandId: body.brandId,
+      imageUrl: body.imageUrl,
+      packages: body.packages,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      product,
+      message: "Product created",
+    });
+  } catch (error) {
+    if (error instanceof CreateProductError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
+    }
+    console.error("[api/products POST]", error);
+    return NextResponse.json(
+      { error: "Failed to create product" },
       { status: 500 },
     );
   }

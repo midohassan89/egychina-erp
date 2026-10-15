@@ -1,3 +1,13 @@
+export interface ProductPackageRow {
+  id: string;
+  barcode: string;
+  name: string;
+  nameEn: string | null;
+  nameZh: string | null;
+  packSize: number;
+  price: number | null;
+}
+
 export interface AdminProductRow {
   id: string;
   wcId: number;
@@ -25,5 +35,6 @@ export interface AdminProductRow {
   brandId: string | null;
   categoryName: string | null;
   brandName: string | null;
+  packages?: ProductPackageRow[];
   updatedAt: string;
 }

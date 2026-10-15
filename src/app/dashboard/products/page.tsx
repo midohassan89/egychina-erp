@@ -764,14 +764,20 @@ function ProductsManagement() {
     barcode: string;
     price: number;
     salePrice: number | null;
-    linkedProductId: string | null;
-    bundleMultiplier: number | null;
     categoryId: string | null;
     brandId: string | null;
     imageUrl: string;
     nameEn: string;
     nameZh: string;
     isWeighed: boolean;
+    packages: {
+      barcode: string;
+      name: string;
+      nameEn: string | null;
+      nameZh: string | null;
+      packSize: number;
+      price: number | null;
+    }[];
   }) {
     if (!editProduct) return;
     setIsEditSaving(true);
@@ -785,14 +791,13 @@ function ProductsManagement() {
           barcode: values.barcode || null,
           price: values.price,
           salePrice: values.salePrice,
-          linkedProductId: values.linkedProductId,
-          bundleMultiplier: values.bundleMultiplier,
           categoryId: values.categoryId,
           brandId: values.brandId,
           imageUrl: values.imageUrl || null,
           nameEn: values.nameEn,
           nameZh: values.nameZh,
           isWeighed: values.isWeighed,
+          packages: values.packages,
         }),
       });
       const data = (await res.json()) as {

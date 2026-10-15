@@ -1,4 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import {
+  assertPackageBarcodesFree,
+  normalizeProductPackages,
+  packageUniqueMessage,
+  PackageInputError,
+} from "@/lib/products/packages";
 import { serializeAdminProduct } from "@/lib/products/productService";
 
 export class CreateProductError extends Error {
@@ -20,24 +26,28 @@ export interface CreateProductInput {
   barcode: string;
   stockQuantity?: number;
   stockStatus?: "instock" | "outofstock";
-  /** Virtual bundle: Prisma id of the base single unit. */
-  linkedProductId?: string | null;
-  /** Units of the base product consumed per bundle sold. */
-  bundleMultiplier?: number | null;
   categoryId?: string | null;
   brandId?: string | null;
   /** Local path returned by /api/admin/upload, e.g. /uploads/products/file.jpg */
   imageUrl?: string | null;
+  /** Alternate carton/shrink barcodes. Omitted or empty means none. */
+  packages?: unknown;
 }
 
 export async function isBarcodeTaken(barcode: string): Promise<boolean> {
   const normalized = barcode.trim();
   if (!normalized) return false;
-  const existing = await prisma.product.findFirst({
-    where: { barcode: normalized },
-    select: { id: true },
-  });
-  return Boolean(existing);
+  const [existing, packageHit] = await Promise.all([
+    prisma.product.findFirst({
+      where: { barcode: normalized },
+      select: { id: true },
+    }),
+    prisma.productPackage.findFirst({
+      where: { barcode: normalized },
+      select: { id: true },
+    }),
+  ]);
+  return Boolean(existing || packageHit);
 }
 
 function localProductImagePath(raw: string | null | undefined): string | null {
@@ -87,37 +97,6 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
     throw new CreateProductError("This barcode already exists", 409);
   }
 
-  let linkedProductId: string | null = null;
-  let bundleMultiplier: number | null = null;
-  const linkedRaw =
-    input.linkedProductId != null ? String(input.linkedProductId).trim() : "";
-  const isBundle = Boolean(linkedRaw);
-
-  if (isBundle) {
-    const mult = Math.floor(Number(input.bundleMultiplier));
-    if (!Number.isFinite(mult) || mult < 1) {
-      throw new CreateProductError(
-        "Bundle multiplier must be a positive integer (e.g. 3)",
-        400,
-      );
-    }
-    const base = await prisma.product.findFirst({
-      where: { id: linkedRaw, isDeleted: false },
-      select: { id: true, linkedProductId: true, name: true },
-    });
-    if (!base) {
-      throw new CreateProductError("Linked base product not found", 404);
-    }
-    if (base.linkedProductId) {
-      throw new CreateProductError(
-        "Cannot link a bundle to another virtual bundle — pick a single unit",
-        400,
-      );
-    }
-    linkedProductId = base.id;
-    bundleMultiplier = mult;
-  }
-
   let categoryId: string | null = null;
   const categoryRaw = input.categoryId?.trim() ?? "";
   if (categoryRaw) {
@@ -146,22 +125,27 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
 
   const imageUrl = localProductImagePath(input.imageUrl);
 
-  // Virtual bundles never hold their own inventory
-  const stockQuantity = isBundle
-    ? 0
-    : Math.max(
-        0,
-        Math.floor(
-          Number.isFinite(input.stockQuantity)
-            ? (input.stockQuantity as number)
-            : 0,
-        ),
-      );
-  const stockStatus = isBundle
-    ? "instock"
-    : input.stockStatus === "outofstock"
-      ? "outofstock"
-      : "instock";
+  let packages: ReturnType<typeof normalizeProductPackages> = [];
+  if (input.packages !== undefined) {
+    try {
+      packages = normalizeProductPackages(input.packages);
+      await assertPackageBarcodesFree(packages, { productBarcode: barcode });
+    } catch (error) {
+      if (error instanceof PackageInputError) {
+        throw new CreateProductError(error.message, 400);
+      }
+      throw error;
+    }
+  }
+
+  const stockQuantity = Math.max(
+    0,
+    Math.floor(
+      Number.isFinite(input.stockQuantity) ? (input.stockQuantity as number) : 0,
+    ),
+  );
+  const stockStatus =
+    input.stockStatus === "outofstock" ? "outofstock" : "instock";
 
   const latest = await prisma.product.findFirst({
     orderBy: { wcId: "desc" },
@@ -169,25 +153,33 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
   });
   const wcId = (latest?.wcId ?? 0) + 1;
 
-  const product = await prisma.product.create({
-    data: {
-      wcId,
-      name,
-      nameEn: input.nameEn?.trim() || null,
-      nameZh: input.nameZh?.trim() || null,
-      barcode,
-      price: input.price,
-      salePrice,
-      stockQuantity,
-      stockStatus,
-      imageUrl,
-      isDeleted: false,
-      linkedProductId,
-      bundleMultiplier,
-      categoryId,
-      brandId,
-    },
-  });
+  try {
+    const product = await prisma.product.create({
+      data: {
+        wcId,
+        name,
+        nameEn: input.nameEn?.trim() || null,
+        nameZh: input.nameZh?.trim() || null,
+        barcode,
+        price: input.price,
+        salePrice,
+        stockQuantity,
+        stockStatus,
+        imageUrl,
+        isDeleted: false,
+        categoryId,
+        brandId,
+        ...(packages.length > 0
+          ? { packages: { create: packages } }
+          : {}),
+      },
+      include: { packages: true },
+    });
 
-  return serializeAdminProduct(product);
+    return serializeAdminProduct(product, product.packages);
+  } catch (error) {
+    const unique = packageUniqueMessage(error);
+    if (unique) throw new CreateProductError(unique, 409);
+    throw error;
+  }
 }

@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
-import { VirtualBundleLinkFields } from "@/components/dashboard/VirtualBundleLinkFields";
 import { CategorySelect } from "@/components/dashboard/CategorySelect";
 import { BrandSelect } from "@/components/dashboard/BrandSelect";
 import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
 import { ImagePicker } from "@/components/ui/ImagePicker";
+import {
+  packageDraftsFromRows,
+  packageDraftsToPayload,
+  ProductPackagesFields,
+  validatePackageDrafts,
+  type PackageDraft,
+} from "@/components/dashboard/ProductPackagesFields";
 
 interface ProductEditModalProps {
   product: AdminProductRow;
@@ -20,14 +26,20 @@ interface ProductEditModalProps {
     barcode: string;
     price: number;
     salePrice: number | null;
-    linkedProductId: string | null;
-    bundleMultiplier: number | null;
     categoryId: string | null;
     brandId: string | null;
     imageUrl: string;
     nameEn: string;
     nameZh: string;
     isWeighed: boolean;
+    packages: {
+      barcode: string;
+      name: string;
+      nameEn: string | null;
+      nameZh: string | null;
+      packSize: number;
+      price: number | null;
+    }[];
   }) => Promise<void>;
 }
 
@@ -56,17 +68,14 @@ export function ProductEditModal({
       : "",
   );
   const [priceError, setPriceError] = useState<string | null>(null);
-  const [isBundle, setIsBundle] = useState(Boolean(product.linkedProductId));
-  const [linkedProductId, setLinkedProductId] = useState(
-    product.linkedProductId ?? "",
-  );
-  const [bundleMultiplier, setBundleMultiplier] = useState(
-    String(product.bundleMultiplier ?? 3),
-  );
   const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
   const [brandId, setBrandId] = useState(product.brandId ?? "");
   const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
   const [isWeighed, setIsWeighed] = useState(Boolean(product.isWeighed));
+  const [packages, setPackages] = useState<PackageDraft[]>(() =>
+    packageDraftsFromRows(product.packages ?? [], product.name),
+  );
+  const [packageError, setPackageError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -82,13 +91,12 @@ export function ProductEditModal({
         : "",
     );
     setPriceError(null);
-    setIsBundle(Boolean(product.linkedProductId));
-    setLinkedProductId(product.linkedProductId ?? "");
-    setBundleMultiplier(String(product.bundleMultiplier ?? 3));
     setCategoryId(product.categoryId ?? "");
     setBrandId(product.brandId ?? "");
     setImageUrl(product.imageUrl ?? "");
     setIsWeighed(Boolean(product.isWeighed));
+    setPackages(packageDraftsFromRows(product.packages ?? [], product.name));
+    setPackageError(null);
     // Only re-seed when the modal opens for a given product — not on every
     // parent re-render with a new `product` object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
@@ -105,7 +113,7 @@ export function ProductEditModal({
         onClick={onClose}
         disabled={isSaving}
       />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-slate-200 bg-white shadow-xl">
+      <div className="relative z-10 w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -143,41 +151,35 @@ export function ProductEditModal({
               return;
             }
             setPriceError(null);
-            const normalizedSale = sale != null && sale > 0 ? sale : null;
-            const prices = { price: regular, salePrice: normalizedSale };
-            if (isBundle) {
-              if (!linkedProductId) return;
-              const mult = Math.floor(Number(bundleMultiplier));
-              if (!Number.isFinite(mult) || mult < 1) return;
-              void onSave({
-                name,
-                sku,
-                barcode,
-                ...prices,
-                linkedProductId,
-                bundleMultiplier: mult,
-                categoryId: categoryId || null,
-                brandId: brandId || null,
-                imageUrl,
-                nameEn,
-                nameZh,
-                isWeighed,
-              });
+            const packageMessage = validatePackageDrafts(
+              packages,
+              barcode,
+              name,
+            );
+            if (packageMessage) {
+              setPackageError(packageMessage);
               return;
             }
+            setPackageError(null);
+            const normalizedSale = sale != null && sale > 0 ? sale : null;
+            const prices = { price: regular, salePrice: normalizedSale };
+            const packagePayload = packageDraftsToPayload(packages, {
+              name,
+              nameEn,
+              nameZh,
+            });
             void onSave({
               name,
               sku,
               barcode,
               ...prices,
-              linkedProductId: null,
-              bundleMultiplier: null,
               categoryId: categoryId || null,
               brandId: brandId || null,
               imageUrl,
               nameEn,
               nameZh,
               isWeighed,
+              packages: packagePayload,
             });
           }}
         >
@@ -310,46 +312,25 @@ export function ProductEditModal({
             />
           </label>
 
-          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-            <div className="flex items-start gap-3">
-              <input
-                id="edit-product-is-bundle"
-                type="checkbox"
-                checked={isBundle}
-                onChange={(e) => setIsBundle(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-              />
-              <label
-                htmlFor="edit-product-is-bundle"
-                className="cursor-pointer select-none"
-              >
-                <span className="block text-sm font-semibold text-slate-800">
-                  Is this a Bundle/Pack? (Virtual Product)
-                </span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  Inventory is tracked only on the linked single unit.
-                </span>
-              </label>
-            </div>
+          <p className="text-xs text-gray-500">
+            Current stock:{" "}
+            <strong className="tabular-nums text-slate-800">
+              {product.stockQuantity}
+            </strong>
+            . الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
+          </p>
 
-            {isBundle ? (
-              <VirtualBundleLinkFields
-                linkedProductId={linkedProductId}
-                onLinkedProductIdChange={setLinkedProductId}
-                bundleMultiplier={bundleMultiplier}
-                onBundleMultiplierChange={setBundleMultiplier}
-                excludeProductId={product.id}
-              />
-            ) : (
-              <p className="text-xs text-gray-500">
-                Current stock:{" "}
-                <strong className="tabular-nums text-slate-800">
-                  {product.stockQuantity}
-                </strong>
-                . الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
-              </p>
-            )}
-          </div>
+          <ProductPackagesFields
+            packages={packages}
+            productName={name}
+            productNameEn={nameEn}
+            productNameZh={nameZh}
+            onChange={(next) => {
+              setPackages(next);
+              setPackageError(null);
+            }}
+          />
+          {packageError && <p className="text-xs text-red-600">{packageError}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -363,12 +344,7 @@ export function ProductEditModal({
             <button
               type="submit"
               disabled={
-                isSaving ||
-                !name.trim() ||
-                (isBundle &&
-                  (!linkedProductId ||
-                    !Number.isFinite(Math.floor(Number(bundleMultiplier))) ||
-                    Math.floor(Number(bundleMultiplier)) < 1))
+                isSaving || !name.trim()
               }
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
