@@ -747,6 +747,13 @@ function ProductFormFields({
           productName={name}
           productNameEn={nameEn}
           productNameZh={nameZh}
+          unitPrice={
+            sale != null && Number.isFinite(sale) && sale > 0
+              ? sale
+              : Number.isFinite(regular)
+                ? regular
+                : 0
+          }
           onChange={(next) => {
             setPackages(next);
             setPackageError(null);

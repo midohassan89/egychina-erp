@@ -116,10 +116,14 @@ export function packageToPosItem(
   const itemsCount = Math.max(1, Math.floor(Number(pkg.packSize)) || 1);
   const explicit =
     pkg.price != null && Number.isFinite(pkg.price) ? pkg.price : null;
+  const activeUnitPrice =
+    product.salePrice != null && product.salePrice > 0
+      ? product.salePrice
+      : parsePrice(product.price);
   const amount =
     explicit != null
       ? explicit
-      : roundMoney(parsePrice(product.price) * itemsCount);
+      : roundMoney(activeUnitPrice * itemsCount);
   const price = String(amount);
   const storedName = pkg.name?.trim() ?? "";
   const name = storedName || `${product.name} - كرتونة`;

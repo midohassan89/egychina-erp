@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Box, Boxes, Layers, Package2, PackagePlus, ShoppingBag, Star, Trash2, type LucideIcon } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -14,6 +15,32 @@ export const PACKAGE_TYPES = [
 export type PackageType = (typeof PACKAGE_TYPES)[number]["ar"];
 
 const COMMON_PACK_SIZES = [3, 4, 6, 8, 10, 12, 16, 18, 20, 24, 27, 30, 48] as const;
+
+function sameMoney(a: number, b: number): boolean {
+  return (
+    Number.isFinite(a) &&
+    Number.isFinite(b) &&
+    Math.round(a * 100) === Math.round(b * 100)
+  );
+}
+
+function formatPackagePrice(amount: number): string {
+  return String(Math.round(amount * 100) / 100);
+}
+
+/** Empty, zero, or still equal to the last automatic total. */
+function priceFollowsCalculation(
+  currentPrice: string,
+  previousCalculated: number | null,
+): boolean {
+  const trimmed = currentPrice.trim();
+  if (!trimmed) return true;
+  const current = Number(trimmed);
+  if (!Number.isFinite(current) || current === 0) return true;
+  return (
+    previousCalculated != null && sameMoney(current, previousCalculated)
+  );
+}
 
 const PACKAGE_TYPE_ICONS: Record<PackageType, LucideIcon> = {
   كرتونة: Boxes,
@@ -203,17 +230,67 @@ export function ProductPackagesFields({
   productName,
   productNameEn = "",
   productNameZh = "",
+  unitPrice = 0,
   onChange,
 }: {
   packages: PackageDraft[];
   productName: string;
   productNameEn?: string;
   productNameZh?: string;
+  /** Discounted unit price when it is above zero, otherwise the base price. */
+  unitPrice?: number;
   onChange: (packages: PackageDraft[]) => void;
 }) {
+  const packagesRef = useRef(packages);
+  const onChangeRef = useRef(onChange);
+  const unitPriceRef = useRef(unitPrice);
+  packagesRef.current = packages;
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    const previousUnit = unitPriceRef.current;
+    unitPriceRef.current = unitPrice;
+    if (sameMoney(previousUnit, unitPrice) || (!(previousUnit > 0) && !(unitPrice > 0))) {
+      return;
+    }
+    if (!(unitPrice > 0)) return;
+
+    let changed = false;
+    const next = packagesRef.current.map((row) => {
+      const count = Math.floor(Number(row.packSize));
+      if (count < 1) return row;
+      const previousCalculated = previousUnit > 0 ? previousUnit * count : null;
+      if (!priceFollowsCalculation(row.price, previousCalculated)) return row;
+      const price = formatPackagePrice(unitPrice * count);
+      if (row.price === price) return row;
+      changed = true;
+      return { ...row, price };
+    });
+    if (changed) onChangeRef.current(next);
+  }, [unitPrice]);
+
   function update(key: string, patch: Partial<PackageDraft>) {
     onChange(
       packages.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function applyPackSize(key: string, packSize: string) {
+    onChange(
+      packages.map((row) => {
+        if (row.key !== key) return row;
+        const previousCount = Math.floor(Number(row.packSize));
+        const nextCount = Math.floor(Number(packSize));
+        const previousCalculated =
+          unitPrice > 0 && previousCount >= 1 ? unitPrice * previousCount : null;
+        const price =
+          unitPrice > 0 &&
+          nextCount >= 1 &&
+          priceFollowsCalculation(row.price, previousCalculated)
+            ? formatPackagePrice(unitPrice * nextCount)
+            : row.price;
+        return { ...row, packSize, price };
+      }),
     );
   }
 
@@ -335,7 +412,7 @@ export function ProductPackagesFields({
                     min={1}
                     step={1}
                     value={row.packSize}
-                    onChange={(e) => update(row.key, { packSize: e.target.value })}
+                    onChange={(e) => applyPackSize(row.key, e.target.value)}
                     placeholder="12"
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                   />
@@ -348,9 +425,7 @@ export function ProductPackagesFields({
                         key={quantity}
                         type="button"
                         aria-pressed={active}
-                        onClick={() =>
-                          update(row.key, { packSize: String(quantity) })
-                        }
+                        onClick={() => applyPackSize(row.key, String(quantity))}
                         className={clsx(
                           "rounded-full border px-3 py-1 text-sm font-medium transition-colors duration-200",
                           active
@@ -374,6 +449,14 @@ export function ProductPackagesFields({
                   step="0.01"
                   value={row.price}
                   onChange={(e) => update(row.key, { price: e.target.value })}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() !== "") return;
+                    const count = Math.floor(Number(row.packSize));
+                    if (!(unitPrice > 0) || count < 1) return;
+                    update(row.key, {
+                      price: formatPackagePrice(unitPrice * count),
+                    });
+                  }}
                   placeholder="يترك فارغاً لحساب السعر تلقائياً"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
