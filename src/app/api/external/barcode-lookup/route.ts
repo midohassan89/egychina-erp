@@ -31,7 +31,7 @@ function firstText(...values: Array<string | undefined>): string | null {
 }
 
 /** Drop store names and promo words that ride along on shopping titles. */
-export function cleanSearchTitle(raw: string): string {
+function cleanSearchTitle(raw: string): string {
   let title = raw.replace(/\s+/g, " ").trim();
   const phrases = [
     /سعر\s*ومواصفات/gi,
