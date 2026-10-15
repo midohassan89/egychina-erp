@@ -148,6 +148,8 @@ model ProductPackage {
   packSize  Int
   /** Optional selling price. Null means base price × packSize. */
   price     Float?
+  /** Shown on the POS favorites screen independently of the base product. */
+  isFavorite Boolean @default(false)
 
   @@index([productId])
 }

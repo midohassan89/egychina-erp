@@ -1,46 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { AdminProductRow } from "@/types/adminProduct";
-import { CategorySelect } from "@/components/dashboard/CategorySelect";
-import { BrandSelect } from "@/components/dashboard/BrandSelect";
-import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
-import { ImagePicker } from "@/components/ui/ImagePicker";
 import {
-  packageDraftsFromRows,
-  packageDraftsToPayload,
-  ProductPackagesFields,
-  validatePackageDrafts,
-  type PackageDraft,
-} from "@/components/dashboard/ProductPackagesFields";
+  ProductForm,
+  type ProductFormValues,
+} from "@/components/products/ProductForm";
 
 interface ProductEditModalProps {
   product: AdminProductRow;
   open: boolean;
   isSaving: boolean;
   onClose: () => void;
-  onSave: (values: {
-    name: string;
-    sku: string;
-    barcode: string;
-    price: number;
-    salePrice: number | null;
-    categoryId: string | null;
-    brandId: string | null;
-    imageUrl: string;
-    nameEn: string;
-    nameZh: string;
-    isWeighed: boolean;
-    packages: {
-      barcode: string;
-      name: string;
-      nameEn: string | null;
-      nameZh: string | null;
-      packSize: number;
-      price: number | null;
-    }[];
-  }) => Promise<void>;
+  onSave: (values: ProductFormValues) => Promise<void>;
 }
 
 export function ProductEditModal({
@@ -50,58 +22,6 @@ export function ProductEditModal({
   onClose,
   onSave,
 }: ProductEditModalProps) {
-  const [name, setName] = useState(product.name);
-  const [nameEn, setNameEn] = useState(product.nameEn ?? "");
-  const [nameZh, setNameZh] = useState(product.nameZh ?? "");
-  const { translating, onArabicNameBlur } = useArabicNameTranslation(
-    nameEn,
-    nameZh,
-    setNameEn,
-    setNameZh,
-  );
-  const [sku, setSku] = useState(product.sku ?? "");
-  const [barcode, setBarcode] = useState(product.barcode ?? "");
-  const [price, setPrice] = useState(String(product.price ?? ""));
-  const [salePrice, setSalePrice] = useState(
-    product.salePrice != null && product.salePrice > 0
-      ? String(product.salePrice)
-      : "",
-  );
-  const [priceError, setPriceError] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState(product.categoryId ?? "");
-  const [brandId, setBrandId] = useState(product.brandId ?? "");
-  const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
-  const [isWeighed, setIsWeighed] = useState(Boolean(product.isWeighed));
-  const [packages, setPackages] = useState<PackageDraft[]>(() =>
-    packageDraftsFromRows(product.packages ?? [], product.name),
-  );
-  const [packageError, setPackageError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setName(product.name);
-    setNameEn(product.nameEn ?? "");
-    setNameZh(product.nameZh ?? "");
-    setSku(product.sku ?? "");
-    setBarcode(product.barcode ?? "");
-    setPrice(String(product.price ?? ""));
-    setSalePrice(
-      product.salePrice != null && product.salePrice > 0
-        ? String(product.salePrice)
-        : "",
-    );
-    setPriceError(null);
-    setCategoryId(product.categoryId ?? "");
-    setBrandId(product.brandId ?? "");
-    setImageUrl(product.imageUrl ?? "");
-    setIsWeighed(Boolean(product.isWeighed));
-    setPackages(packageDraftsFromRows(product.packages ?? [], product.name));
-    setPackageError(null);
-    // Only re-seed when the modal opens for a given product — not on every
-    // parent re-render with a new `product` object reference.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [open, product.id]);
-
   if (!open) return null;
 
   return (
@@ -113,8 +33,8 @@ export function ProductEditModal({
         onClick={onClose}
         disabled={isSaving}
       />
-      <div className="relative z-10 w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+      <div className="relative z-10 flex max-h-[min(90dvh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
               تعديل المنتج
@@ -130,228 +50,15 @@ export function ProductEditModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        <form
-          className="max-h-[min(80dvh,720px)] space-y-4 overflow-y-auto px-5 py-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const regular = parseFloat(price);
-            const saleRaw = salePrice.trim();
-            const sale = saleRaw === "" ? null : parseFloat(saleRaw);
-            if (!Number.isFinite(regular) || regular < 0) {
-              setPriceError("Enter a valid regular price");
-              return;
-            }
-            if (sale != null && (!Number.isFinite(sale) || sale < 0)) {
-              setPriceError("Enter a valid sale price");
-              return;
-            }
-            if (sale != null && sale > 0 && sale >= regular) {
-              setPriceError("Sale price must be less than the regular price");
-              return;
-            }
-            setPriceError(null);
-            const packageMessage = validatePackageDrafts(
-              packages,
-              barcode,
-              name,
-            );
-            if (packageMessage) {
-              setPackageError(packageMessage);
-              return;
-            }
-            setPackageError(null);
-            const normalizedSale = sale != null && sale > 0 ? sale : null;
-            const prices = { price: regular, salePrice: normalizedSale };
-            const packagePayload = packageDraftsToPayload(packages, {
-              name,
-              nameEn,
-              nameZh,
-            });
-            void onSave({
-              name,
-              sku,
-              barcode,
-              ...prices,
-              categoryId: categoryId || null,
-              brandId: brandId || null,
-              imageUrl,
-              nameEn,
-              nameZh,
-              isWeighed,
-              packages: packagePayload,
-            });
-          }}
-        >
-          <div className="space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Image</span>
-            <ImagePicker
-              value={imageUrl}
-              productName={name}
-              productId={product.id}
-              onChange={setImageUrl}
-            />
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Name</span>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => void onArabicNameBlur(name)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-          </label>
-          {translating && (
-            <p className="text-xs text-slate-500">جاري الترجمة... ⏳</p>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">
-                الاسم (English)
-              </span>
-              <input
-                value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
-                disabled={translating}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">
-                الاسم (中文)
-              </span>
-              <input
-                value={nameZh}
-                onChange={(e) => setNameZh(e.target.value)}
-                disabled={translating}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
-              />
-            </label>
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Category</span>
-            <CategorySelect value={categoryId} onChange={setCategoryId} />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              العلامة التجارية
-            </span>
-            <BrandSelect value={brandId} onChange={setBrandId} />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">
-                Regular Price (EGP)
-              </span>
-              <input
-                required
-                type="number"
-                min={0}
-                step="0.01"
-                value={price}
-                onChange={(e) => {
-                  setPrice(e.target.value);
-                  setPriceError(null);
-                }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">
-                Sale Price (optional)
-              </span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={salePrice}
-                onChange={(e) => {
-                  setSalePrice(e.target.value);
-                  setPriceError(null);
-                }}
-                placeholder="Must be less than regular"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-              />
-            </label>
-          </div>
-          {priceError && <p className="text-xs text-red-600">{priceError}</p>}
-          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-            <input
-              id="edit-product-is-weighed"
-              type="checkbox"
-              checked={isWeighed}
-              onChange={(e) => setIsWeighed(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span>
-              <span className="block text-sm font-semibold text-slate-800">
-                Sold by weight
-              </span>
-              <span className="mt-0.5 block text-xs text-slate-500">
-                Scale barcodes contain the total price. The POS divides that
-                price by the unit price to get the weight in kilograms.
-              </span>
-            </span>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Barcode</span>
-            <input
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-              placeholder="_op_barcode"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">SKU</span>
-            <input
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-          </label>
-
-          <p className="text-xs text-gray-500">
-            Current stock:{" "}
-            <strong className="tabular-nums text-slate-800">
-              {product.stockQuantity}
-            </strong>
-            . الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
-          </p>
-
-          <ProductPackagesFields
-            packages={packages}
-            productName={name}
-            productNameEn={nameEn}
-            productNameZh={nameZh}
-            onChange={(next) => {
-              setPackages(next);
-              setPackageError(null);
-            }}
-          />
-          {packageError && <p className="text-xs text-red-600">{packageError}</p>}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSaving}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={
-                isSaving || !name.trim()
-              }
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-            >
-              {isSaving ? "جاري الحفظ…" : "حفظ"}
-            </button>
-          </div>
-        </form>
+        <ProductForm
+          key={product.id}
+          initialData={product}
+          isLoading={isSaving}
+          onCancel={onClose}
+          submitLabel="حفظ"
+          onSubmit={onSave}
+          className="min-h-0 flex-1 overflow-y-auto px-5 py-5"
+        />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ export interface ProductPackageRow {
   nameZh: string | null;
   packSize: number;
   price: number | null;
+  isFavorite: boolean;
 }
 
 export interface AdminProductRow {

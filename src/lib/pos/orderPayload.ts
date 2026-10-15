@@ -27,6 +27,9 @@ export function cartToSaleLines(lines: CartLine[]): SaleLine[] {
       lineTotal: line.lineTotal,
       isWeighted: isScale,
       isLocal: Boolean(line.product.isLocal),
+      stockMultiplier: line.product.isPackage
+        ? Math.max(1, Math.floor(Number(line.product.itemsCount) || 1))
+        : 1,
     };
   });
 }

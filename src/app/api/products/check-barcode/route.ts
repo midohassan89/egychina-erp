@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const barcode = (searchParams.get("barcode") ?? "").trim();
 
   if (!barcode) {
-    return NextResponse.json({ available: false, error: "Barcode required" }, { status: 400 });
+    return NextResponse.json({ available: false, error: "الباركود مطلوب" }, { status: 400 });
   }
 
   try {
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[api/products/check-barcode]", error);
     return NextResponse.json(
-      { error: "Failed to check barcode" },
+      { error: "تعذر التحقق من الباركود" },
       { status: 500 },
     );
   }

@@ -18,6 +18,11 @@ export interface SaleStockLineInput {
   /** WooCommerce product id from the POS cart line. */
   wcProductId: number | null | undefined;
   quantity: number;
+  /**
+   * Base units per sold quantity. Packages pass their pack size so one
+   * carton removes that many pieces from the parent product.
+   */
+  stockMultiplier?: number;
 }
 
 type ProductStockRow = {
@@ -97,7 +102,9 @@ export async function applySaleStockChanges(options: {
   }
 
   for (const line of options.lines) {
-    const qty = roundQty(Math.abs(Number(line.quantity) || 0));
+    const soldQty = roundQty(Math.abs(Number(line.quantity) || 0));
+    const multiplier = Math.max(1, Math.floor(Number(line.stockMultiplier) || 1));
+    const qty = roundQty(soldQty * multiplier);
     if (qty <= 0) continue;
     const wcId = Number(line.wcProductId);
     if (!Number.isFinite(wcId) || wcId <= 0) continue;

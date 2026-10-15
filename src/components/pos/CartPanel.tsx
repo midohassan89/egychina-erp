@@ -6,10 +6,11 @@ import { clsx } from "clsx";
 import { Minus, Plus, Trash2, Pause, Clock } from "lucide-react";
 import type { CartLine, LineDiscountType } from "@/types/pos";
 import { formatEGP, formatQty } from "@/lib/pos/money";
+import { posItemKey } from "@/lib/pos/posItemKey";
 import { CartEditModal } from "@/components/pos/CartEditModal";
 
-export function cartItemDomId(productId: number): string {
-  return `cart-item-${productId}`;
+export function cartItemDomId(itemKey: string): string {
+  return `cart-item-${itemKey}`;
 }
 
 interface CartPanelProps {
@@ -17,8 +18,8 @@ interface CartPanelProps {
   total: number;
   itemCount: number;
   returnMode?: boolean;
-  /** Product id of the row currently flashing after a scan/add. */
-  highlightedItemId?: number | null;
+  /** POS item key of the row currently flashing after a scan/add. */
+  highlightedItemId?: string | null;
   /** Ref for the scrollable cart list (smart auto-scroll). */
   listRef?: RefObject<HTMLDivElement | null>;
   onIncrement: (lineId: string) => void;
@@ -233,12 +234,13 @@ export function CartPanel({
                 line.discountType &&
                 line.discountValue != null &&
                 line.discountValue > 0;
-              const isHighlighted = highlightedItemId === line.product.id;
+              const itemKey = posItemKey(line.product);
+              const isHighlighted = highlightedItemId === itemKey;
 
               return (
                 <li
                   key={line.lineId}
-                  id={cartItemDomId(line.product.id)}
+                  id={cartItemDomId(itemKey)}
                   className={clsx(
                     "px-4 py-3 transition-all duration-300",
                     isHighlighted &&
@@ -270,7 +272,9 @@ export function CartPanel({
                       >
                         {isScale
                           ? `${formatQty(line.qty)} kg${line.plu ? ` · PLU ${line.plu}` : ""}`
-                          : `${formatEGP(line.unitPrice)} each`}
+                          : line.product.isPackage
+                            ? `${formatEGP(line.unitPrice)} / ${line.product.unit || "عبوة"}`
+                            : `${formatEGP(line.unitPrice)} each`}
                         {hasDiscount
                           ? ` · disc ${line.discountType === "percent" ? `${line.discountValue}%` : formatEGP(line.discountValue!)}`
                           : ""}

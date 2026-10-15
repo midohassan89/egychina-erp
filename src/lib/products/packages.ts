@@ -15,6 +15,7 @@ export interface ProductPackageWrite {
   nameZh: string | null;
   packSize: number;
   price: number | null;
+  isFavorite: boolean;
 }
 
 function optionalPackageName(value: unknown): string | null {
@@ -65,6 +66,7 @@ export function normalizeProductPackages(raw: unknown): ProductPackageWrite[] {
       nameZh: optionalPackageName(row.nameZh),
       packSize,
       price,
+      isFavorite: row.isFavorite === true || row.isFavorite === "true",
     };
   });
 }

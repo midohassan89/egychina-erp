@@ -15,7 +15,7 @@ export async function checkBarcodeAvailable(
 ): Promise<{ available: boolean; error?: string }> {
   const normalized = barcode.trim();
   if (!normalized) {
-    return { available: false, error: "Barcode is required" };
+    return { available: false, error: "الباركود مطلوب" };
   }
 
   const res = await fetch(
@@ -26,7 +26,7 @@ export async function checkBarcodeAvailable(
     error?: string;
   };
   if (!res.ok) {
-    return { available: false, error: data.error ?? "Barcode check failed" };
+    return { available: false, error: data.error ?? "تعذر التحقق من الباركود" };
   }
   return { available: Boolean(data.available) };
 }
@@ -42,5 +42,5 @@ export async function generateUniqueErpBarcode(
     const { available } = await checkBarcodeAvailable(candidate);
     if (available) return candidate;
   }
-  throw new Error("Could not generate a unique barcode — try again");
+  throw new Error("تعذر توليد باركود فريد. أعد المحاولة");
 }

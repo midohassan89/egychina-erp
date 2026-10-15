@@ -17,6 +17,7 @@ export function BrandSelect({
   className?: string;
 }) {
   const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,10 +33,16 @@ export function BrandSelect({
           }));
       })
       .then((list) => {
-        if (!cancelled) setBrands(list);
+        if (!cancelled) {
+          setBrands(list);
+          setLoaded(true);
+        }
       })
       .catch(() => {
-        if (!cancelled) setBrands([]);
+        if (!cancelled) {
+          setBrands([]);
+          setLoaded(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -51,7 +58,11 @@ export function BrandSelect({
         "w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
       }
     >
-      <option value="">اختر العلامة التجارية...</option>
+      <option value="">
+        {loaded && brands.length === 0
+          ? "لا توجد علامات تجارية"
+          : "اختر العلامة التجارية..."}
+      </option>
       {brands.map((brand) => (
         <option key={brand.id} value={brand.id}>
           {brand.name}

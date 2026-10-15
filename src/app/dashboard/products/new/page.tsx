@@ -1,26 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Shuffle, ScanLine } from "lucide-react";
-import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
-import { CategorySelect } from "@/components/dashboard/CategorySelect";
-import { BrandSelect } from "@/components/dashboard/BrandSelect";
-import { useArabicNameTranslation } from "@/components/dashboard/useArabicNameTranslation";
-import { ImagePicker } from "@/components/ui/ImagePicker";
+import { ArrowRight } from "lucide-react";
 import {
-  packageDraftsToPayload,
-  ProductPackagesFields,
-  validatePackageDrafts,
-  type PackageDraft,
-} from "@/components/dashboard/ProductPackagesFields";
+  ProductForm,
+  productFormToCreateFormData,
+  type ProductFormValues,
+} from "@/components/products/ProductForm";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
-import {
-  checkBarcodeAvailable,
-  generateUniqueErpBarcode,
-} from "@/lib/products/barcode";
-import { clsx } from "clsx";
 
 export default function NewProductPage() {
   return (
@@ -33,178 +22,27 @@ export default function NewProductPage() {
 function NewProductForm() {
   const router = useRouter();
   const { toast } = useToast();
-
-  const [name, setName] = useState("");
-  const [nameEn, setNameEn] = useState("");
-  const [nameZh, setNameZh] = useState("");
-  const { translating, onArabicNameBlur } = useArabicNameTranslation(
-    nameEn,
-    nameZh,
-    setNameEn,
-    setNameZh,
-  );
-  const [price, setPrice] = useState("");
-  const [salePrice, setSalePrice] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [stockStatus, setStockStatus] = useState<"instock" | "outofstock">(
-    "instock",
-  );
-  const [categoryId, setCategoryId] = useState("");
-  const [brandId, setBrandId] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [packages, setPackages] = useState<PackageDraft[]>([]);
-  const [packageError, setPackageError] = useState<string | null>(null);
-
-  const [barcodeError, setBarcodeError] = useState<string | null>(null);
-  const [barcodeChecking, setBarcodeChecking] = useState(false);
-  const [barcodeVerified, setBarcodeVerified] = useState(false);
-  const [saleError, setSaleError] = useState<string | null>(null);
-  const [scannerOpen, setScannerOpen] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const regular = useMemo(() => parseFloat(price), [price]);
-  const sale = useMemo(() => {
-    const t = salePrice.trim();
-    if (!t) return null;
-    return parseFloat(t);
-  }, [salePrice]);
-
-  useEffect(() => {
-    if (sale == null) {
-      setSaleError(null);
-      return;
-    }
-    if (!Number.isFinite(sale) || sale < 0) {
-      setSaleError("Enter a valid sale price");
-      return;
-    }
-    if (Number.isFinite(regular) && sale > 0 && sale >= regular) {
-      setSaleError("Sale price must be less than the regular price");
-      return;
-    }
-    setSaleError(null);
-  }, [sale, regular]);
-
-  const validateBarcode = useCallback(async (value: string) => {
-    const normalized = value.trim();
-    if (!normalized) {
-      setBarcodeError("Barcode is required");
-      setBarcodeVerified(false);
-      return false;
-    }
-    setBarcodeChecking(true);
-    setBarcodeError(null);
-    setBarcodeVerified(false);
-    try {
-      const result = await checkBarcodeAvailable(normalized);
-      if (!result.available) {
-        setBarcodeError(result.error ?? "This barcode already exists");
-        setBarcodeVerified(false);
-        return false;
-      }
-      setBarcodeError(null);
-      setBarcodeVerified(true);
-      return true;
-    } catch {
-      setBarcodeError("Could not verify barcode");
-      setBarcodeVerified(false);
-      return false;
-    } finally {
-      setBarcodeChecking(false);
-    }
-  }, []);
-
-  async function handleGenerateBarcode() {
-    setGenerating(true);
-    setBarcodeError(null);
-    setBarcodeVerified(false);
-    try {
-      const next = await generateUniqueErpBarcode();
-      setBarcode(next);
-      setBarcodeVerified(true);
-      toast("Unique barcode generated", "success");
-    } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Failed to generate barcode",
-        "error",
-      );
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      toast("Product name is required", "error");
-      return;
-    }
-    if (!Number.isFinite(regular) || regular < 0) {
-      toast("Enter a valid regular price", "error");
-      return;
-    }
-    if (saleError) {
-      toast(saleError, "error");
-      return;
-    }
-
-    const ok = await validateBarcode(barcode);
-    if (!ok) {
-      toast(barcodeError ?? "Barcode is invalid or already used", "error");
-      return;
-    }
-
-    const packageMessage = validatePackageDrafts(packages, barcode, name);
-    if (packageMessage) {
-      setPackageError(packageMessage);
-      toast(packageMessage, "error");
-      return;
-    }
-    setPackageError(null);
-
+  async function handleSubmit(values: ProductFormValues) {
     setSubmitting(true);
     try {
-      const form = new FormData();
-      form.set("name", name.trim());
-      form.set("nameEn", nameEn.trim());
-      form.set("nameZh", nameZh.trim());
-      form.set("price", String(regular));
-      form.set(
-        "salePrice",
-        sale != null && Number.isFinite(sale) && sale > 0 ? String(sale) : "",
-      );
-      form.set("barcode", barcode.trim());
-      form.set("stockStatus", stockStatus);
-      form.set("stockQuantity", "0");
-      if (categoryId) form.set("categoryId", categoryId);
-      if (brandId) form.set("brandId", brandId);
-
-      if (imageUrl) form.set("imageUrl", imageUrl);
-      form.set(
-        "packages",
-        JSON.stringify(
-          packageDraftsToPayload(packages, { name, nameEn, nameZh }),
-        ),
-      );
-
       const res = await fetch("/api/products/create", {
         method: "POST",
-        body: form,
+        body: productFormToCreateFormData(values),
       });
       const data = (await res.json()) as { error?: string; message?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? "Failed to create product");
+        throw new Error(data.error ?? "تعذر إنشاء المنتج");
       }
-
-      toast(data.message ?? "Product created", "success");
+      toast("تم إنشاء المنتج", "success");
       router.push("/dashboard/products");
       router.refresh();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Create failed", "error");
-    } finally {
+      const message = err instanceof Error ? err.message : "تعذر إنشاء المنتج";
+      toast(message, "error");
       setSubmitting(false);
+      throw err instanceof Error ? err : new Error(message);
     }
   }
 
@@ -215,257 +53,23 @@ function NewProductForm() {
           href="/dashboard/products"
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back
+          <ArrowRight className="h-4 w-4" />
+          رجوع
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Create New Product
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900">منتج جديد</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            Saves to the local ERP database
+            يُحفظ في قاعدة بيانات النظام
           </p>
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => void handleSubmit(e)}
-        className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-      >
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">
-            Product Name
-          </span>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => void onArabicNameBlur(name)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            placeholder="e.g. Olive Oil 1L"
-          />
-        </label>
-
-        {translating && (
-          <p className="text-xs text-slate-500">جاري الترجمة... ⏳</p>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              الاسم (English)
-            </span>
-            <input
-              value={nameEn}
-              onChange={(e) => setNameEn(e.target.value)}
-              disabled={translating}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              الاسم (中文)
-            </span>
-            <input
-              value={nameZh}
-              onChange={(e) => setNameZh(e.target.value)}
-              disabled={translating}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
-            />
-          </label>
-        </div>
-
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">Category</span>
-          <CategorySelect value={categoryId} onChange={setCategoryId} />
-        </label>
-
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">
-            العلامة التجارية
-          </span>
-          <BrandSelect value={brandId} onChange={setBrandId} />
-        </label>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Regular Price (EGP)
-            </span>
-            <input
-              required
-              type="number"
-              min={0}
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Sale Price (optional)
-            </span>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={salePrice}
-              onChange={(e) => setSalePrice(e.target.value)}
-              className={clsx(
-                "w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus:ring-2",
-                saleError
-                  ? "border-red-400 focus:border-red-500 focus:ring-red-500/20"
-                  : "border-slate-300 focus:border-brand-500 focus:ring-brand-500/20",
-              )}
-              placeholder="Must be less than regular"
-            />
-            {saleError && (
-              <span className="text-xs text-red-600">{saleError}</span>
-            )}
-          </label>
-        </div>
-
-        <div className="space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">Barcode</span>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              required
-              value={barcode}
-              onChange={(e) => {
-                setBarcode(e.target.value);
-                setBarcodeError(null);
-                setBarcodeVerified(false);
-              }}
-              onBlur={() => {
-                if (barcode.trim()) void validateBarcode(barcode);
-              }}
-              className={clsx(
-                "w-full rounded-lg border px-3 py-2.5 font-mono text-sm outline-none focus:ring-2",
-                barcodeError
-                  ? "border-red-400 focus:border-red-500 focus:ring-red-500/20"
-                  : "border-slate-300 focus:border-brand-500 focus:ring-brand-500/20",
-              )}
-              placeholder="Scan, type, or generate (99…)"
-            />
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => setScannerOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                <ScanLine className="h-4 w-4" />
-                Scan
-              </button>
-              <button
-                type="button"
-                disabled={generating}
-                onClick={() => void handleGenerateBarcode()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                {generating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Shuffle className="h-4 w-4" />
-                )}
-                Generate
-              </button>
-            </div>
-          </div>
-          {barcodeChecking && (
-            <p className="text-xs text-slate-400">Checking barcode…</p>
-          )}
-          {barcodeError && (
-            <p className="text-xs text-red-600">{barcodeError}</p>
-          )}
-          {barcodeVerified && !barcodeError && !barcodeChecking && (
-            <p className="text-xs text-emerald-600">Barcode is available</p>
-          )}
-        </div>
-
-        <div className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Stock Quantity
-            </span>
-            <input
-              type="number"
-              readOnly
-              value="0"
-              className="w-full cursor-not-allowed rounded-lg border border-slate-300 bg-gray-100 px-3 py-2.5 text-sm text-gray-500 outline-none"
-            />
-            <span className="block text-xs text-gray-500">
-              الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
-            </span>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
-              Stock Status
-            </span>
-            <select
-              value={stockStatus}
-              onChange={(e) =>
-                setStockStatus(e.target.value as "instock" | "outofstock")
-              }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            >
-              <option value="instock">In Stock</option>
-              <option value="outofstock">Out of Stock</option>
-            </select>
-          </label>
-        </div>
-
-        <ProductPackagesFields
-          packages={packages}
-          productName={name}
-          productNameEn={nameEn}
-          productNameZh={nameZh}
-          onChange={(next) => {
-            setPackages(next);
-            setPackageError(null);
-          }}
-        />
-        {packageError && <p className="text-xs text-red-600">{packageError}</p>}
-
-        <div className="space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">
-            Product Image
-          </span>
-          <ImagePicker
-            value={imageUrl}
-            productName={name}
-            onChange={setImageUrl}
-          />
-        </div>
-
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
-          <Link
-            href="/dashboard/products"
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={
-              submitting || Boolean(saleError) || Boolean(barcodeError)
-            }
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-          >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? "Creating…" : "Create Product"}
-          </button>
-        </div>
-      </form>
-
-      <BarcodeScannerModal
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onScan={(value) => {
-          setBarcode(value);
-          void validateBarcode(value);
-          toast("Barcode scanned", "success");
-        }}
+      <ProductForm
+        onSubmit={handleSubmit}
+        isLoading={submitting}
+        cancelHref="/dashboard/products"
+        submitLabel="إنشاء المنتج"
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
       />
     </div>
   );

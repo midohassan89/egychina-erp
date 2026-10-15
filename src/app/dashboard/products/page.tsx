@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { PermanentDeleteDialog } from "@/components/dashboard/PermanentDeleteDialog";
 import { ProductEditModal } from "@/components/dashboard/ProductEditModal";
+import type { ProductFormValues } from "@/components/products/ProductForm";
 import {
   fetchLinkedVirtualProducts,
   LinkedProductsPriceModal,
@@ -758,27 +759,7 @@ function ProductsManagement() {
     await patchProduct(product.id, { isDeleted: false }, "Restored from Trash");
   }
 
-  async function saveEdit(values: {
-    name: string;
-    sku: string;
-    barcode: string;
-    price: number;
-    salePrice: number | null;
-    categoryId: string | null;
-    brandId: string | null;
-    imageUrl: string;
-    nameEn: string;
-    nameZh: string;
-    isWeighed: boolean;
-    packages: {
-      barcode: string;
-      name: string;
-      nameEn: string | null;
-      nameZh: string | null;
-      packSize: number;
-      price: number | null;
-    }[];
-  }) {
+  async function saveEdit(values: ProductFormValues) {
     if (!editProduct) return;
     setIsEditSaving(true);
     try {
@@ -787,7 +768,6 @@ function ProductsManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: values.name,
-          sku: values.sku || null,
           barcode: values.barcode || null,
           price: values.price,
           salePrice: values.salePrice,
@@ -797,6 +777,7 @@ function ProductsManagement() {
           nameEn: values.nameEn,
           nameZh: values.nameZh,
           isWeighed: values.isWeighed,
+          isActive: values.isActive,
           packages: values.packages,
         }),
       });
@@ -809,7 +790,9 @@ function ProductsManagement() {
       toast("Product details saved & synced", "success");
       setEditProduct(null);
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Save failed", "error");
+      const message = err instanceof Error ? err.message : "Save failed";
+      toast(message, "error");
+      throw err instanceof Error ? err : new Error(message);
     } finally {
       setIsEditSaving(false);
     }

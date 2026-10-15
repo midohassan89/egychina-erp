@@ -5,7 +5,7 @@ import {
   createProductOnErpAndWoo,
   CreateProductError,
 } from "@/lib/products/createProduct";
-import { prismaProductToCached } from "@/lib/products/mapProduct";
+import { expandPosCatalog } from "@/lib/products/mapProduct";
 import type { Prisma } from "@prisma/client";
 
 /** Live inventory is stockQuantity. Do not select the removed storefront `stock` column. */
@@ -128,14 +128,33 @@ export async function GET(request: Request) {
                   { name: { contains: q } },
                   { barcode: { contains: q } },
                   { sku: { contains: q } },
+                  { packages: { some: { barcode: { contains: q } } } },
+                  { packages: { some: { name: { contains: q } } } },
                 ],
               }
             : {}),
         },
         orderBy: { name: "asc" },
-        select: productSelect,
+        select: {
+          ...productSelect,
+          packages: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              barcode: true,
+              name: true,
+              nameEn: true,
+              nameZh: true,
+              packSize: true,
+              price: true,
+              isFavorite: true,
+            },
+          },
+        },
       });
-      const cached = products.map((product) => prismaProductToCached(product));
+      const cached = products.flatMap((product) =>
+        expandPosCatalog(product, product.packages),
+      );
       return NextResponse.json({
         products: cached,
         count: cached.length,
@@ -328,6 +347,7 @@ export async function GET(request: Request) {
         nameZh: row.nameZh,
         packSize: row.packSize,
         price: row.price,
+        isFavorite: row.isFavorite,
       })),
       updatedAt: p.updatedAt.toISOString(),
     };
@@ -380,7 +400,10 @@ export async function POST(request: Request) {
       price?: number;
       salePrice?: number | null;
       barcode?: string;
+      sku?: string | null;
       stockStatus?: string;
+      isWeighed?: boolean;
+      isActive?: boolean;
       categoryId?: string | null;
       brandId?: string | null;
       imageUrl?: string | null;
@@ -394,8 +417,11 @@ export async function POST(request: Request) {
       price: Number(body.price),
       salePrice: body.salePrice,
       barcode: body.barcode ?? "",
+      sku: body.sku,
       stockQuantity: 0,
       stockStatus: body.stockStatus === "outofstock" ? "outofstock" : "instock",
+      isWeighed: body.isWeighed,
+      isActive: body.isActive,
       categoryId: body.categoryId,
       brandId: body.brandId,
       imageUrl: body.imageUrl,

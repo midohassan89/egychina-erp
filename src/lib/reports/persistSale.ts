@@ -13,6 +13,8 @@ export interface PersistSaleLineInput {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  /** Pieces consumed per sold quantity. Package lines pass pack size. */
+  stockMultiplier?: number;
 }
 
 export interface PersistSaleInput {
@@ -92,9 +94,15 @@ export async function persistSaleRecord(
         : null;
     const productId = wcProductId != null ? (byWcId.get(wcProductId) ?? null) : null;
 
+    const stockMultiplier = Math.max(
+      1,
+      Math.floor(Number(line.stockMultiplier) || 1),
+    );
     let unitCost = 0;
     if (productId) {
-      unitCost = await resolveProductUnitCost(db, productId);
+      unitCost = roundMoney(
+        (await resolveProductUnitCost(db, productId)) * stockMultiplier,
+      );
     }
 
     lineCreates.push({

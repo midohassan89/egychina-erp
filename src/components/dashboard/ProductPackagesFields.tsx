@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Box, Boxes, Layers, Package2, PackagePlus, ShoppingBag, Star, Trash2, type LucideIcon } from "lucide-react";
+import { clsx } from "clsx";
 
 export const PACKAGE_TYPES = [
   { ar: "كرتونة", en: "Carton", zh: "箱" },
@@ -12,6 +13,16 @@ export const PACKAGE_TYPES = [
 
 export type PackageType = (typeof PACKAGE_TYPES)[number]["ar"];
 
+const COMMON_PACK_SIZES = [3, 4, 6, 8, 10, 12, 16, 18, 20, 24, 27, 30, 48] as const;
+
+const PACKAGE_TYPE_ICONS: Record<PackageType, LucideIcon> = {
+  كرتونة: Boxes,
+  شرينك: Layers,
+  علبة: Box,
+  كيس: ShoppingBag,
+  باكت: Package2,
+};
+
 export interface PackageDraft {
   key: string;
   barcode: string;
@@ -22,6 +33,7 @@ export interface PackageDraft {
   name: string;
   nameEn: string;
   nameZh: string;
+  isFavorite: boolean;
 }
 
 export interface PackagePayload {
@@ -31,6 +43,7 @@ export interface PackagePayload {
   nameZh: string | null;
   packSize: number;
   price: number | null;
+  isFavorite: boolean;
 }
 
 export interface PackageNameSource {
@@ -52,6 +65,7 @@ export function emptyPackageDraft(): PackageDraft {
     name: "",
     nameEn: "",
     nameZh: "",
+    isFavorite: false,
   };
 }
 
@@ -81,6 +95,7 @@ export function packageDraftsFromRows(
     nameZh?: string | null;
     packSize: number;
     price: number | null;
+    isFavorite?: boolean;
   }[],
   productName = "",
 ): PackageDraft[] {
@@ -98,6 +113,7 @@ export function packageDraftsFromRows(
       name: row.name,
       nameEn: row.nameEn ?? "",
       nameZh: row.nameZh ?? "",
+      isFavorite: Boolean(row.isFavorite),
     };
   });
 }
@@ -177,6 +193,7 @@ export function packageDraftsToPayload(
       nameZh: names.nameZh || null,
       packSize: Math.floor(Number(row.packSize)),
       price: row.price.trim() === "" ? null : Number(row.price),
+      isFavorite: row.isFavorite,
     };
   });
 }
@@ -201,9 +218,10 @@ export function ProductPackagesFields({
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+    <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-800">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <Boxes className="h-5 w-5 shrink-0 text-emerald-600" />
           العبوات الإضافية (كرتونة / شرينك)
         </h3>
         <p className="mt-0.5 text-xs text-slate-500">
@@ -227,16 +245,37 @@ export function ProductPackagesFields({
               <span className="text-xs font-medium text-slate-500">
                 عبوة {index + 1}
               </span>
-              <button
-                type="button"
-                onClick={() =>
-                  onChange(packages.filter((item) => item.key !== row.key))
-                }
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                حذف
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  title="إضافة العبوة لمفضلة نقطة البيع (POS)"
+                  aria-label="إضافة العبوة لمفضلة نقطة البيع (POS)"
+                  aria-pressed={row.isFavorite}
+                  onClick={() =>
+                    update(row.key, { isFavorite: !row.isFavorite })
+                  }
+                  className="inline-flex items-center justify-center rounded-lg p-1.5"
+                >
+                  <Star
+                    className={clsx(
+                      "h-4 w-4 transition-colors",
+                      row.isFavorite
+                        ? "fill-yellow-400 text-yellow-500 hover:text-yellow-600"
+                        : "text-gray-400 hover:fill-yellow-50 hover:text-yellow-400",
+                    )}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange(packages.filter((item) => item.key !== row.key))
+                  }
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  حذف
+                </button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1">
@@ -245,48 +284,86 @@ export function ProductPackagesFields({
                 </span>
                 <input
                   required
+                  dir="ltr"
                   value={row.barcode}
                   onChange={(e) => update(row.key, { barcode: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-left font-mono text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </label>
-              <label className="block space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <span className="text-xs font-medium text-slate-700">
                   نوع التعبئة
                 </span>
-                <select
-                  required={row.name.trim() === ""}
-                  value={row.packageType}
-                  onChange={(e) =>
-                    update(row.key, {
-                      packageType: e.target.value as PackageType | "",
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                <div
+                  className="grid grid-cols-3 gap-3 sm:grid-cols-5"
+                  role="group"
+                  aria-label="نوع التعبئة"
                 >
-                  <option value="">اختر نوع التعبئة</option>
-                  {PACKAGE_TYPES.map((type) => (
-                    <option key={type.ar} value={type.ar}>
-                      {type.ar}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs font-medium text-slate-700">
-                  عدد القطع
-                </span>
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={row.packSize}
-                  onChange={(e) => update(row.key, { packSize: e.target.value })}
-                  placeholder="12"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                />
-              </label>
+                  {PACKAGE_TYPES.map((type) => {
+                    const selected = row.packageType === type.ar;
+                    const Icon = PACKAGE_TYPE_ICONS[type.ar];
+                    return (
+                      <button
+                        key={type.ar}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          update(row.key, { packageType: type.ar })
+                        }
+                        className={clsx(
+                          "flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-xs transition-all duration-200",
+                          selected
+                            ? "border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700"
+                            : "border border-gray-200 bg-white text-gray-500 hover:border-emerald-300 hover:bg-gray-50",
+                        )}
+                      >
+                        <Icon className="h-5 w-5" aria-hidden />
+                        {type.ar}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-slate-700">
+                    عدد القطع
+                  </span>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={row.packSize}
+                    onChange={(e) => update(row.key, { packSize: e.target.value })}
+                    placeholder="12"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  />
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {COMMON_PACK_SIZES.map((quantity) => {
+                    const active = Number(row.packSize) === quantity;
+                    return (
+                      <button
+                        key={quantity}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() =>
+                          update(row.key, { packSize: String(quantity) })
+                        }
+                        className={clsx(
+                          "rounded-full border px-3 py-1 text-sm font-medium transition-colors duration-200",
+                          active
+                            ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-gray-50",
+                        )}
+                      >
+                        {quantity}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <label className="block space-y-1">
                 <span className="text-xs font-medium text-slate-700">
                   سعر العبوة
@@ -309,7 +386,7 @@ export function ProductPackagesFields({
                   <span className="font-medium text-slate-800">{names.name}</span>
                 </p>
                 <p>
-                  English:{" "}
+                  الإنجليزية:{" "}
                   <span className="font-medium text-slate-800">
                     {names.nameEn || "—"}
                   </span>
@@ -329,10 +406,10 @@ export function ProductPackagesFields({
       <button
         type="button"
         onClick={() => onChange([...packages, emptyPackageDraft()])}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white/70 px-4 py-5 text-sm font-medium text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800"
       >
-        <Plus className="h-4 w-4" />
-        إضافة عبوة
+        <PackagePlus size={24} className="text-emerald-600" />
+        اضغط هنا لإضافة كرتونة أو شرينك
       </button>
     </section>
   );

@@ -8,6 +8,8 @@ import {
   type LineDiscountType,
 } from "@/types/pos";
 import { roundMoney, roundQty, getCatalogSellingPrice } from "@/lib/pos/money";
+import { getOpBarcodes } from "@/lib/pos/opBarcode";
+import { posItemKey } from "@/lib/pos/posItemKey";
 
 function newLineId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -43,12 +45,12 @@ function withTotals(
 
 function sameMergeKey(
   line: CartLine,
-  productId: number,
+  product: CachedProduct,
   unitPrice: number,
 ): boolean {
   return (
     !line.isScalePriced &&
-    line.product.id === productId &&
+    posItemKey(line.product) === posItemKey(product) &&
     !line.discountType &&
     line.unitPrice === unitPrice
   );
@@ -74,7 +76,7 @@ export function useCart(returnMode = false) {
       const unitPrice = returnMode ? -catalogPrice : catalogPrice;
 
       const existing = linesRef.current.find((line) =>
-        sameMergeKey(line, product.id, unitPrice),
+        sameMergeKey(line, product, unitPrice),
       );
 
       if (existing) {
@@ -105,6 +107,9 @@ export function useCart(returnMode = false) {
           lineTotal: computeLineTotal(signedQty, unitPrice),
           isScalePriced: false,
           isWeighted: false,
+          barcode: product.isPackage
+            ? getOpBarcodes(product)[0]
+            : undefined,
           discountType: null,
           discountValue: 0,
         },

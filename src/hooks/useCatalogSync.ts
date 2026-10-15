@@ -84,7 +84,7 @@ export function useCatalogSync(): UseCatalogSyncResult {
 
   return {
     products,
-    productCount: products.length,
+    productCount: products.filter((product) => !product.isPackage).length,
     isOnline,
     isLoading,
     isRefreshing,

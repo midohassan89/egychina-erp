@@ -24,6 +24,7 @@ async function persistSaleToErp(sale: LocalSale): Promise<void> {
         qty: line.qty,
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,
+        stockMultiplier: line.stockMultiplier ?? 1,
       })),
     }),
   });
@@ -45,7 +46,9 @@ async function syncReturnRestock(sale: LocalSale): Promise<LocalSale> {
     .filter((line) => !line.isLocal && line.productId > 0)
     .map((line) => ({
       wcId: line.productId,
-      qty: Math.abs(line.qty),
+      qty:
+        Math.abs(line.qty) *
+        Math.max(1, Math.floor(Number(line.stockMultiplier) || 1)),
     }));
 
   if (items.length === 0) {

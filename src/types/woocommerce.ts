@@ -106,6 +106,20 @@ export interface CachedProduct extends WooCommerceProduct {
   bundleMultiplier?: number | null;
   /** Sold by weight. Scale barcodes embed the line total. */
   isWeighed?: boolean;
+  /**
+   * Stable POS identity. Base products use the Prisma id.
+   * Packages use `${prismaId}-pkg-${packageId}` so they stay separate
+   * from the base product even though `id` remains the parent wcId.
+   */
+  posKey?: string;
+  /** True when this row is an additional package (كرتونة / شرينك / …). */
+  isPackage?: boolean;
+  /** Prisma id of the base product this package sells. */
+  parentId?: string;
+  /** Base units inside one package. Stock moves by qty × itemsCount. */
+  itemsCount?: number;
+  /** Short unit label shown on the cart line (كرتونة، شرينك، …). */
+  unit?: string;
 }
 
 export interface CachedCategory extends WooCommerceCategory {
@@ -140,6 +154,12 @@ export interface SaleLine {
   lineTotal: number;
   isWeighted: boolean;
   isLocal: boolean;
+  /**
+   * Base units removed from stock for one sold quantity.
+   * 1 for a normal product; package pack size for a carton line.
+   * Receipt quantity stays the number of packages sold.
+   */
+  stockMultiplier?: number;
 }
 
 export interface LocalSale {

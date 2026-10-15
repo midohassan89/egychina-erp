@@ -24,8 +24,11 @@ export interface CreateProductInput {
   price: number;
   salePrice?: number | null;
   barcode: string;
+  sku?: string | null;
   stockQuantity?: number;
   stockStatus?: "instock" | "outofstock";
+  isWeighed?: boolean;
+  isActive?: boolean;
   categoryId?: string | null;
   brandId?: string | null;
   /** Local path returned by /api/admin/upload, e.g. /uploads/products/file.jpg */
@@ -161,11 +164,14 @@ export async function createProductOnErpAndWoo(input: CreateProductInput) {
         nameEn: input.nameEn?.trim() || null,
         nameZh: input.nameZh?.trim() || null,
         barcode,
+        sku: input.sku?.trim() || null,
         price: input.price,
         salePrice,
         stockQuantity,
         stockStatus,
         imageUrl,
+        isWeighed: Boolean(input.isWeighed),
+        isActive: input.isActive !== false,
         isDeleted: false,
         categoryId,
         brandId,

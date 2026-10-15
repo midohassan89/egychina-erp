@@ -18,6 +18,7 @@ import {
   normalizeLoyaltyPhone,
 } from "@/lib/pos/loyaltyScan";
 import { formatEGP, getCatalogSellingPrice } from "@/lib/pos/money";
+import { posItemKey } from "@/lib/pos/posItemKey";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
 import { usePosKeyboardOptional } from "@/components/pos/PosKeyboardContext";
 
@@ -80,12 +81,14 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
 
     const visible = useMemo(() => {
       return products.filter((product) => {
-        if (activeTab === "favorites" && !product.isFavorite) return false;
+        if (activeTab === "favorites" && product.isFavorite !== true) {
+          return false;
+        }
 
         if (nameFilter) {
           const barcodes = getOpBarcodes(product).join(" ").toLowerCase();
           const hay =
-            `${product.name} ${product.sku} ${barcodes}`.toLowerCase();
+            `${product.name} ${product.nameEn ?? ""} ${product.nameZh ?? ""} ${product.unit ?? ""} ${product.sku} ${barcodes}`.toLowerCase();
           if (!hay.includes(nameFilter)) return false;
         }
 
@@ -264,7 +267,7 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                 const price = getCatalogSellingPrice(product);
                 return (
                   <button
-                    key={product.id}
+                    key={posItemKey(product)}
                     type="button"
                     onClick={() => onAdd(product)}
                     className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand-400 hover:shadow-md active:scale-[0.98]"

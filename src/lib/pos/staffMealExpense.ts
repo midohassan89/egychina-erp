@@ -11,6 +11,8 @@ export interface StaffMealCostLine {
   quantity: number;
   /** Selling price charged on this cart line. */
   unitPrice?: number | null;
+  /** Pieces consumed per sold quantity. Package lines pass pack size. */
+  stockMultiplier?: number | null;
 }
 
 /**
@@ -25,7 +27,9 @@ export async function staffMealExpenseAmount(
   let total = 0;
 
   for (const line of lines) {
-    const qty = Math.abs(Number(line.quantity) || 0);
+    const soldQty = Math.abs(Number(line.quantity) || 0);
+    const multiplier = Math.max(1, Math.floor(Number(line.stockMultiplier) || 1));
+    const qty = soldQty * multiplier;
     if (qty <= 0) continue;
 
     const selling = Number(line.unitPrice);

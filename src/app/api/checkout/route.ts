@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       qty?: number;
       unitPrice?: number;
       lineTotal?: number;
+      stockMultiplier?: number;
     }[];
   };
   try {
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
     quantity: Math.abs(Number(line.qty) || 0),
     unitPrice: Number(line.unitPrice) || 0,
     lineTotal: Number(line.lineTotal) || 0,
+    stockMultiplier: Math.max(1, Math.floor(Number(line.stockMultiplier) || 1)),
   }));
 
   const localId =
@@ -178,6 +180,7 @@ export async function POST(request: Request) {
         lines: saleLines.map((l) => ({
           wcProductId: l.wcProductId,
           quantity: l.quantity,
+          stockMultiplier: l.stockMultiplier,
         })),
         syncAllWooStock: isStaffMeal,
       });
@@ -221,6 +224,7 @@ export async function POST(request: Request) {
           lines: saleLines.map((l) => ({
             wcProductId: l.wcProductId,
             quantity: l.quantity,
+            stockMultiplier: l.stockMultiplier,
           })),
           syncAllWooStock: true,
           tx,

@@ -37,11 +37,15 @@ export function CategorySelect({
   className?: string;
 }) {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void loadCategories().then((list) => {
-      if (!cancelled) setCategories(list);
+      if (!cancelled) {
+        setCategories(list);
+        setLoaded(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -57,7 +61,9 @@ export function CategorySelect({
         "w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
       }
     >
-      <option value="">اختر القسم...</option>
+      <option value="">
+        {loaded && categories.length === 0 ? "لا توجد تصنيفات" : "اختر التصنيف..."}
+      </option>
       {categories.map((cat) => (
         <option key={cat.id} value={cat.id}>
           {cat.name}

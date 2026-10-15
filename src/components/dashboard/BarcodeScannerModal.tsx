@@ -51,11 +51,7 @@ export function BarcodeScannerModal({
         );
       } catch (err) {
         if (cancelled) return;
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Could not start camera. Allow camera permission and try again.",
-        );
+        setError("تعذر تشغيل الكاميرا. اسمح باستخدام الكاميرا ثم أعد المحاولة.");
       }
     }
 
@@ -89,7 +85,7 @@ export function BarcodeScannerModal({
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/60"
-        aria-label="Close scanner"
+        aria-label="إغلاق الماسح"
         onClick={() => {
           void stopScanner();
           onClose();
@@ -100,7 +96,7 @@ export function BarcodeScannerModal({
           <div className="flex items-center gap-2">
             <Camera className="h-4 w-4 text-brand-600" />
             <h2 className="text-sm font-semibold text-slate-900">
-              Scan barcode
+              مسح الباركود
             </h2>
           </div>
           <button
@@ -123,8 +119,7 @@ export function BarcodeScannerModal({
             <p className="text-sm text-red-600">{error}</p>
           ) : (
             <p className="text-xs text-slate-500">
-              Point the rear camera at the barcode. Scanning stops automatically
-              on a successful read.
+              وجّه الكاميرا الخلفية نحو الباركود. يتوقف المسح تلقائياً عند القراءة.
             </p>
           )}
         </div>

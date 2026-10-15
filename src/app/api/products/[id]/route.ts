@@ -70,6 +70,7 @@ export async function PATCH(
       isDeleted?: boolean;
       isFavorite?: boolean;
       isWeighed?: boolean;
+      isActive?: boolean;
       packages?: unknown;
     };
 
@@ -123,6 +124,7 @@ export async function PATCH(
       brandId: body.brandId,
       imageUrl: body.imageUrl,
       isWeighed: body.isWeighed,
+      isActive: body.isActive,
       packages: body.packages,
     });
 

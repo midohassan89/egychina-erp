@@ -7,10 +7,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { CheckCircle2, XCircle, X } from "lucide-react";
+import { CheckCircle2, Info, XCircle, X } from "lucide-react";
 import { clsx } from "clsx";
 
-type ToastTone = "success" | "error";
+type ToastTone = "success" | "error" | "info";
 
 interface ToastItem {
   id: number;
@@ -48,11 +48,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               "pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg",
               item.tone === "success"
                 ? "border-emerald-200 bg-white text-emerald-900"
-                : "border-red-200 bg-white text-red-900",
+                : item.tone === "info"
+                  ? "border-slate-200 bg-white text-slate-800"
+                  : "border-red-200 bg-white text-red-900",
             )}
           >
             {item.tone === "success" ? (
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            ) : item.tone === "info" ? (
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
             ) : (
               <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
             )}

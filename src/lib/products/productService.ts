@@ -23,6 +23,7 @@ export interface ProductUpdateInput {
   brandId?: string | null;
   imageUrl?: string | null;
   isWeighed?: boolean;
+  isActive?: boolean;
   /** When present, replaces the product's packages. */
   packages?: unknown;
 }
@@ -36,6 +37,7 @@ function serializePackages(packages: ProductPackage[]) {
     nameZh: row.nameZh,
     packSize: row.packSize,
     price: row.price,
+    isFavorite: row.isFavorite,
   }));
 }
 
@@ -107,6 +109,7 @@ export async function updateProductAndSync(
     brandId?: string | null;
     imageUrl?: string | null;
     isWeighed?: boolean;
+    isActive?: boolean;
   } = {};
 
   if (input.name !== undefined) {
@@ -128,6 +131,9 @@ export async function updateProductAndSync(
   }
   if (input.isWeighed !== undefined) {
     data.isWeighed = Boolean(input.isWeighed);
+  }
+  if (input.isActive !== undefined) {
+    data.isActive = Boolean(input.isActive);
   }
   if (input.price !== undefined) {
     if (!Number.isFinite(input.price) || input.price < 0) {

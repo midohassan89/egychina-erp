@@ -11,6 +11,7 @@ import { useReceiptPrint } from "@/hooks/useReceiptPrint";
 import { useShift } from "@/hooks/useShift";
 import { builtInQuickTapProducts } from "@/lib/pos/scaleCatalog";
 import { getOpBarcodes } from "@/lib/pos/opBarcode";
+import { posItemKey } from "@/lib/pos/posItemKey";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
 import { isCustomerLoyaltyScan, normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { formatEGP, formatQty } from "@/lib/pos/money";
@@ -100,7 +101,7 @@ function POSPageInner() {
   const [heldModalOpen, setHeldModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [recentSales, setRecentSales] = useState<LocalSale[]>([]);
-  const [highlightedItemId, setHighlightedItemId] = useState<number | null>(
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(
     null,
   );
   const cartListRef = useRef<HTMLDivElement | null>(null);
@@ -218,8 +219,8 @@ function POSPageInner() {
     requestPin({ type: "open_drawer" });
   }, [requestPin]);
 
-  const flashCartItem = useCallback((productId: number, isNew: boolean) => {
-    setHighlightedItemId(productId);
+  const flashCartItem = useCallback((itemKey: string, isNew: boolean) => {
+    setHighlightedItemId(itemKey);
     if (highlightTimerRef.current != null) {
       window.clearTimeout(highlightTimerRef.current);
     }
@@ -246,8 +247,8 @@ function POSPageInner() {
     // Existing row (qty increment) — never scroll to bottom; center that row.
     scrollTimerRef.current = window.setTimeout(() => {
       scrollTimerRef.current = null;
-      document
-        .getElementById(cartItemDomId(productId))
+        document
+          .getElementById(cartItemDomId(itemKey))
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 50);
   }, []);
@@ -374,7 +375,7 @@ function POSPageInner() {
           plu: result.plu,
         });
         // Scale lines are always appended as new rows.
-        flashCartItem(result.product.id, true);
+        flashCartItem(posItemKey(result.product), true);
         const weightLabel =
           result.weightKg != null ? ` · ${formatQty(result.weightKg)} kg` : "";
         setScanMessage(
@@ -385,10 +386,11 @@ function POSPageInner() {
       } else {
         const existingItem = cart.lines.find(
           (item) =>
-            item.product.id === result.product.id && !item.isScalePriced,
+            posItemKey(item.product) === posItemKey(result.product) &&
+            !item.isScalePriced,
         );
         cart.addProduct(result.product, 1);
-        flashCartItem(result.product.id, !existingItem);
+        flashCartItem(posItemKey(result.product), !existingItem);
         setScanMessage(
           returnMode
             ? `Return ${result.product.name}`
@@ -763,10 +765,11 @@ function POSPageInner() {
               onAdd={(product) => {
                 const existingItem = cart.lines.find(
                   (item) =>
-                    item.product.id === product.id && !item.isScalePriced,
+                    posItemKey(item.product) === posItemKey(product) &&
+                    !item.isScalePriced,
                 );
                 cart.addProduct(product);
-                flashCartItem(product.id, !existingItem);
+                flashCartItem(posItemKey(product), !existingItem);
               }}
               onBarcodeEnter={handleBarcodeEnter}
             />

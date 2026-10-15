@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         ? saleParsed
         : null;
     const barcode = String(form.get("barcode") ?? "");
+    const sku = String(form.get("sku") ?? "").trim();
     const stockStatusRaw = String(form.get("stockStatus") ?? "instock");
     const stockStatus =
       stockStatusRaw === "outofstock" ? "outofstock" : "instock";
@@ -65,8 +66,11 @@ export async function POST(request: Request) {
       price,
       salePrice,
       barcode,
+      sku: sku || null,
       stockQuantity: 0,
       stockStatus,
+      isWeighed: String(form.get("isWeighed") ?? "") === "true",
+      isActive: String(form.get("isActive") ?? "true") !== "false",
       categoryId,
       brandId,
       imageUrl: imageUrlRaw || null,
