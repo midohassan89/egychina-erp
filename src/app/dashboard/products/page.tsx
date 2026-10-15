@@ -1205,7 +1205,7 @@ function ProductsManagement() {
                 <th className="px-4 py-3 font-semibold">الصورة</th>
                 <th className="px-4 py-3 font-semibold">اسم المنتج</th>
                 <th className="px-4 py-3 font-semibold">الباركود</th>
-                <th className="px-4 py-3 font-semibold">كود الصنف</th>
+                <th className="px-4 py-3 font-semibold">باركود العبوات</th>
                 <th className="px-4 py-3 font-semibold">السعر</th>
                 <th className="px-4 py-3 font-semibold">سعر التخفيض</th>
                 <th className="px-4 py-3 font-semibold">حالة المخزون</th>
@@ -1496,7 +1496,28 @@ function ProductRow({
       <td className="px-4 py-3 font-mono text-xs text-slate-600">
         {product.barcode || "—"}
       </td>
-      <td className="px-4 py-3 text-slate-600">{product.sku || "—"}</td>
+      <td className="px-4 py-3">
+        {product.packages && product.packages.length > 0 ? (
+          <div className="flex flex-col gap-1">
+            {product.packages.map((pkg) => (
+              <span
+                key={pkg.id}
+                className="text-xs text-slate-500"
+                title={pkg.name}
+              >
+                <span className="font-mono text-slate-700">{pkg.barcode}</span>
+                {pkg.name ? (
+                  <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                    {pkg.name}
+                  </span>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        ) : (
+          "—"
+        )}
+      </td>
       <td className="px-4 py-3">
         {view === "active" ? (
           <input
