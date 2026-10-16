@@ -12,20 +12,31 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  BadgePercent,
-  Boxes,
   Check,
   Loader2,
-  Percent,
   Plus,
   Search,
-  Tag,
   Trash2,
-  Wallet,
 } from "lucide-react";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 import { QuickAddProductModal } from "@/components/dashboard/QuickAddProductModal";
 import { SupplierSelect } from "@/components/dashboard/SupplierSelect";
+import {
+  hasCustomPackagePrice,
+  PackagePriceSyncHint,
+  sellingPricesDiffer,
+} from "@/components/purchases/PackagePriceSyncHint";
+import { PriceYieldBadges } from "@/components/purchases/PriceYield";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
+import {
+  InvoiceMarginSelector,
+  pricesFromMargin,
+  SuggestPriceButton,
+} from "@/components/pricing/MarginPills";
+import {
+  PurchaseLineProduct,
+  type PurchaseProductSnapshot,
+} from "@/components/purchases/PurchaseLineProduct";
 import {
   fetchLinkedVirtualProducts,
   LinkedProductsPriceModal,
@@ -40,7 +51,9 @@ interface ProductOption {
   stockQuantity: number;
   price: number;
   salePrice: number | null;
+  imageUrl?: string | null;
   purchasePackSize?: number;
+  packages?: { price: number | null }[];
   /** Set when the search text is this product's carton barcode. */
   scannedPackage?: {
     barcode: string;
@@ -53,6 +66,8 @@ interface LineDraft {
   key: string;
   productId: string;
   productName: string;
+  imageUrl: string | null;
+  imageKnown: boolean;
   quantity: string;
   /** Pieces in one supplier carton. */
   packSize: string;
@@ -61,6 +76,12 @@ interface LineDraft {
   lineTotal: string;
   regularPrice: string;
   salePrice: string;
+  /** Catalog prices captured when the product was added to the invoice. */
+  originalRegularPrice: string;
+  originalSalePrice: string;
+  hasCustomPackagePrice: boolean;
+  resetPackages: boolean;
+  packagesKnown: boolean;
   /** False until selling prices are loaded from the product record. */
   priceSeeded: boolean;
 }
@@ -71,22 +92,6 @@ function formatSaleInput(salePrice: number | null | undefined): string {
   return salePrice != null && salePrice > 0 ? String(salePrice) : "";
 }
 
-/** Retail margin on the active price (sale price when set, otherwise regular). */
-function profitMarginPercent(
-  unitCost: string,
-  regularPrice: string,
-  salePrice: string,
-): number | null {
-  const cost = Number(unitCost);
-  const regular = Number(regularPrice);
-  const saleRaw = salePrice.trim();
-  const sale = saleRaw === "" ? NaN : Number(saleRaw);
-  const active = Number.isFinite(sale) && sale > 0 ? sale : regular;
-  if (!Number.isFinite(active) || active <= 0 || !Number.isFinite(cost)) {
-    return null;
-  }
-  return ((active - cost) / active) * 100;
-}
 
 function piecesPerPack(packSize: string): number {
   const n = Math.floor(Number(packSize));
@@ -108,6 +113,31 @@ function pieceCostOf(line: {
   const total = Number(line.lineTotal);
   if (pieces <= 0 || !Number.isFinite(total)) return 0;
   return total / pieces;
+}
+
+function packageSyncFromProduct(product: {
+  price?: number;
+  salePrice?: number | null;
+  packages?: { price: number | null }[];
+}) {
+  const known = Array.isArray(product.packages);
+  return {
+    originalRegularPrice: String(product.price ?? 0),
+    originalSalePrice: formatSaleInput(product.salePrice),
+    hasCustomPackagePrice: known && hasCustomPackagePrice(product.packages),
+    resetPackages: false,
+    packagesKnown: known,
+  };
+}
+
+function unknownPackageSync(regularPrice: string, salePrice: string) {
+  return {
+    originalRegularPrice: regularPrice,
+    originalSalePrice: salePrice,
+    hasCustomPackagePrice: false,
+    resetPackages: false,
+    packagesKnown: false,
+  };
 }
 
 function priceSignature(regularPrice: string, salePrice: string): string {
@@ -156,6 +186,12 @@ function readPurchaseDraft(): PurchaseDraftPayload | null {
               typeof line.productName === "string"
                 ? line.productName
                 : "Product",
+            imageUrl:
+              typeof line.imageUrl === "string" && line.imageUrl
+                ? line.imageUrl
+                : null,
+            imageKnown:
+              line.imageKnown === true || typeof line.imageUrl === "string",
             quantity: String(line.quantity ?? "1"),
             packSize:
               typeof line.packSize === "string" && line.packSize
@@ -172,6 +208,17 @@ function readPurchaseDraft(): PurchaseDraftPayload | null {
             regularPrice:
               typeof line.regularPrice === "string" ? line.regularPrice : "",
             salePrice: typeof line.salePrice === "string" ? line.salePrice : "",
+            originalRegularPrice:
+              typeof line.originalRegularPrice === "string"
+                ? line.originalRegularPrice
+                : "",
+            originalSalePrice:
+              typeof line.originalSalePrice === "string"
+                ? line.originalSalePrice
+                : "",
+            hasCustomPackagePrice: line.hasCustomPackagePrice === true,
+            resetPackages: line.resetPackages === true,
+            packagesKnown: line.packagesKnown === true,
             priceSeeded: typeof line.regularPrice === "string",
           }))
       : [];
@@ -249,7 +296,9 @@ export default function NewPurchaseInvoicePage() {
         <p className="text-sm text-slate-500">جاري تحميل نموذج المشتريات…</p>
       }
     >
-      <NewPurchaseInvoicePageInner />
+      <ToastProvider>
+        <NewPurchaseInvoicePageInner />
+      </ToastProvider>
     </Suspense>
   );
 }
@@ -261,6 +310,8 @@ function NewPurchaseInvoicePageInner() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paidAmount, setPaidAmount] = useState("0");
+  const [globalMargin, setGlobalMargin] = useState<number | null>(20);
+  const { toast } = useToast();
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [productQuery, setProductQuery] = useState("");
   const [productHits, setProductHits] = useState<ProductOption[]>([]);
@@ -339,6 +390,61 @@ function NewPurchaseInvoicePageInner() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [lines.length]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const ids = [
+      ...new Set(
+        lines
+          .filter((line) => !line.packagesKnown || !line.imageKnown)
+          .map((line) => line.productId),
+      ),
+    ];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/products?page=1&perPage=${ids.length}&ids=${ids.map(encodeURIComponent).join(",")}`,
+        );
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as { products?: ProductOption[] };
+        const byId = new Map(
+          (body.products ?? []).map((product) => [product.id, product]),
+        );
+        if (cancelled) return;
+        setLines((prev) =>
+          prev.map((line) => {
+            if (line.packagesKnown && line.imageKnown) return line;
+            const product = byId.get(line.productId);
+            if (!product) {
+              return { ...line, packagesKnown: true, imageKnown: true };
+            }
+            return {
+              ...line,
+              imageUrl: line.imageKnown ? line.imageUrl : (product.imageUrl ?? null),
+              imageKnown: true,
+              packagesKnown: true,
+              hasCustomPackagePrice: line.packagesKnown
+                ? line.hasCustomPackagePrice
+                : hasCustomPackagePrice(product.packages),
+              originalRegularPrice: line.packagesKnown
+                ? line.originalRegularPrice
+                : line.originalRegularPrice || String(product.price ?? 0),
+              originalSalePrice: line.packagesKnown
+                ? line.originalSalePrice
+                : line.originalSalePrice || formatSaleInput(product.salePrice),
+            };
+          }),
+        );
+      } catch {
+        // Leave the rows unmarked so a later edit can retry.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draftReady, lines]);
 
   useEffect(() => {
     const q = productQuery.trim();
@@ -478,12 +584,15 @@ function NewPurchaseInvoicePageInner() {
           key,
           productId: product.id,
           productName: product.name,
+          imageUrl: product.imageUrl ?? null,
+          imageKnown: true,
           quantity: "1",
           packSize: String(packSize),
           unitCost: String(packCost),
           lineTotal: String(roundMoney(qty * packCost)),
           regularPrice: String(product.price ?? 0),
           salePrice: formatSaleInput(product.salePrice),
+          ...packageSyncFromProduct(product),
           priceSeeded: true,
         },
       ];
@@ -534,12 +643,15 @@ function NewPurchaseInvoicePageInner() {
               key,
               productId: body.productId!,
               productName: body.name ?? "Reorder item",
+              imageUrl: null,
+              imageKnown: false,
               quantity: "1",
               packSize: String(packSize),
               unitCost: String(packCost),
               lineTotal: String(roundMoney(1 * packCost)),
               regularPrice,
               salePrice,
+              ...unknownPackageSync(regularPrice, salePrice),
               priceSeeded: true,
             },
           ];
@@ -726,6 +838,41 @@ function NewPurchaseInvoicePageInner() {
     );
   }
 
+  function setResetPackages(key: string, resetPackages: boolean) {
+    setLines((prev) =>
+      prev.map((line) => (line.key === key ? { ...line, resetPackages } : line)),
+    );
+  }
+
+  function applyEditedProduct(productId: string, product: PurchaseProductSnapshot) {
+    const regularPrice = String(product.price ?? 0);
+    const salePrice = formatSaleInput(product.salePrice);
+    lastSyncedPrices.current.set(
+      productId,
+      priceSignature(regularPrice, salePrice),
+    );
+    setLines((prev) =>
+      prev.map((line) =>
+        line.productId === productId
+          ? {
+              ...line,
+              productName: product.name,
+              imageUrl: product.imageUrl,
+              imageKnown: true,
+              regularPrice,
+              salePrice,
+              originalRegularPrice: regularPrice,
+              originalSalePrice: salePrice,
+              hasCustomPackagePrice: hasCustomPackagePrice(product.packages),
+              packagesKnown: true,
+              resetPackages: false,
+              priceSeeded: true,
+            }
+          : line,
+      ),
+    );
+  }
+
   async function syncSellingPrices(line: LineDraft) {
     const regular = Number(line.regularPrice);
     const saleRaw = line.salePrice.trim();
@@ -809,6 +956,28 @@ function NewPurchaseInvoicePageInner() {
         [line.key]: err instanceof Error ? err.message : "Price sync failed",
       }));
     }
+  }
+
+  function suggestSellingPrices(line: LineDraft) {
+    if (globalMargin == null) {
+      toast("برجاء تحديد نسبة الربح أولاً", "info");
+      return;
+    }
+    const next = pricesFromMargin(pieceCostOf(line), globalMargin);
+    if (!next) {
+      toast("أدخل سعر الشراء أولاً", "info");
+      return;
+    }
+    const regularPrice = String(next.regular);
+    const salePrice = String(next.discounted);
+    setLines((prev) =>
+      prev.map((row) =>
+        row.key === line.key
+          ? { ...row, regularPrice, salePrice, priceSeeded: true }
+          : row,
+      ),
+    );
+    schedulePriceSync({ ...line, regularPrice, salePrice, priceSeeded: true });
   }
 
   function schedulePriceSync(line: LineDraft) {
@@ -943,6 +1112,7 @@ function NewPurchaseInvoicePageInner() {
             productId: line.productId,
             quantity: Math.max(1, stockPieces(line)),
             unitCost: pieceCostOf(line),
+            resetPackages: line.resetPackages,
           })),
         }),
       });
@@ -975,7 +1145,7 @@ function NewPurchaseInvoicePageInner() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/dashboard/purchases"
@@ -1030,6 +1200,12 @@ function NewPurchaseInvoicePageInner() {
             />
           </label>
         </div>
+
+        <InvoiceMarginSelector
+          value={globalMargin}
+          onChange={setGlobalMargin}
+          disabled={isSubmitting}
+        />
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-800">بنود الفاتورة</h2>
@@ -1096,61 +1272,93 @@ function NewPurchaseInvoicePageInner() {
             )}
           </div>
 
-          <div className="mt-4 max-h-[65vh] overflow-auto rounded-lg">
-            <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-              <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
+          <div dir="rtl" className="mt-4 max-h-[65vh] overflow-x-auto overflow-y-auto rounded-lg">
+            <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
+              <colgroup>
+                <col className="w-14" />
+                <col />
+                <col className="w-20" />
+                <col className="w-24" />
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-24" />
+                <col className="w-36" />
+                <col className="w-28" />
+                <col className="w-28" />
+                <col className="w-10" />
+              </colgroup>
+              <thead className="[&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
                 <tr>
-                  <th className="py-2 pr-3">المنتج</th>
-                  <th className="w-24 py-2 px-2">كراتين</th>
-                  <th className="w-28 py-2 px-2">
-                    <span className="inline-flex items-center gap-1 text-slate-600">
-                      <Boxes className="h-3.5 w-3.5" />
-                      حجم الكرتونة
-                    </span>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    صورة
                   </th>
-                  <th className="w-32 py-2 px-2">
-                    <span className="inline-flex items-center gap-1 text-slate-500">
-                      <Wallet className="h-3.5 w-3.5" />
-                      تكلفة الكرتونة
-                    </span>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    المنتج
                   </th>
-                  <th className="w-28 py-2 px-2">إجمالي البند</th>
-                  <th className="w-36 py-2 px-2">للمخزون</th>
-                  <th className="w-36 py-2 px-2">
-                    <span className="inline-flex items-center gap-1 text-blue-700">
-                      <Tag className="h-3.5 w-3.5" />
-                      السعر العادي
-                    </span>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    كراتين
                   </th>
-                  <th className="w-40 py-2 px-2">
-                    <span className="inline-flex items-center gap-1 text-amber-700">
-                      <BadgePercent className="h-3.5 w-3.5" />
-                      سعر التخفيض
-                    </span>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    حجم الكرتونة
                   </th>
-                  <th className="w-28 py-2 px-2">
-                    <span className="inline-flex items-center gap-1">
-                      <Percent className="h-3.5 w-3.5" />
-                      هامش الربح
-                    </span>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    تكلفة الكرتونة
                   </th>
-                  <th className="w-12 py-2" />
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    إجمالي البند
+                  </th>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    للمخزون
+                  </th>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    السعر العادي
+                  </th>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    سعر التخفيض
+                  </th>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                    الربح / الإضافة
+                  </th>
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700" />
                 </tr>
               </thead>
               <tbody className="[&_td]:border-b [&_td]:border-slate-100">
                 {lines.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                    <td colSpan={11} className="py-8 text-center text-slate-400">
                       امسح أو ابحث واضغط Enter لإضافة المنتجات
                     </td>
                   </tr>
                 ) : (
                   lines.map((line) => (
                     <tr key={line.key}>
-                      <td className="py-3 pr-3 font-medium text-slate-900">
-                        {line.productName}
+                      <td className="px-1 py-2 text-center align-middle">
+                        {line.imageUrl ? (
+                          <img
+                            src={line.imageUrl}
+                            alt=""
+                            className="mx-auto h-8 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="mx-auto block h-8 w-8 rounded bg-slate-100"
+                          />
+                        )}
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="overflow-hidden px-2 py-2 text-start align-middle font-medium text-slate-900">
+                        <PurchaseLineProduct
+                          productId={line.productId}
+                          name={line.productName}
+                          imageUrl={line.imageUrl}
+                          showImage={false}
+                          disabled={isSubmitting}
+                          onUpdated={(product) =>
+                            applyEditedProduct(line.productId, product)
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center align-middle">
                         <input
                           id={`purchase-packs-${line.key}`}
                           ref={(el) => {
@@ -1171,11 +1379,11 @@ function NewPurchaseInvoicePageInner() {
                             else focusPackCost(line.key);
                           }}
                           aria-label="Number of cartons"
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
+                          className="w-14 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       </td>
-                      <td className="px-2 py-3">
-                        <div className="flex items-center gap-1">
+                      <td className="px-2 py-2 text-center align-middle">
+                        <div className="flex items-center justify-center gap-1">
                           <input
                             id={`purchase-pack-size-${line.key}`}
                             type="number"
@@ -1195,7 +1403,7 @@ function NewPurchaseInvoicePageInner() {
                             }}
                             aria-label="Pieces per carton"
                             title="Pieces in one carton or box"
-                            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 tabular-nums outline-none focus:border-slate-500"
+                            className="w-14 rounded-lg border border-slate-300 bg-slate-50 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-slate-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                           {packSync[line.key] === "saving" && (
                             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
@@ -1205,9 +1413,8 @@ function NewPurchaseInvoicePageInner() {
                           )}
                         </div>
                       </td>
-                      <td className="px-2 py-3">
-                        <div className="relative">
-                          <Wallet className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <td className="px-2 py-2 text-center align-middle">
+                        <div>
                           <input
                             id={`purchase-pack-cost-${line.key}`}
                             ref={(el) => {
@@ -1227,11 +1434,11 @@ function NewPurchaseInvoicePageInner() {
                               focusLineTotal(line.key);
                             }}
                             aria-label="Pack cost"
-                            className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50"
+                            className="w-20 rounded-lg border border-slate-200 bg-slate-100 px-1.5 py-1.5 text-sm tabular-nums text-slate-700 outline-none [appearance:textfield] focus:border-slate-400 focus:bg-slate-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2 py-2 text-center align-middle">
                         <input
                           id={`purchase-line-total-${line.key}`}
                           ref={(el) => {
@@ -1256,16 +1463,16 @@ function NewPurchaseInvoicePageInner() {
                               focusSearch();
                             }
                           }}
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
+                          className="w-20 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           title="Supplier line total. Editing it recalculates the pack cost."
                         />
                       </td>
-                      <td className="px-2 py-3">
+                      <td className="px-2 py-2 text-center align-middle">
                         {(() => {
                           const pieces = stockPieces(line);
                           const pieceCost = pieceCostOf(line);
                           return (
-                            <div className="leading-tight">
+                            <div className="leading-tight break-words">
                               <p className="font-semibold tabular-nums text-slate-900">
                                 {pieces} قطعة
                               </p>
@@ -1276,9 +1483,9 @@ function NewPurchaseInvoicePageInner() {
                           );
                         })()}
                       </td>
-                      <td className="px-2 py-3">
-                        <div className="relative">
-                          <Tag className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-500" />
+                      <td className="px-2 py-2 text-center align-middle">
+                        <div className="flex items-center justify-center gap-1">
+                          <div className="relative">
                           <input
                             id={`purchase-regular-price-${line.key}`}
                             type="number"
@@ -1299,15 +1506,31 @@ function NewPurchaseInvoicePageInner() {
                               if (isBlankOrZero(line.salePrice)) focusSalePrice(line.key);
                               else focusSearch();
                             }}
-                            className="w-full rounded-lg border-2 border-blue-400 bg-white py-1.5 pl-7 pr-2 tabular-nums text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30"
+                            className="w-20 rounded-lg border-2 border-blue-400 bg-white px-1.5 py-1.5 text-sm tabular-nums text-blue-950 outline-none [appearance:textfield] focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             aria-label="Regular selling price"
                           />
+                          </div>
+                          <SuggestPriceButton
+                            disabled={isSubmitting}
+                            onClick={() => suggestSellingPrices(line)}
+                          />
                         </div>
+                        <PackagePriceSyncHint
+                          visible={
+                            line.packagesKnown &&
+                            line.hasCustomPackagePrice &&
+                            sellingPricesDiffer(line)
+                          }
+                          checked={line.resetPackages}
+                          disabled={isSubmitting}
+                          onCheckedChange={(checked) =>
+                            setResetPackages(line.key, checked)
+                          }
+                        />
                       </td>
-                      <td className="px-2 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <div className="relative min-w-0 flex-1">
-                            <BadgePercent className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-amber-600" />
+                      <td className="px-2 py-2 text-center align-middle">
+                        <div className="flex items-center justify-center gap-1">
+                          <div className="relative">
                             <input
                               id={`purchase-sale-price-${line.key}`}
                               type="number"
@@ -1328,7 +1551,7 @@ function NewPurchaseInvoicePageInner() {
                                 e.preventDefault();
                                 focusSearch();
                               }}
-                              className="w-full rounded-lg border border-amber-300 bg-amber-50 py-1.5 pl-7 pr-2 tabular-nums text-amber-950 outline-none placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40"
+                              className="w-20 rounded-lg border border-amber-300 bg-amber-50 px-1.5 py-1.5 text-sm tabular-nums text-amber-950 outline-none [appearance:textfield] placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               aria-label="Sale selling price"
                             />
                           </div>
@@ -1348,40 +1571,18 @@ function NewPurchaseInvoicePageInner() {
                           </p>
                         )}
                       </td>
-                      <td className="px-2 py-3">
-                        {(() => {
-                          const margin = profitMarginPercent(
-                            String(pieceCostOf(line)),
-                            line.regularPrice,
-                            line.salePrice,
-                          );
-                          if (margin == null) {
-                            return (
-                              <span className="text-sm font-bold text-slate-300">
-                                —%
-                              </span>
-                            );
-                          }
-                          const positive = margin > 0;
-                          return (
-                            <span
-                              className={
-                                positive
-                                  ? "text-base font-bold tabular-nums text-emerald-600"
-                                  : "text-base font-bold tabular-nums text-red-600"
-                              }
-                            >
-                              {margin.toFixed(1)}
-                              <span className="ml-0.5 text-lg">%</span>
-                            </span>
-                          );
-                        })()}
+                      <td className="px-1 py-2 text-center align-middle">
+                        <PriceYieldBadges
+                          cost={pieceCostOf(line)}
+                          regularPrice={line.regularPrice}
+                          salePrice={line.salePrice}
+                        />
                       </td>
-                      <td className="py-3 text-right">
+                      <td className="py-2 text-center align-middle">
                         <button
                           type="button"
                           onClick={() => removeLine(line.key)}
-                          className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                           aria-label="Remove line"
                         >
                           <Trash2 className="h-4 w-4" />

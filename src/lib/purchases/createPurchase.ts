@@ -16,6 +16,8 @@ export interface CreatePurchaseItemInput {
   productId: string;
   quantity: number;
   unitCost: number;
+  /** Clear hardcoded package prices so POS recalculates them. */
+  resetPackages?: boolean;
 }
 
 export interface CreatePurchaseInput {
@@ -80,6 +82,7 @@ export async function createPurchaseInvoice(input: CreatePurchaseInput) {
       quantity,
       unitCost,
       lineTotal: roundMoney(quantity * unitCost),
+      resetPackages: item.resetPackages === true,
     };
   });
 
@@ -185,6 +188,21 @@ export async function createPurchaseInvoice(input: CreatePurchaseInput) {
       await tx.supplier.update({
         where: { id: supplierId },
         data: { balance: { increment: dueAmount } },
+      });
+    }
+
+    const resetPackageProductIds = [
+      ...new Set(
+        normalized.filter((row) => row.resetPackages).map((row) => row.productId),
+      ),
+    ];
+    if (resetPackageProductIds.length > 0) {
+      await tx.productPackage.updateMany({
+        where: {
+          productId: { in: resetPackageProductIds },
+          price: { not: null },
+        },
+        data: { price: null },
       });
     }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { Barcode, Copy, Globe, Loader2, ScanLine, Shuffle } from "lucide-react";
+import { Barcode, Copy, Globe, Loader2, ScanLine, Shuffle, TriangleAlert } from "lucide-react";
 import { clsx } from "clsx";
 import { BarcodeScannerModal } from "@/components/dashboard/BarcodeScannerModal";
 import { BrandSelect } from "@/components/dashboard/BrandSelect";
@@ -14,6 +14,7 @@ import {
   validatePackageDrafts,
   type PackageDraft,
 } from "@/components/dashboard/ProductPackagesFields";
+import { MarginPills, pricesFromMargin } from "@/components/pricing/MarginPills";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
@@ -56,6 +57,8 @@ export interface ProductFormInitial {
   barcode?: string | null;
   price?: number;
   salePrice?: number | null;
+  buyingCost?: number | null;
+  lastPurchasePrice?: number | null;
   stockQuantity?: number;
   stockStatus?: string;
   categoryId?: string | null;
@@ -90,6 +93,20 @@ export function productFormToCreateFormData(values: ProductFormValues): FormData
   if (values.imageUrl) form.set("imageUrl", values.imageUrl);
   form.set("packages", JSON.stringify(values.packages));
   return form;
+}
+
+function samePriceInput(current: string, initial: string): boolean {
+  const next = current.trim();
+  const previous = initial.trim();
+  if (next === previous) return true;
+  if (!next || !previous) return false;
+  const nextAmount = Number(next);
+  const previousAmount = Number(previous);
+  return (
+    Number.isFinite(nextAmount) &&
+    Number.isFinite(previousAmount) &&
+    Math.round(nextAmount * 100) === Math.round(previousAmount * 100)
+  );
 }
 
 function FieldToggle({
@@ -176,6 +193,10 @@ function ProductFormFields({
       ? String(initialData.salePrice)
       : "",
   );
+  const [costPrice, setCostPrice] = useState(() => {
+    const cost = initialData?.lastPurchasePrice ?? initialData?.buyingCost;
+    return cost != null && Number.isFinite(cost) && cost > 0 ? String(cost) : "";
+  });
   const [categoryId, setCategoryId] = useState(initialData?.categoryId ?? "");
   const [brandId, setBrandId] = useState(initialData?.brandId ?? "");
   const [imageUrl, setImageUrl] = useState(initialData?.imageUrl ?? "");
@@ -184,6 +205,13 @@ function ProductFormFields({
   const [packages, setPackages] = useState<PackageDraft[]>(() =>
     packageDraftsFromRows(initialData?.packages ?? [], initialData?.name ?? ""),
   );
+  const [initialSellingPrices] = useState(() => ({
+    price: initialData?.price != null ? String(initialData.price) : "",
+    salePrice:
+      initialData?.salePrice != null && initialData.salePrice > 0
+        ? String(initialData.salePrice)
+        : "",
+  }));
   const [packageError, setPackageError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
@@ -214,6 +242,27 @@ function ProductFormFields({
     }
     return null;
   }, [sale, regular]);
+
+  function applyMargin(marginPercent: number) {
+    const next = pricesFromMargin(Number(costPrice), marginPercent);
+    if (!next) return;
+    setPrice(String(next.regular));
+    setSalePrice(String(next.discounted));
+  }
+
+  const sellingPricesChanged =
+    !samePriceInput(price, initialSellingPrices.price) ||
+    !samePriceInput(salePrice, initialSellingPrices.salePrice);
+  const hasCustomPackagePrice = packages.some(
+    (row) => row.price.trim() !== "",
+  );
+  const showPackagePriceWarning = sellingPricesChanged && hasCustomPackagePrice;
+
+  function resetPackagePrices() {
+    setPackages((current) =>
+      current.map((row) => (row.price.trim() === "" ? row : { ...row, price: "" })),
+    );
+  }
 
   const validateBarcode = useCallback(
     async (value: string): Promise<{ ok: boolean; error?: string }> => {
@@ -726,6 +775,28 @@ function ProductFormFields({
           </label>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+            سعر التكلفة
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              disabled={busy}
+              placeholder="0"
+              aria-label="سعر التكلفة"
+              className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500 disabled:bg-slate-50"
+            />
+          </label>
+          <MarginPills
+            cost={Number(costPrice)}
+            disabled={busy}
+            onSelect={applyMargin}
+          />
+        </div>
+
         <div className="my-4 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
           <FieldToggle
             checked={isWeighed}
@@ -743,6 +814,32 @@ function ProductFormFields({
             description="المنتج المخفي يبقى في نقطة البيع والمخزون، ولا يظهر في الموقع والتطبيق."
           />
         </div>
+
+        {showPackagePriceWarning && (
+          <div
+            role="alert"
+            className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2.5">
+              <TriangleAlert
+                className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+                aria-hidden
+              />
+              <p className="text-sm font-medium leading-6">
+                ⚠️ تنبيه: لقد قمت بتعديل السعر الأساسي للمنتج. يرجى مراجعة أسعار
+                العبوات المخصصة، حيث أنها قد تحتوي على تسعير قديم.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={resetPackagePrices}
+              disabled={busy}
+              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+            >
+              إعادة تعيين أسعار العبوات
+            </button>
+          </div>
+        )}
 
         <ProductPackagesFields
           packages={packages}

@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       productId?: string;
       quantity?: number;
       unitCost?: number;
+      resetPackages?: boolean;
     }[];
   };
 
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
         productId: String(row.productId ?? ""),
         quantity: Number(row.quantity),
         unitCost: Number(row.unitCost),
+        resetPackages: row.resetPackages === true,
       })),
     });
 

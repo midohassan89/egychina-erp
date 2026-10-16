@@ -120,6 +120,7 @@ export async function PATCH(
       productId?: string;
       quantity?: number;
       unitCost?: number;
+      resetPackages?: boolean;
     }[];
   };
   try {
@@ -138,6 +139,7 @@ export async function PATCH(
         productId: String(item.productId ?? ""),
         quantity: Number(item.quantity),
         unitCost: Number(item.unitCost),
+        resetPackages: item.resetPackages === true,
       })),
     });
 

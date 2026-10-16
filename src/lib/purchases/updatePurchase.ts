@@ -65,6 +65,7 @@ export async function updatePurchaseInvoice(
       quantity,
       unitCost,
       lineTotal: roundMoney(quantity * unitCost),
+      resetPackages: item.resetPackages === true,
     };
   });
 
@@ -196,6 +197,21 @@ export async function updatePurchaseInvoice(
       await tx.product.update({
         where: { id: productId },
         data: { buyingCost: unitCost },
+      });
+    }
+
+    const resetPackageProductIds = [
+      ...new Set(
+        normalized.filter((row) => row.resetPackages).map((row) => row.productId),
+      ),
+    ];
+    if (resetPackageProductIds.length > 0) {
+      await tx.productPackage.updateMany({
+        where: {
+          productId: { in: resetPackageProductIds },
+          price: { not: null },
+        },
+        data: { price: null },
       });
     }
 
