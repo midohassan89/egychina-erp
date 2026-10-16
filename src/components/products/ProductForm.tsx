@@ -109,7 +109,7 @@ function FieldToggle({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-slate-700">
           {label}
           {status ? (
@@ -123,9 +123,11 @@ function FieldToggle({
             </span>
           ) : null}
         </span>
-        <span className="relative inline-flex h-6 w-11 shrink-0">
+        <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer">
           <input
             type="checkbox"
+            role="switch"
+            aria-label={label}
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
@@ -133,8 +135,8 @@ function FieldToggle({
           />
           <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500/30 peer-disabled:opacity-50" />
           <span className="pointer-events-none absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all peer-checked:start-[22px]" />
-        </span>
-      </label>
+        </label>
+      </div>
       <p className="text-xs text-gray-500">{description}</p>
     </div>
   );
@@ -747,13 +749,6 @@ function ProductFormFields({
           productName={name}
           productNameEn={nameEn}
           productNameZh={nameZh}
-          unitPrice={
-            sale != null && Number.isFinite(sale) && sale > 0
-              ? sale
-              : Number.isFinite(regular)
-                ? regular
-                : 0
-          }
           onChange={(next) => {
             setPackages(next);
             setPackageError(null);
