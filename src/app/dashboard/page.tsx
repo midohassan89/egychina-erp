@@ -10,81 +10,102 @@ import {
   ClipboardList,
   Shield,
   ShieldAlert,
+  type LucideIcon,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { canManageUsers, isManagerOrAdmin } from "@/lib/auth/roles";
 
-const cards = [
+type Card = {
+  href: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  usersOnly?: boolean;
+  managersOnly?: boolean;
+};
+
+const sections: { title: string; cards: Card[] }[] = [
   {
-    href: "/dashboard/suppliers",
-    title: "الموردين",
-    description: "سجل الموردين والأرصدة",
-    icon: Truck,
-    usersOnly: false,
+    title: "الكاشير ونقاط البيع",
+    cards: [
+      {
+        href: "/dashboard/sales",
+        title: "فواتير مبيعات الكاشير",
+        description: "فواتير نقطة البيع والمرتجعات",
+        icon: History,
+      },
+      {
+        href: "/dashboard/shifts",
+        title: "الورديات وتقارير Z",
+        description: "تقفيل الكاشير وتقارير نهاية الوردية",
+        icon: ClipboardList,
+      },
+      {
+        href: "/dashboard/audit",
+        title: "مراجعة وتدقيق الكاشير",
+        description: "مراجعة فواتير الكاشير التي تحتاج تدقيقاً",
+        icon: ShieldAlert,
+        managersOnly: true,
+      },
+    ],
   },
   {
-    href: "/dashboard/purchases",
-    title: "المشتريات",
-    description: "فواتير الموردين والاستلام",
-    icon: ShoppingBag,
-    usersOnly: false,
+    title: "المخازن والمشتريات",
+    cards: [
+      {
+        href: "/dashboard/inventory",
+        title: "أرصدة وحركة المخزون",
+        description: "مستويات المخزون وحركة الأصناف",
+        icon: Package,
+      },
+      {
+        href: "/dashboard/purchases",
+        title: "فواتير المشتريات",
+        description: "فواتير الموردين والاستلام",
+        icon: ShoppingBag,
+      },
+      {
+        href: "/dashboard/suppliers",
+        title: "سجل وحسابات الموردين",
+        description: "سجل الموردين والأرصدة المستحقة",
+        icon: Truck,
+      },
+    ],
   },
   {
-    href: "/dashboard/sales",
-    title: "سجل المبيعات",
-    description: "فواتير الكاشير والمرتجعات",
-    icon: History,
-    usersOnly: false,
+    title: "المالية والحسابات",
+    cards: [
+      {
+        href: "/dashboard/treasury",
+        title: "الخزينة والحسابات البنكية",
+        description: "أرصدة الخزينة والبنوك",
+        icon: Wallet,
+      },
+      {
+        href: "/dashboard/expenses",
+        title: "المصروفات التشغيلية",
+        description: "تصنيفات وسجل المصروفات",
+        icon: Receipt,
+      },
+      {
+        href: "/dashboard/reports",
+        title: "التقارير المالية والأرباح",
+        description: "الأرباح، الأكثر مبيعاً، والنواقص",
+        icon: BarChart3,
+      },
+    ],
   },
   {
-    href: "/dashboard/expenses",
-    title: "المصروفات",
-    description: "تصنيفات وسجل المصروفات",
-    icon: Receipt,
-    usersOnly: false,
-  },
-  {
-    href: "/dashboard/treasury",
-    title: "الخزينة",
-    description: "أرصدة الخزينة والبنوك",
-    icon: Wallet,
-    usersOnly: false,
-  },
-  {
-    href: "/dashboard/shifts",
-    title: "سجل الورديات",
-    description: "تقفيل الكاشير وتقارير Z",
-    icon: ClipboardList,
-    usersOnly: false,
-  },
-  {
-    href: "/dashboard/inventory",
-    title: "المخزون",
-    description: "مستويات المخزون والجرد",
-    icon: Package,
-    usersOnly: false,
-  },
-  {
-    href: "/dashboard/reports",
-    title: "التقارير",
-    description: "الأرباح، الأكثر مبيعاً، والنواقص",
-    icon: BarChart3,
-    usersOnly: false,
-  },
-  {
-    href: "/dashboard/audit",
-    title: "مراجعة المبيعات",
-    description: "مراجعة فواتير الكاشير",
-    icon: ShieldAlert,
-    usersOnly: false,
-    managersOnly: true,
-  },
-  {
-    href: "/dashboard/users",
-    title: "المستخدمين والصلاحيات",
-    description: "إدارة حسابات الموظفين",
-    icon: Shield,
-    usersOnly: true,
+    title: "الموارد البشرية والرقابة",
+    cards: [
+      {
+        href: "/dashboard/users",
+        title: "المستخدمين والصلاحيات",
+        description: "إدارة حسابات الموظفين",
+        icon: Shield,
+        usersOnly: true,
+      },
+    ],
   },
 ];
 
@@ -92,35 +113,50 @@ export default async function DashboardPage() {
   const session = await auth();
   const showUsers = canManageUsers(session?.user?.role);
   const showAudit = isManagerOrAdmin(session?.user?.role);
-  const visible = cards.filter((c) => {
-    if ("usersOnly" in c && c.usersOnly && !showUsers) return false;
-    if ("managersOnly" in c && c.managersOnly && !showAudit) return false;
-    return true;
-  });
+
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      cards: section.cards.filter((card) => {
+        if (card.usersOnly && !showUsers) return false;
+        if (card.managersOnly && !showAudit) return false;
+        return true;
+      }),
+    }))
+    .filter((section) => section.cards.length > 0);
 
   return (
     <div className="space-y-6">
       <div className="text-right">
-        <h1 className="text-2xl font-bold text-slate-900">لوحة تحكم النظام</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          لوحة المؤشرات العامة
+        </h1>
         <p className="mt-1 text-slate-500">
           وحدات الحسابات والإدارة لسوق العبور
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {visible.map(({ href, title, description, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm hover:shadow-md"
-          >
-            <div className="mb-3 inline-flex rounded-lg bg-brand-600 p-2.5 text-white">
-              <Icon className="h-5 w-5" />
-            </div>
-            <h2 className="font-semibold text-slate-900">{title}</h2>
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
-          </Link>
-        ))}
-      </div>
+      {visibleSections.map((section) => (
+        <section key={section.title} className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-500">
+            {section.title}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {section.cards.map(({ href, title, description, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:shadow-md"
+              >
+                <div className="mb-2 inline-flex rounded-lg bg-brand-600 p-2 text-white">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <h3 className="font-semibold text-slate-900">{title}</h3>
+                <p className="mt-1 text-sm text-slate-500">{description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

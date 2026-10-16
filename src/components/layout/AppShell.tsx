@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { Sidebar } from "./Sidebar";
+import { LegacySidebar } from "./LegacySidebar";
 import { Header } from "./Header";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden" dir="rtl">
-      <Sidebar currentPath={pathname} />
+      <LegacySidebar currentPath={pathname} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
