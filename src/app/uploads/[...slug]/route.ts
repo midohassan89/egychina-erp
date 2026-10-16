@@ -5,12 +5,22 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 const MIME_BY_EXT: Record<string, string> = {
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".avif": "image/avif",
   ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
+
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
 
 /** GET /uploads/* — read the file from disk so new uploads are served immediately. */
 export async function GET(
@@ -18,8 +28,9 @@ export async function GET(
   context: { params: Promise<{ slug: string[] }> },
 ) {
   const params = await context.params;
+  const decodedSlug = (params.slug ?? []).map(decodeSegment);
   const uploadRoot = path.join(process.cwd(), "public", "uploads");
-  const filePath = path.resolve(path.join(uploadRoot, ...params.slug));
+  const filePath = path.resolve(path.join(uploadRoot, ...decodedSlug));
   const resolvedRoot = path.resolve(uploadRoot);
 
   if (
@@ -41,7 +52,7 @@ export async function GET(
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "no-store",
+      "Cache-Control": "public, max-age=31536000, immutable",
     },
   });
 }
