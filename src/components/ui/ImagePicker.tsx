@@ -3,6 +3,7 @@
 import { useRef, type ChangeEvent } from "react";
 import { Camera, FolderOpen, ImagePlus, Loader2 } from "lucide-react";
 import { useProductImage } from "@/hooks/useProductImage";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 interface ImagePickerProps {
   value: string;
@@ -60,11 +61,12 @@ export function ImagePicker({
     <div className="space-y-3">
       <div className="relative flex h-40 w-40 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50">
         {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SafeImage
             src={value}
             alt=""
-            className="h-full w-full object-cover"
+            fill
+            sizes="160px"
+            className="object-cover"
           />
         ) : (
           <ImagePlus className="h-8 w-8 text-slate-300" />

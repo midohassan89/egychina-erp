@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 interface BrandRow {
   id: string;
@@ -161,10 +162,11 @@ export default function BrandsPage() {
                 <tr key={brand.id}>
                   <td className="px-4 py-3">
                     {brand.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SafeImage
                         src={brand.image}
                         alt=""
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-lg object-contain"
                       />
                     ) : (

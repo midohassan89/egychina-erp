@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import { formatEGP } from "@/lib/pos/money";
 import { clsx } from "clsx";
@@ -233,11 +234,12 @@ function FleetPageInner() {
                       className="block overflow-hidden rounded-lg border border-slate-200"
                     >
                       <div className="relative aspect-[4/3] bg-slate-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={p.src!}
+                        <SafeImage
+                          src={p.src}
                           alt={p.label}
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="240px"
+                          className="object-cover"
                         />
                       </div>
                       <p className="bg-slate-50 px-2 py-1 text-center text-xs font-semibold text-slate-600">

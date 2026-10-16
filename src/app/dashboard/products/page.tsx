@@ -33,6 +33,7 @@ import {
   fetchLinkedVirtualProducts,
   LinkedProductsPriceModal,
 } from "@/components/dashboard/LinkedProductsPriceModal";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   downloadProductsExcel,
@@ -1416,10 +1417,11 @@ function ProductRow({
       </td>
       <td className="px-4 py-3">
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SafeImage
             src={product.imageUrl}
             alt=""
+            width={48}
+            height={48}
             className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
           />
         ) : (
@@ -1770,10 +1772,11 @@ function WeighedProductRow({
       </td>
       <td className="px-4 py-3">
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <SafeImage
             src={product.imageUrl}
             alt=""
+            width={48}
+            height={48}
             className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
           />
         ) : (

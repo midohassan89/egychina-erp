@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Pencil, X } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
 import {
   ProductForm,
   type ProductFormInitial,
@@ -189,9 +190,11 @@ export function PurchaseLineProduct({
     <div className="flex min-w-0 items-center gap-1.5">
       {showImage ? (
         imageUrl ? (
-          <img
+          <SafeImage
             src={imageUrl}
             alt=""
+            width={32}
+            height={32}
             className="h-8 w-8 shrink-0 rounded object-cover"
           />
         ) : (

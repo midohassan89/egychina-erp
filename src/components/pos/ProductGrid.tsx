@@ -20,6 +20,7 @@ import {
 import { formatEGP, getCatalogSellingPrice } from "@/lib/pos/money";
 import { posItemKey } from "@/lib/pos/posItemKey";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { usePosKeyboardOptional } from "@/components/pos/PosKeyboardContext";
 
 export interface ProductGridHandle {
@@ -274,11 +275,12 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                   >
                     <div className="relative h-16 w-full shrink-0 bg-slate-100 sm:h-20">
                       {product.images[0]?.src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SafeImage
                           src={product.images[0].src}
                           alt=""
-                          className="h-full w-full object-cover"
+                          fill
+                          sizes="80px"
+                          className="object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs text-slate-300">

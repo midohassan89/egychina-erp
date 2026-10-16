@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 export interface MissingImageProduct {
   id: string;
@@ -136,10 +137,11 @@ export function AutoFetchPanel({
                   </td>
                   <td className="px-4 py-3">
                     {row.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SafeImage
                         src={row.url}
                         alt=""
+                        width={48}
+                        height={48}
                         className="h-12 w-12 rounded-lg object-cover"
                       />
                     ) : (

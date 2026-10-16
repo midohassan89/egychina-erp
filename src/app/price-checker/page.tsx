@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 type LookupResult =
   | {
@@ -408,16 +409,12 @@ export default function PriceCheckerKioskPage() {
             }}
           >
             {result.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SafeImage
                 src={result.imageUrl}
                 alt=""
-                style={{
-                  width: "14rem",
-                  height: "14rem",
-                  borderRadius: "1.5rem",
-                  objectFit: "cover",
-                }}
+                width={224}
+                height={224}
+                className="h-56 w-56 rounded-3xl object-cover"
               />
             ) : null}
             <h2
