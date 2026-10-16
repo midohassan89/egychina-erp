@@ -110,24 +110,24 @@ export default function EmployeeLedgerPage() {
         <div>
           <Link
             href="/dashboard/employees"
-            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
           >
             <ArrowRight className="h-4 w-4" />
             العودة للموظفين
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             {employee?.name ?? "كشف حساب الموظف"}
           </h1>
-          <p className="mt-1 text-slate-500">كشف حساب الموظف — الراتب والحركات</p>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">كشف حساب الموظف — الراتب والحركات</p>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
       )}
 
       {isLoading || !employee ? (
-        <p className="text-sm text-slate-500">جاري التحميل…</p>
+        <p className="text-sm text-slate-500 dark:text-gray-400">جاري التحميل…</p>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -145,10 +145,10 @@ export default function EmployeeLedgerPage() {
 
           <form
             onSubmit={(e) => void saveProfile(e)}
-            className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end"
+            className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end dark:border-gray-800 dark:bg-gray-900"
           >
             <label className="block flex-1">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 تعديل الراتب الأساسي
               </span>
               <input
@@ -157,18 +157,18 @@ export default function EmployeeLedgerPage() {
                 step="0.01"
                 value={editSalary}
                 onChange={(e) => setEditSalary(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <label className="block flex-1">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 تاريخ التعيين
               </span>
               <input
                 type="date"
                 value={editHireDate}
                 onChange={(e) => setEditHireDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <button
@@ -203,18 +203,18 @@ export default function EmployeeLedgerPage() {
             />
           </div>
 
-          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-800">
+          <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-800 dark:border-gray-800 dark:text-gray-200">
               سجل الحركات ({transactions.length})
             </h2>
             {transactions.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-slate-400">
+              <p className="px-5 py-8 text-sm text-slate-400 dark:text-gray-500">
                 لا توجد حركات بعد. سجّل سلفة أو مكافأة أو خصم أو صرف راتب.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
-                  <thead className="bg-slate-50 text-xs text-slate-500">
+                  <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
                     <tr>
                       <th className="px-4 py-3 text-right font-semibold">التاريخ</th>
                       <th className="px-4 py-3 text-right font-semibold">النوع</th>
@@ -224,10 +224,10 @@ export default function EmployeeLedgerPage() {
                       <th className="px-4 py-3 text-right font-semibold">ملاحظة</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                     {transactions.map((row) => (
                       <tr key={row.id}>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-4 py-3 text-slate-600 dark:text-gray-300">
                           {new Date(row.date).toLocaleDateString("ar-EG")}
                         </td>
                         <td className="px-4 py-3">
@@ -243,13 +243,13 @@ export default function EmployeeLedgerPage() {
                           {row.type === "BONUS" ? "+" : "−"}
                           {formatEGP(row.amount)}
                         </td>
-                        <td className="px-4 py-3 text-slate-500">
+                        <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                           {row.daysDeducted != null ? row.daysDeducted : "—"}
                         </td>
-                        <td className="px-4 py-3 text-slate-500">
+                        <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                           {row.paidFromSafe ? "نعم" : "لا"}
                         </td>
-                        <td className="px-4 py-3 text-slate-500">
+                        <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                           {row.note ?? "—"}
                         </td>
                       </tr>
@@ -294,7 +294,7 @@ function StatCard({
           : "border-slate-200 bg-white"
       }`}
     >
-      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="text-xs font-medium text-slate-500 dark:text-gray-400">{label}</p>
       <p
         className={`mt-1 text-xl font-bold tabular-nums ${
           emphasize ? "text-brand-800" : "text-slate-900"
@@ -319,7 +319,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
     >
       {icon}
       {label}
@@ -329,9 +329,9 @@ function ActionButton({
 
 function TypeBadge({ type, label }: { type: string; label: string }) {
   const colors: Record<string, string> = {
-    ADVANCE: "bg-amber-50 text-amber-800",
+    ADVANCE: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
     DEDUCTION: "bg-rose-50 text-rose-800",
-    BONUS: "bg-emerald-50 text-emerald-800",
+    BONUS: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
     SALARY_PAYMENT: "bg-sky-50 text-sky-800",
   };
   return (

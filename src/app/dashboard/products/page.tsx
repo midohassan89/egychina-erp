@@ -75,7 +75,7 @@ function SelectionCheckbox({
       disabled={disabled}
       aria-label={label}
       onChange={onChange}
-      className="h-4 w-4 rounded border-slate-300"
+      className="h-4 w-4 rounded border-slate-300 dark:border-gray-700"
     />
   );
 }
@@ -86,7 +86,7 @@ function StockBadge({ quantity }: { quantity: number }) {
     <span
       className={clsx(
         "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
-        inStock ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
+        inStock ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
       )}
     >
       {inStock ? "متوفر" : "غير متوفر"}
@@ -124,7 +124,7 @@ function VisibilityToggle({
       >
         <span
           className={clsx(
-            "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+            "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-gray-900",
             active && "translate-x-5",
           )}
         />
@@ -132,7 +132,7 @@ function VisibilityToggle({
       <span
         className={clsx(
           "text-xs font-semibold",
-          active ? "text-emerald-700" : "text-slate-500",
+          active ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-gray-400",
         )}
       >
         {active ? "مفعل" : "مخفي"}
@@ -149,12 +149,12 @@ function FilterChip({
   onRemove: () => void;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800">
+    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
       <span>{label}</span>
       <button
         type="button"
         onClick={onRemove}
-        className="rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+        className="rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
         aria-label={`إزالة ${label}`}
       >
         <X className="h-3 w-3" />
@@ -195,7 +195,7 @@ export default function DashboardProductsPage() {
     <ToastProvider>
       <Suspense
         fallback={
-          <p className="p-6 text-sm text-slate-500">جاري تحميل المنتجات…</p>
+          <p className="p-6 text-sm text-slate-500 dark:text-gray-400">جاري تحميل المنتجات…</p>
         }
       >
         <ProductsManagement />
@@ -880,19 +880,19 @@ function ProductsManagement() {
     <div className="relative space-y-6">
       {bulkBusy && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-[1px]">
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-xl">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-xl dark:border-gray-800 dark:bg-gray-900">
             <Loader2 className="h-5 w-5 animate-spin text-brand-600" />
-            <p className="text-sm font-semibold text-slate-800">{bulkMessage}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-gray-200">{bulkMessage}</p>
           </div>
         </div>
       )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             إدارة المنتجات
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             كتالوج المنتجات المحلي
           </p>
         </div>
@@ -911,16 +911,16 @@ function ProductsManagement() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 pt-4">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 pt-4 dark:border-gray-800">
           <button
             type="button"
             onClick={() => switchView("active")}
             className={clsx(
               "rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
               view === "active"
-                ? "border-slate-200 bg-white text-slate-900"
-                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
+                ? "border-slate-200 bg-white text-slate-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:text-gray-100",
             )}
           >
             كل المنتجات
@@ -931,8 +931,8 @@ function ProductsManagement() {
             className={clsx(
               "inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
               view === "weighed"
-                ? "border-slate-200 bg-white text-slate-900"
-                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
+                ? "border-slate-200 bg-white text-slate-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:text-gray-100",
             )}
           >
             <Scale className="h-3.5 w-3.5" />
@@ -944,8 +944,8 @@ function ProductsManagement() {
             className={clsx(
               "inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
               view === "trash"
-                ? "border-slate-200 bg-white text-red-700"
-                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800",
+                ? "border-slate-200 bg-white text-red-700 dark:border-gray-800 dark:bg-gray-900 dark:text-red-300"
+                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:text-gray-100",
             )}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -953,28 +953,28 @@ function ProductsManagement() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-gray-800">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-full min-w-0 flex-col gap-2 sm:min-w-[20rem] sm:flex-1 sm:flex-row sm:items-center"
             >
               <div className="relative w-full min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
                 <input
                   type="search"
                   value={searchInput}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   placeholder="بحث بالاسم أو الباركود…"
-                  className="block w-full min-w-0 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="block w-full min-w-0 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
-              <label className="flex w-full items-center gap-2 text-sm text-slate-600 sm:w-auto">
+              <label className="flex w-full items-center gap-2 text-sm text-slate-600 sm:w-auto dark:text-gray-300">
                 <span className="whitespace-nowrap font-medium">الترتيب</span>
                 <select
                   value={sort}
                   onChange={(e) => changeSort(e.target.value as ProductSort)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 sm:w-auto"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 sm:w-auto dark:border-gray-700 dark:bg-gray-900"
                 >
                   <option value="desc">الأحدث</option>
                   <option value="asc">الأقدم</option>
@@ -992,7 +992,7 @@ function ProductsManagement() {
                   <button
                     type="button"
                     onClick={handleClearSearch}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     إلغاء
                   </button>
@@ -1002,12 +1002,12 @@ function ProductsManagement() {
 
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {view !== "trash" && (
-                <label className="flex items-center gap-2 text-sm text-slate-600">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300">
                   <span className="whitespace-nowrap font-medium">القسم</span>
                   <select
                     value={categoryId}
                     onChange={(e) => changeCategory(e.target.value)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900"
                   >
                     <option value="">كل الأقسام</option>
                     {categories.map((category) => (
@@ -1019,14 +1019,14 @@ function ProductsManagement() {
                 </label>
               )}
               {view === "active" && (
-                <label className="flex items-center gap-2 text-sm text-slate-600">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300">
                   <span className="whitespace-nowrap font-medium">
                     العلامة التجارية
                   </span>
                   <select
                     value={brandId}
                     onChange={(e) => changeBrand(e.target.value)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900"
                   >
                     <option value="">كل العلامات التجارية</option>
                     {brands.map((brand) => (
@@ -1037,14 +1037,14 @@ function ProductsManagement() {
                   </select>
                 </label>
               )}
-              <label className="flex items-center gap-2 text-sm text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300">
                 <span className="whitespace-nowrap font-medium">المخزون</span>
                 <select
                   value={stockFilter}
                   onChange={(e) =>
                     changeStockFilter(e.target.value as StockFilter)
                   }
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900"
                 >
                   <option value="all">الكل</option>
                   {stockStatuses.includes("instock") && (
@@ -1057,7 +1057,7 @@ function ProductsManagement() {
               </label>
 
               {selectedProductIds.size > 0 && (
-                <span className="text-sm font-medium text-slate-600">
+                <span className="text-sm font-medium text-slate-600 dark:text-gray-300">
                   تم تحديد {selectedProductIds.size.toLocaleString("ar-EG")} منتجات
                 </span>
               )}
@@ -1067,7 +1067,7 @@ function ProductsManagement() {
                     type="button"
                     disabled={bulkBusy}
                     onClick={() => void handleExportExcel()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                   >
                     <Download className="h-4 w-4" />
                     تصدير Excel
@@ -1077,7 +1077,7 @@ function ProductsManagement() {
                     disabled={bulkBusy}
                     title="تحديث السعر الأساسي وسعر التخفيض وآخر سعر شراء حسب الباركود أو كود الصنف"
                     onClick={() => priceImportInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                   >
                     <Upload className="h-4 w-4" />
                     استيراد من Excel
@@ -1096,7 +1096,7 @@ function ProductsManagement() {
               )}
             </div>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
             {isLoading || isPending
               ? "جاري التحميل…"
               : `${total.toLocaleString("ar-EG")} ${
@@ -1107,12 +1107,12 @@ function ProductsManagement() {
                       : "منتج"
                 }`}
             {stockLabel ? (
-              <span className="text-slate-400"> · {stockLabel}</span>
+              <span className="text-slate-400 dark:text-gray-500"> · {stockLabel}</span>
             ) : null}
           </p>
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-slate-600">
+              <span className="text-sm font-medium text-slate-600 dark:text-gray-300">
                 تصفية حسب:
               </span>
               {query && (
@@ -1142,7 +1142,7 @@ function ProductsManagement() {
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="rounded-lg px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50"
+                className="rounded-lg px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
               >
                 إزالة الفلاتر
               </button>
@@ -1151,7 +1151,7 @@ function ProductsManagement() {
         </div>
 
         {error && (
-          <div className="border-b border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="border-b border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </div>
         )}
@@ -1163,7 +1163,7 @@ function ProductsManagement() {
               view === "weighed" ? "min-w-[1280px]" : "min-w-[1240px]",
             )}
           >
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               {view === "weighed" ? (
                 <tr>
                   <th className="w-10 px-3 py-3">
@@ -1209,12 +1209,12 @@ function ProductsManagement() {
               </tr>
               )}
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading && products.length === 0 ? (
                 <tr>
                   <td
                     colSpan={colSpan}
-                    className="px-4 py-16 text-center text-slate-400"
+                    className="px-4 py-16 text-center text-slate-400 dark:text-gray-500"
                   >
                     جاري تحميل المنتجات…
                   </td>
@@ -1222,8 +1222,8 @@ function ProductsManagement() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={colSpan} className="px-4 py-16 text-center">
-                    <Package className="mx-auto h-10 w-10 text-slate-300" />
-                    <p className="mt-3 font-medium text-slate-600">
+                    <Package className="mx-auto h-10 w-10 text-slate-300 dark:text-gray-600" />
+                    <p className="mt-3 font-medium text-slate-600 dark:text-gray-300">
                       {view === "trash"
                         ? "سلة المهملات فارغة"
                         : view === "weighed"
@@ -1279,8 +1279,8 @@ function ProductsManagement() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">
+        <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
             {total === 0
               ? "لا نتائج"
               : `عرض ${from}–${to} من ${total.toLocaleString("ar-EG")}`}
@@ -1290,19 +1290,19 @@ function ProductsManagement() {
               type="button"
               disabled={page <= 1 || isLoading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               <ChevronLeft className="h-4 w-4" />
               السابق
             </button>
-            <span className="min-w-[5.5rem] text-center text-sm tabular-nums text-slate-600">
+            <span className="min-w-[5.5rem] text-center text-sm tabular-nums text-slate-600 dark:text-gray-300">
               صفحة {page} / {pageCount}
             </span>
             <button
               type="button"
               disabled={page >= pageCount || isLoading}
               onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               التالي
               <ChevronRight className="h-4 w-4" />
@@ -1388,7 +1388,7 @@ function ProductRow({
   }, [product.salePrice]);
 
   return (
-    <tr className={clsx("hover:bg-slate-50/80", busy && "opacity-60")}>
+    <tr className={clsx("hover:bg-slate-50/80 dark:hover:bg-gray-800/60", busy && "opacity-60")}>
       <td className="px-3 py-3">
         <SelectionCheckbox
           checked={selected}
@@ -1401,7 +1401,7 @@ function ProductRow({
           type="button"
           disabled={busy || view === "trash"}
           onClick={onToggleFavorite}
-          className="rounded-lg p-1.5 hover:bg-amber-50 disabled:opacity-40"
+          className="rounded-lg p-1.5 hover:bg-amber-50 disabled:opacity-40 dark:hover:bg-amber-950/40"
           title={product.isFavorite ? "Unfavorite" : "Favorite"}
           aria-label="Toggle favorite"
         >
@@ -1410,7 +1410,7 @@ function ProductRow({
               "h-5 w-5",
               product.isFavorite
                 ? "fill-amber-400 text-amber-500"
-                : "text-slate-300",
+                : "text-slate-300 dark:text-gray-600",
             )}
           />
         </button>
@@ -1422,10 +1422,10 @@ function ProductRow({
             alt=""
             width={48}
             height={48}
-            className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
+            className="h-12 w-12 rounded-lg border border-slate-200 object-cover dark:border-gray-800"
           />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-600">
             <Package className="h-5 w-5" />
           </div>
         )}
@@ -1433,13 +1433,13 @@ function ProductRow({
       <td className="max-w-xs px-4 py-3">
         <Link
           href={`/dashboard/products/${product.id}`}
-          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline"
+          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline dark:text-gray-100 dark:hover:text-brand-400"
         >
           {product.name}
         </Link>
-        <p className="mt-0.5 text-xs text-slate-400">WC #{product.wcId}</p>
+        <p className="mt-0.5 text-xs text-slate-400 dark:text-gray-500">WC #{product.wcId}</p>
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+      <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-gray-300">
         {product.barcode || "—"}
       </td>
       <td className="px-4 py-3">
@@ -1448,12 +1448,12 @@ function ProductRow({
             {product.packages.map((pkg) => (
               <span
                 key={pkg.id}
-                className="text-xs text-slate-500"
+                className="text-xs text-slate-500 dark:text-gray-400"
                 title={pkg.name}
               >
-                <span className="font-mono text-slate-700">{pkg.barcode}</span>
+                <span className="font-mono text-slate-700 dark:text-gray-200">{pkg.barcode}</span>
                 {pkg.name ? (
-                  <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                  <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-gray-500">
                     {pkg.name}
                   </span>
                 ) : null}
@@ -1477,10 +1477,10 @@ function ProductRow({
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
             }}
-            className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           />
         ) : (
-          <span className="font-medium tabular-nums text-slate-700">
+          <span className="font-medium tabular-nums text-slate-700 dark:text-gray-200">
             {product.price.toFixed(2)}
           </span>
         )}
@@ -1499,10 +1499,10 @@ function ProductRow({
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
             }}
-            className="w-24 rounded-md border border-amber-200 bg-amber-50/50 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-24 rounded-md border border-amber-200 bg-amber-50/50 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-amber-800 dark:bg-amber-950/30"
           />
         ) : (
-          <span className="tabular-nums text-slate-700">
+          <span className="tabular-nums text-slate-700 dark:text-gray-200">
             {product.salePrice != null ? product.salePrice.toFixed(2) : "—"}
           </span>
         )}
@@ -1520,7 +1520,7 @@ function ProductRow({
       <td className="px-4 py-3">
         {product.linkedProductId ? (
           <span
-            className="inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200"
+            className="inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800 ring-1 ring-inset ring-violet-200 dark:bg-violet-950/40 dark:text-violet-200 dark:ring-violet-800"
             title={`Virtual pack ×${product.bundleMultiplier ?? "?"}`}
           >
             Bundle ×{product.bundleMultiplier ?? "?"}
@@ -1531,15 +1531,15 @@ function ProductRow({
               type="number"
               readOnly
               value={product.stockQuantity}
-              className="w-20 cursor-not-allowed rounded-md border border-slate-300 bg-gray-100 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-500"
+              className="w-20 cursor-not-allowed rounded-md border border-slate-300 bg-gray-100 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
               aria-label="Stock quantity"
             />
-            <p className="mt-1 text-[11px] leading-snug text-gray-500">
+            <p className="mt-1 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
               الرصيد للعرض فقط. لتعديل الرصيد، يرجى استخدام (أرصدة أول المدة) أو (فواتير المشتريات) للحفاظ على دقة كارت الصنف.
             </p>
           </div>
         ) : (
-          <span className="tabular-nums text-slate-700">
+          <span className="tabular-nums text-slate-700 dark:text-gray-200">
             {product.stockQuantity}
           </span>
         )}
@@ -1552,14 +1552,14 @@ function ProductRow({
                 type="button"
                 disabled={busy}
                 onClick={onEdit}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 <Pencil className="h-3 w-3" />
                 تعديل
               </button>
               <Link
                 href={`/dashboard/products/${product.id}`}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 كارت الصنف
               </Link>
@@ -1567,7 +1567,7 @@ function ProductRow({
                 type="button"
                 disabled={busy}
                 onClick={onSoftDelete}
-                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
               >
                 <Trash2 className="h-3 w-3" />
                 حذف
@@ -1579,7 +1579,7 @@ function ProductRow({
                 type="button"
                 disabled={busy}
                 onClick={onRestore}
-                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 استعادة
               </button>
@@ -1641,7 +1641,7 @@ function WeighedPriceField({
           if (e.key === "Enter") onSave(draft);
         }}
         aria-label={label}
-        className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+        className="w-24 rounded-md border border-slate-300 px-2 py-1.5 text-sm font-medium tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
       />
       <button
         type="button"
@@ -1762,7 +1762,7 @@ function WeighedProductRow({
   }
 
   return (
-    <tr className="hover:bg-slate-50/80">
+    <tr className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
       <td className="px-3 py-3">
         <SelectionCheckbox
           checked={selected}
@@ -1777,10 +1777,10 @@ function WeighedProductRow({
             alt=""
             width={48}
             height={48}
-            className="h-12 w-12 rounded-lg border border-slate-200 object-cover"
+            className="h-12 w-12 rounded-lg border border-slate-200 object-cover dark:border-gray-800"
           />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-600">
             <Package className="h-5 w-5" />
           </div>
         )}
@@ -1788,16 +1788,16 @@ function WeighedProductRow({
       <td className="max-w-xs px-4 py-3">
         <Link
           href={`/dashboard/products/${product.id}`}
-          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline"
+          className="line-clamp-2 font-medium text-slate-900 hover:text-brand-700 hover:underline dark:text-gray-100 dark:hover:text-brand-400"
         >
           {product.name}
         </Link>
         {product.categoryName ? (
-          <p className="mt-0.5 text-xs text-slate-400">{product.categoryName}</p>
+          <p className="mt-0.5 text-xs text-slate-400 dark:text-gray-500">{product.categoryName}</p>
         ) : null}
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-slate-600">{barcode}</td>
-      <td className="px-4 py-3 tabular-nums text-slate-700">
+      <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-gray-300">{barcode}</td>
+      <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-gray-200">
         {formatQty(product.stockQuantity)} كجم
       </td>
       <td className="px-4 py-3">

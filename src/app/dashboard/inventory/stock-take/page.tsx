@@ -161,30 +161,30 @@ export default function StockTakePage() {
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/dashboard/inventory"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-4 w-4" />
           رجوع
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             جرد فعلي
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
             أدخل الكميات المعدودة. الفروقات تنشئ تسوية جرد يدوي وتُزامن مع ووكومرس.
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <label className="block min-w-[180px] flex-1">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
             الفئة
           </span>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           >
             <option value="">كل المنتجات</option>
             {categories.map((c) => (
@@ -195,41 +195,41 @@ export default function StockTakePage() {
           </select>
         </label>
         <label className="block min-w-[200px] flex-[2]">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
             بحث
           </span>
           <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="الاسم أو كود الصنف أو الباركود…"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
         </label>
         <label className="block min-w-[200px] flex-1">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
             ملاحظات
           </span>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="ملاحظة اختيارية للجرد"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           />
         </label>
         <button
           type="button"
           onClick={fillExpectedAsActual}
-          className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           ملء الفراغ = المتوقع
         </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-gray-300">
           {isLoading
             ? "جاري التحميل…"
             : `${products.length} منتج · ${countedStats.counted} معدود · ${countedStats.variances} فرق`}
@@ -245,15 +245,15 @@ export default function StockTakePage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="max-h-[min(70vh,720px)] overflow-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">المنتج</th>
                 <th className="px-4 py-3">كود الصنف / الباركود</th>
@@ -262,12 +262,12 @@ export default function StockTakePage() {
                 <th className="px-4 py-3 text-right">الفرق</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     جاري تحميل المنتجات…
                   </td>
@@ -276,7 +276,7 @@ export default function StockTakePage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     لا توجد منتجات مطابقة لهذا الفلتر.
                   </td>
@@ -294,19 +294,19 @@ export default function StockTakePage() {
                     <tr
                       key={p.id}
                       className={clsx(
-                        "hover:bg-slate-50/80",
+                        "hover:bg-slate-50/80 dark:hover:bg-gray-800/60",
                         diff != null &&
                           diff !== 0 &&
                           "bg-amber-50/60",
                       )}
                     >
-                      <td className="px-4 py-2.5 font-medium text-slate-900">
+                      <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-gray-100">
                         {p.name}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-slate-600">
+                      <td className="px-4 py-2.5 font-mono text-xs text-slate-600 dark:text-gray-300">
                         {p.barcode || p.sku || `WC#${p.wcId}`}
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-gray-200">
                         {p.expectedQuantity}
                       </td>
                       <td className="px-4 py-2.5 text-right">
@@ -321,17 +321,17 @@ export default function StockTakePage() {
                               [p.id]: e.target.value,
                             }))
                           }
-                          className="ml-auto w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                          className="ml-auto w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                           placeholder="—"
                         />
                       </td>
                       <td
                         className={clsx(
                           "px-4 py-2.5 text-right font-semibold tabular-nums",
-                          diff == null && "text-slate-300",
+                          diff == null && "text-slate-300 dark:text-gray-600",
                           diff === 0 && "text-emerald-600",
-                          diff != null && diff > 0 && "text-emerald-700",
-                          diff != null && diff < 0 && "text-red-700",
+                          diff != null && diff > 0 && "text-emerald-700 dark:text-emerald-300",
+                          diff != null && diff < 0 && "text-red-700 dark:text-red-300",
                         )}
                       >
                         {diff == null

@@ -14,8 +14,8 @@ export default async function AutoFetchPage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">جلب الصور التلقائي</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">جلب الصور التلقائي</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
           المنتجات التي لا تملك صورة. يتم جلب صورة واحدة في كل مرة وحفظها محلياً.
         </p>
       </div>

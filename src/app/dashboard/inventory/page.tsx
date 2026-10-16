@@ -39,8 +39,8 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div className="text-right">
-        <h1 className="text-2xl font-bold text-slate-900">المخزون</h1>
-        <p className="mt-1 text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">المخزون</h1>
+        <p className="mt-1 text-slate-500 dark:text-gray-400">
           تسوية المخزون والهالك والتصنيع وطباعة الملصقات
         </p>
       </div>
@@ -50,15 +50,15 @@ export default function InventoryPage() {
           <Link
             key={href}
             href={href}
-            className="group rounded-2xl border border-slate-200 bg-white p-6 text-right shadow-sm transition hover:border-brand-300 hover:shadow-md"
+            className="group rounded-2xl border border-slate-200 bg-white p-6 text-right shadow-sm transition hover:border-brand-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 group-hover:bg-brand-100">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 group-hover:bg-brand-100 dark:text-brand-400">
               <Icon className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            <h2 className="mt-4 text-lg font-semibold text-slate-900 dark:text-gray-100">
               {title}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">{description}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">{description}</p>
           </Link>
         ))}
       </div>

@@ -15,14 +15,30 @@ interface SafeImageProps {
   sizes?: string;
 }
 
+function encodeOnce(url: string): string | null {
+  try {
+    return encodeURI(decodeURI(url));
+  } catch {
+    try {
+      return encodeURI(url);
+    } catch {
+      return null;
+    }
+  }
+}
+
 /**
- * Turn a stored image address into a root-relative /uploads path when the
- * file belongs to this app, then percent-encode it exactly once.
- * Returns null when there is nothing to show.
+ * Turn a stored image address into something a plain <img> can load.
+ * Local /uploads files stay root-relative. Legacy wp-content addresses are
+ * encoded once and left absolute. Returns null when there is nothing to show.
  */
 function normalizeImageUrl(url: string | null | undefined): string | null {
   const raw = url?.trim();
   if (!raw || raw === "/placeholder.png") return null;
+
+  if (raw.includes("wp-content/uploads/")) {
+    return encodeOnce(raw);
+  }
 
   let clean = raw;
   if (/^https?:\/\//i.test(raw)) {
@@ -36,15 +52,7 @@ function normalizeImageUrl(url: string | null | undefined): string | null {
     }
   }
 
-  try {
-    return encodeURI(decodeURI(clean));
-  } catch {
-    try {
-      return encodeURI(clean);
-    } catch {
-      return null;
-    }
-  }
+  return encodeOnce(clean);
 }
 
 function ImageFallback({
@@ -69,8 +77,8 @@ function ImageFallback({
 }
 
 /**
- * Thumbnail that loads /uploads files directly (no /_next/image proxy).
- * A failed or empty source becomes a gray icon box, once, with no retry loop.
+ * Plain <img> only. Never next/image, so /_next/image is never requested.
+ * A failed, empty, or broken legacy source becomes a gray icon box once.
  */
 export function SafeImage({
   src,

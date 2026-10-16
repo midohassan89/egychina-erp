@@ -43,8 +43,8 @@ export function MarginPills({
           onClick={() => onSelect(margin)}
           className={
             compact
-              ? "cursor-pointer rounded-full bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
-              : "cursor-pointer rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+              ? "cursor-pointer rounded-full bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-gray-800 dark:text-gray-200"
+              : "cursor-pointer rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-gray-800 dark:text-gray-200"
           }
         >
           {margin}%
@@ -64,8 +64,8 @@ export function InvoiceMarginSelector({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <p className="mb-2 text-sm font-medium text-slate-700">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <p className="mb-2 text-sm font-medium text-slate-700 dark:text-gray-200">
         نسبة الربح الافتراضية للفاتورة
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -82,7 +82,7 @@ export function InvoiceMarginSelector({
                 "cursor-pointer rounded-full px-2.5 py-1 text-xs transition disabled:opacity-40",
                 selected
                   ? "bg-emerald-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-emerald-100",
+                  : "bg-gray-100 text-gray-700 hover:bg-emerald-100 dark:bg-gray-800 dark:text-gray-200",
               )}
             >
               {margin}%
@@ -108,7 +108,7 @@ export function SuggestPriceButton({
       onClick={onClick}
       title="اقترح السعر"
       aria-label="اقترح السعر"
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50 disabled:opacity-40 dark:text-emerald-300"
     >
       <Wand2 size={14} />
     </button>

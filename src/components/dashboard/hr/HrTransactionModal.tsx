@@ -118,17 +118,17 @@ export function HrTransactionModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-800">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{TITLES[kind]}</h2>
-            <p className="text-sm text-slate-500">{employeeName}</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">{TITLES[kind]}</h2>
+            <p className="text-sm text-slate-500 dark:text-gray-400">{employeeName}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -136,20 +136,20 @@ export function HrTransactionModal({
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 px-5 py-4">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">التاريخ</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">التاريخ</span>
             <input
               type="date"
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
 
           {kind === "DEDUCTION" ? (
             <>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   أيام الخصم
                 </span>
                 <input
@@ -160,12 +160,12 @@ export function HrTransactionModal({
                   value={daysDeducted}
                   onChange={(e) => setDaysDeducted(e.target.value)}
                   placeholder="مثال: 2"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-gray-800/60 dark:text-gray-200">
                 مبلغ الخصم = الراتب الأساسي ÷ 30 × الأيام
-                <div className="mt-1 text-base font-bold tabular-nums text-slate-900">
+                <div className="mt-1 text-base font-bold tabular-nums text-slate-900 dark:text-gray-100">
                   {computedDeduction != null
                     ? `${computedDeduction.toLocaleString("ar-EG", {
                         minimumFractionDigits: 2,
@@ -173,7 +173,7 @@ export function HrTransactionModal({
                       })} ج.م`
                     : "—"}
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
                   الراتب الأساسي:{" "}
                   {baseSalary.toLocaleString("ar-EG", {
                     minimumFractionDigits: 2,
@@ -185,7 +185,7 @@ export function HrTransactionModal({
             </>
           ) : (
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 المبلغ
               </span>
               <input
@@ -195,17 +195,17 @@ export function HrTransactionModal({
                 required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
           )}
 
           {kind === "BONUS" && (
             <fieldset className="space-y-2">
-              <legend className="mb-1 text-sm font-medium text-slate-700">
+              <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-gray-200">
                 طريقة المكافأة
               </legend>
-              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-gray-800">
                 <input
                   type="radio"
                   name="bonusMode"
@@ -214,7 +214,7 @@ export function HrTransactionModal({
                 />
                 صرف فوري (خصم من الخزينة)
               </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm dark:border-gray-800">
                 <input
                   type="radio"
                   name="bonusMode"
@@ -236,19 +236,19 @@ export function HrTransactionModal({
           )}
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               ملاحظة (اختياري)
             </span>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
               {error}
             </p>
           )}
@@ -257,7 +257,7 @@ export function HrTransactionModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               إلغاء
             </button>

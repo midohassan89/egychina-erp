@@ -221,7 +221,7 @@ export default function PurchaseReturnsPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/dashboard/purchases"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
           المشتريات
@@ -230,10 +230,10 @@ export default function PurchaseReturnsPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             مرتجعات المشتريات
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             إرجاع للمورد — يخصم من رصيد المورد والمخزون
           </p>
         </div>
@@ -248,15 +248,15 @@ export default function PurchaseReturnsPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">التاريخ</th>
@@ -266,38 +266,38 @@ export default function PurchaseReturnsPage() {
                 <th className="px-4 py-3">Notes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                     Loading…
                   </td>
                 </tr>
               ) : returns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                     No purchase returns yet.
                   </td>
                 </tr>
               ) : (
                 returns.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium tabular-nums text-slate-900">
+                  <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-medium tabular-nums text-slate-900 dark:text-gray-100">
                       PR-{row.id}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                       {new Date(row.date).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                       {row.supplierName}
                     </td>
-                    <td className="px-4 py-3 text-center tabular-nums text-slate-600">
+                    <td className="px-4 py-3 text-center tabular-nums text-slate-600 dark:text-gray-300">
                       {row.itemCount}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                       {formatEGP(row.totalAmount)}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                       {row.notes || "—"}
                     </td>
                   </tr>
@@ -310,8 +310,8 @@ export default function PurchaseReturnsPage() {
 
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-3">
-          <div className="flex max-h-[min(94dvh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-amber-100 bg-amber-50 px-5 py-4">
+          <div className="flex max-h-[min(94dvh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex shrink-0 items-center justify-between border-b border-amber-100 bg-amber-50 px-5 py-4 dark:bg-amber-950/40">
               <div>
                 <h2 className="text-lg font-semibold text-amber-950">
                   مرتجع مشتريات جديد · New Purchase Return
@@ -323,7 +323,7 @@ export default function PurchaseReturnsPage() {
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
-                className="rounded-lg p-2 text-amber-700 hover:bg-amber-100"
+                className="rounded-lg p-2 text-amber-700 hover:bg-amber-100 dark:text-amber-300"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -336,14 +336,14 @@ export default function PurchaseReturnsPage() {
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                    <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                       Supplier
                     </span>
                     <select
                       required
                       value={supplierId}
                       onChange={(e) => setSupplierId(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                     >
                       <option value="">Select supplier…</option>
                       {suppliers.map((s) => (
@@ -354,7 +354,7 @@ export default function PurchaseReturnsPage() {
                     </select>
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                    <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                       Date
                     </span>
                     <input
@@ -362,36 +362,36 @@ export default function PurchaseReturnsPage() {
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                     />
                   </label>
                 </div>
 
                 <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                  <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                     Notes (optional)
                   </span>
                   <input
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Reason / reference"
                   />
                 </label>
 
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
                   <input
                     value={productQuery}
                     onChange={(e) => setProductQuery(e.target.value)}
                     placeholder="بحث بالاسم أو الباركود أو الكود…"
-                    className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   />
                   {(productHits.length > 0 || searching) &&
                     productQuery.trim() && (
-                      <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                      <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
                         {searching && productHits.length === 0 ? (
-                          <li className="px-3 py-2 text-sm text-slate-400">
+                          <li className="px-3 py-2 text-sm text-slate-400 dark:text-gray-500">
                             جاري البحث…
                           </li>
                         ) : (
@@ -400,18 +400,18 @@ export default function PurchaseReturnsPage() {
                               <button
                                 type="button"
                                 onClick={() => addProduct(p)}
-                                className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-amber-50"
+                                className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-amber-50 dark:hover:bg-amber-950/40"
                               >
                                 <span>
-                                  <span className="block text-sm font-medium text-slate-900">
+                                  <span className="block text-sm font-medium text-slate-900 dark:text-gray-100">
                                     {p.name}
                                   </span>
-                                  <span className="text-xs text-slate-500">
+                                  <span className="text-xs text-slate-500 dark:text-gray-400">
                                     {p.barcode || p.sku || `WC #${p.wcId}`} ·
                                     stock {p.stockQuantity}
                                   </span>
                                 </span>
-                                <Plus className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                                <Plus className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                               </button>
                             </li>
                           ))
@@ -420,9 +420,9 @@ export default function PurchaseReturnsPage() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-gray-800">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
                       <tr>
                         <th className="px-3 py-2">Product</th>
                         <th className="w-24 px-2 py-2">Qty</th>
@@ -431,12 +431,12 @@ export default function PurchaseReturnsPage() {
                         <th className="w-10 py-2" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                       {lines.length === 0 ? (
                         <tr>
                           <td
                             colSpan={5}
-                            className="px-3 py-8 text-center text-slate-400"
+                            className="px-3 py-8 text-center text-slate-400 dark:text-gray-500"
                           >
                             ابحث وأضف المنتجات للمرتجع
                           </td>
@@ -448,10 +448,10 @@ export default function PurchaseReturnsPage() {
                           return (
                             <tr key={line.key}>
                               <td className="px-3 py-2.5">
-                                <p className="font-medium text-slate-900">
+                                <p className="font-medium text-slate-900 dark:text-gray-100">
                                   {line.productName}
                                 </p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-slate-500 dark:text-gray-400">
                                   On hand {line.stockQuantity}
                                 </p>
                               </td>
@@ -471,7 +471,7 @@ export default function PurchaseReturnsPage() {
                                       ),
                                     )
                                   }
-                                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-amber-500"
+                                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-amber-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                                 />
                               </td>
                               <td className="px-2 py-2.5">
@@ -489,7 +489,7 @@ export default function PurchaseReturnsPage() {
                                       ),
                                     )
                                   }
-                                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-amber-500"
+                                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-amber-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                                 />
                               </td>
                               <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
@@ -503,7 +503,7 @@ export default function PurchaseReturnsPage() {
                                       prev.filter((l) => l.key !== line.key),
                                     )
                                   }
-                                  className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                                  className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-950/40"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
@@ -517,24 +517,24 @@ export default function PurchaseReturnsPage() {
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-white">
-                  <span className="text-sm text-slate-300">Return total</span>
+                  <span className="text-sm text-slate-300 dark:text-gray-600">Return total</span>
                   <span className="text-2xl font-bold tabular-nums">
                     {formatEGP(totalAmount)}
                   </span>
                 </div>
 
                 {formError && (
-                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                     {formError}
                   </p>
                 )}
               </div>
 
-              <div className="flex shrink-0 gap-2 border-t border-slate-200 px-5 py-4">
+              <div className="flex shrink-0 gap-2 border-t border-slate-200 px-5 py-4 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={() => setFormOpen(false)}
-                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   إلغاء
                 </button>

@@ -48,16 +48,16 @@ export default function InventoryAdjustmentsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-500">
-            <Link href="/dashboard/inventory" className="hover:text-brand-700">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
+            <Link href="/dashboard/inventory" className="hover:text-brand-700 dark:hover:text-brand-400">
               المخزون
             </Link>{" "}
             / التسويات
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-gray-100">
             تسويات المخزون
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             الهالك والنقص واستخدام الإنتاج والجرد اليدوي
           </p>
         </div>
@@ -71,15 +71,15 @@ export default function InventoryAdjustmentsPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">التاريخ</th>
                 <th className="px-4 py-3">النوع</th>
@@ -89,12 +89,12 @@ export default function InventoryAdjustmentsPage() {
                 <th className="px-4 py-3">ملاحظات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     جاري التحميل…
                   </td>
@@ -103,7 +103,7 @@ export default function InventoryAdjustmentsPage() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     لا توجد تسويات بعد. أنشئ تسوية لمطابقة المخزون.
                   </td>
@@ -113,31 +113,31 @@ export default function InventoryAdjustmentsPage() {
                   const loss = row.financialImpact < 0;
                   const gain = row.financialImpact > 0;
                   return (
-                    <tr key={row.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 text-slate-700">
+                    <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                         {new Date(row.date).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-800">
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-800 dark:bg-gray-800 dark:text-gray-200">
                           {row.typeLabel}
                         </span>
                       </td>
                       <td
                         className={clsx(
                           "px-4 py-3 text-right font-semibold tabular-nums",
-                          loss && "text-red-700",
-                          gain && "text-emerald-700",
-                          !loss && !gain && "text-slate-700",
+                          loss && "text-red-700 dark:text-red-300",
+                          gain && "text-emerald-700 dark:text-emerald-300",
+                          !loss && !gain && "text-slate-700 dark:text-gray-200",
                         )}
                       >
                         {loss ? "" : gain ? "+" : ""}
                         {formatEGP(row.financialImpact)}
                       </td>
-                      <td className="px-4 py-3 tabular-nums text-slate-600">
+                      <td className="px-4 py-3 tabular-nums text-slate-600 dark:text-gray-300">
                         {row.itemCount}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{row.userName}</td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{row.userName}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                         {row.notes || "—"}
                       </td>
                     </tr>

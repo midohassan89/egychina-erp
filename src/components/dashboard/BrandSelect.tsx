@@ -105,7 +105,7 @@ export function BrandSelect({
           onChange={(e) => onChange(e.target.value)}
           className={
             className ??
-            "min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            "min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
           }
         >
           <option value="">
@@ -124,7 +124,7 @@ export function BrandSelect({
           title="إضافة علامة تجارية"
           aria-label="إضافة علامة تجارية"
           onClick={() => setCreating(true)}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-700 dark:text-gray-300 dark:hover:text-brand-400"
         >
           <Plus size={18} />
         </button>

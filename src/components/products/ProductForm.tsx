@@ -127,13 +127,13 @@ function FieldToggle({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-slate-700">
+        <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
           {label}
           {status ? (
             <span
               className={clsx(
                 "ms-2 text-xs font-semibold",
-                checked ? "text-brand-700" : "text-gray-500",
+                checked ? "text-brand-700 dark:text-brand-400" : "text-gray-500 dark:text-gray-400",
               )}
             >
               {status}
@@ -150,11 +150,11 @@ function FieldToggle({
             disabled={disabled}
             className="peer sr-only"
           />
-          <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500/30 peer-disabled:opacity-50" />
-          <span className="pointer-events-none absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all peer-checked:start-[22px]" />
+          <span className="absolute inset-0 rounded-full bg-slate-200 transition peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500/30 peer-disabled:opacity-50 dark:bg-gray-700" />
+          <span className="pointer-events-none absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all peer-checked:start-[22px] dark:bg-gray-900" />
         </label>
       </div>
-      <p className="text-xs text-gray-500">{description}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
     </div>
   );
 }
@@ -538,10 +538,10 @@ function ProductFormFields({
         className={clsx("space-y-5", className)}
       >
         <div className="space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">الباركود</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-gray-200">الباركود</span>
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className="relative min-w-0 flex-1" dir="ltr">
-              <Barcode className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Barcode className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
               <input
                 required={!isEdit}
                 dir="ltr"
@@ -560,7 +560,7 @@ function ProductFormFields({
                   "w-full rounded-lg border py-2.5 ps-10 pe-3 text-left font-mono text-sm outline-none focus:ring-2 disabled:bg-slate-50",
                   barcodeError
                     ? "border-red-400 focus:border-red-500 focus:ring-red-500/20"
-                    : "border-slate-300 focus:border-brand-500 focus:ring-brand-500/20",
+                    : "border-slate-300 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-700",
                 )}
                 placeholder="امسح أو اكتب أو ولّد باركوداً"
               />
@@ -572,7 +572,7 @@ function ProductFormFields({
                 onClick={() => void handleCopyBarcode()}
                 title="نسخ الباركود"
                 aria-label="نسخ الباركود"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-2.5 py-2.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-2.5 py-2.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 <Copy className="h-4 w-4" />
               </button>
@@ -593,7 +593,7 @@ function ProductFormFields({
                 type="button"
                 disabled={busy}
                 onClick={() => setScannerOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 <ScanLine className="h-4 w-4" />
                 مسح
@@ -602,7 +602,7 @@ function ProductFormFields({
                 type="button"
                 disabled={busy || generating}
                 onClick={() => void handleGenerateBarcode()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 {generating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -614,7 +614,7 @@ function ProductFormFields({
             </div>
           </div>
           {barcodeChecking && (
-            <p className="text-xs text-slate-400">جاري التحقق من الباركود…</p>
+            <p className="text-xs text-slate-400 dark:text-gray-500">جاري التحقق من الباركود…</p>
           )}
           {barcodeError && (
             <p className="text-xs text-red-600">{barcodeError}</p>
@@ -625,7 +625,7 @@ function ProductFormFields({
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="product-name" className="text-sm font-medium text-slate-700">
+          <label htmlFor="product-name" className="text-sm font-medium text-slate-700 dark:text-gray-200">
             اسم المنتج
           </label>
           <input
@@ -635,7 +635,7 @@ function ProductFormFields({
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={busy}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
             placeholder="مثال: زيت زيتون 1 لتر"
           />
           <button
@@ -661,13 +661,13 @@ function ProductFormFields({
                     setName(fetchedOriginalName);
                     setFetchedOriginalName(null);
                   }}
-                  className="text-start text-xs font-medium text-brand-700 hover:underline"
+                  className="text-start text-xs font-medium text-brand-700 hover:underline dark:text-brand-400"
                 >
                   الترجمة غير دقيقة؟ استخدام الاسم الأصلي: {fetchedOriginalName}
                 </button>
               )}
               {fetchSource && (
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                   مصدر البيانات: {fetchSource}
                 </span>
               )}
@@ -676,27 +676,27 @@ function ProductFormFields({
         </div>
 
         {retranslating && (
-          <p className="text-xs text-slate-500">جاري الترجمة…</p>
+          <p className="text-xs text-slate-500 dark:text-gray-400">جاري الترجمة…</p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
               الاسم بالإنجليزية
             </span>
             <div className="relative" dir="ltr">
-              <Globe className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Globe className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
               <input
                 dir="ltr"
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
                 disabled={retranslating || busy}
-                className="w-full rounded-lg border border-slate-300 py-2.5 ps-10 pe-3 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+                className="w-full rounded-lg border border-slate-300 py-2.5 ps-10 pe-3 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
               />
             </div>
           </label>
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
               الاسم بالصينية
             </span>
             <input
@@ -704,18 +704,18 @@ function ProductFormFields({
               value={nameZh}
               onChange={(e) => setNameZh(e.target.value)}
               disabled={retranslating || busy}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
             />
           </label>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">التصنيف</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">التصنيف</span>
             <CategorySelect value={categoryId} onChange={setCategoryId} />
           </div>
           <div className="space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
               العلامة التجارية
             </span>
             <BrandSelect value={brandId} onChange={setBrandId} />
@@ -724,10 +724,10 @@ function ProductFormFields({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
               السعر الأساسي
             </span>
-            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20">
+            <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900">
               <input
                 required
                 type="number"
@@ -744,15 +744,15 @@ function ProductFormFields({
             </div>
           </label>
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
               سعر التخفيض
             </span>
             <div
               className={clsx(
-                "flex overflow-hidden rounded-lg border bg-white focus-within:ring-2",
+                "flex overflow-hidden rounded-lg border bg-white focus-within:ring-2 dark:bg-gray-900",
                 saleError
                   ? "border-red-400 focus-within:border-red-500 focus-within:ring-red-500/20"
-                  : "border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-500/20",
+                  : "border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-500/20 dark:border-gray-700",
               )}
             >
               <input
@@ -776,7 +776,7 @@ function ProductFormFields({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-gray-300">
             سعر التكلفة
             <input
               type="number"
@@ -787,7 +787,7 @@ function ProductFormFields({
               disabled={busy}
               placeholder="0"
               aria-label="سعر التكلفة"
-              className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500 disabled:bg-slate-50"
+              className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-brand-500 disabled:bg-slate-50 dark:border-gray-700"
             />
           </label>
           <MarginPills
@@ -818,7 +818,7 @@ function ProductFormFields({
         {showPackagePriceWarning && (
           <div
             role="alert"
-            className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-amber-950/40"
           >
             <div className="flex items-start gap-2.5">
               <TriangleAlert
@@ -853,13 +853,13 @@ function ProductFormFields({
         />
         {packageError && <p className="text-xs text-red-600">{packageError}</p>}
         {formError && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
             {formError}
           </p>
         )}
 
         <div className="space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">رفع صورة</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-gray-200">رفع صورة</span>
           <ImagePicker
             value={imageUrl}
             productName={name}
@@ -868,11 +868,11 @@ function ProductFormFields({
           />
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end dark:border-gray-800">
           {cancelHref ? (
             <Link
               href={cancelHref}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               إلغاء
             </Link>
@@ -882,7 +882,7 @@ function ProductFormFields({
                 type="button"
                 onClick={onCancel}
                 disabled={busy}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 إلغاء
               </button>

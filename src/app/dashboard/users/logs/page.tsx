@@ -16,12 +16,12 @@ interface AuditRow {
 }
 
 const ACTION_STYLES: Record<string, string> = {
-  CREATE: "bg-emerald-50 text-emerald-800",
+  CREATE: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
   UPDATE: "bg-sky-50 text-sky-800",
-  DELETE: "bg-red-50 text-red-800",
-  PIN_OVERRIDE: "bg-amber-50 text-amber-900",
-  WITHDRAW: "bg-violet-50 text-violet-800",
-  PASSWORD_CHANGE: "bg-slate-100 text-slate-700",
+  DELETE: "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300",
+  PIN_OVERRIDE: "bg-amber-50 text-amber-900 dark:bg-amber-950/40",
+  WITHDRAW: "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+  PASSWORD_CHANGE: "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200",
 };
 
 function formatDetails(raw: string | null): string {
@@ -64,27 +64,27 @@ export default function AuditLogsPage() {
         <div>
           <Link
             href="/dashboard/users"
-            className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+            className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Users
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Audit Trail</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">Audit Trail</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
             سجل النشاط — who did what, newest first (Admin only)
           </p>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-gray-800">
+          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3">Date / Time</th>
               <th className="px-4 py-3">User</th>
@@ -94,30 +94,30 @@ export default function AuditLogsPage() {
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   Loading…
                 </td>
               </tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   No audit entries yet
                 </td>
               </tr>
             ) : (
               logs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50/80">
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-gray-300">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-900">
+                    <span className="font-medium text-slate-900 dark:text-gray-100">
                       {log.user.username}
                     </span>
-                    <span className="ml-1.5 text-xs text-slate-400">
+                    <span className="ml-1.5 text-xs text-slate-400 dark:text-gray-500">
                       {log.user.role}
                     </span>
                   </td>
@@ -126,23 +126,23 @@ export default function AuditLogsPage() {
                       className={clsx(
                         "inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold",
                         ACTION_STYLES[log.action] ??
-                          "bg-slate-100 text-slate-700",
+                          "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200",
                       )}
                     >
                       {log.action}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">
+                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-gray-200">
                     {log.entity}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-gray-400">
                     {log.entityId ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
                       onClick={() => setDetail(log)}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400"
                     >
                       Details
                     </button>
@@ -156,20 +156,20 @@ export default function AuditLogsPage() {
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                   Audit Details
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-gray-400">
                   #{detail.id} · {detail.action} · {detail.entity}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setDetail(null)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -177,11 +177,11 @@ export default function AuditLogsPage() {
             </div>
             <div className="space-y-3 px-5 py-5 text-sm">
               <p>
-                <span className="text-slate-500">User: </span>
+                <span className="text-slate-500 dark:text-gray-400">User: </span>
                 <span className="font-medium">{detail.user.username}</span>
               </p>
               <p>
-                <span className="text-slate-500">When: </span>
+                <span className="text-slate-500 dark:text-gray-400">When: </span>
                 {new Date(detail.createdAt).toLocaleString()}
               </p>
               <pre className="max-h-72 overflow-auto rounded-xl bg-slate-900 p-4 text-xs text-slate-100">

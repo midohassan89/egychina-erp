@@ -96,29 +96,29 @@ export default function EmployeesPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6" dir="rtl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">الموظفين والرواتب</h1>
-        <p className="mt-1 text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">الموظفين والرواتب</h1>
+        <p className="mt-1 text-slate-500 dark:text-gray-400">
           إدارة الموظفين، السلف، الخصومات، المكافآت، وصرف الرواتب — وكشف الحساب
         </p>
       </div>
 
       <form
         onSubmit={(e) => void handleCreate(e)}
-        className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 lg:items-end"
+        className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4 lg:items-end dark:border-gray-800 dark:bg-gray-900"
       >
         <label className="block sm:col-span-2 lg:col-span-1">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
             اسم الموظف
           </span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="اسم الموظف"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
             الراتب الأساسي
           </span>
           <input
@@ -128,18 +128,18 @@ export default function EmployeesPage() {
             value={baseSalary}
             onChange={(e) => setBaseSalary(e.target.value)}
             placeholder="0"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">
+          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
             تاريخ التعيين
           </span>
           <input
             type="date"
             value={hireDate}
             onChange={(e) => setHireDate(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           />
         </label>
         <button
@@ -152,21 +152,21 @@ export default function EmployeesPage() {
       </form>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
       )}
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-800 dark:border-gray-800 dark:text-gray-200">
           نشط ({active.length})
         </h2>
         {isLoading ? (
-          <p className="px-5 py-8 text-sm text-slate-500">جاري التحميل…</p>
+          <p className="px-5 py-8 text-sm text-slate-500 dark:text-gray-400">جاري التحميل…</p>
         ) : active.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-slate-400">لا يوجد موظفون نشطون بعد.</p>
+          <p className="px-5 py-8 text-sm text-slate-400 dark:text-gray-500">لا يوجد موظفون نشطون بعد.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500">
+              <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
                 <tr>
                   <th className="px-4 py-3 text-right font-semibold">الموظف</th>
                   <th className="px-4 py-3 text-right font-semibold">الراتب الأساسي</th>
@@ -175,33 +175,33 @@ export default function EmployeesPage() {
                   <th className="px-4 py-3 text-right font-semibold">إجراءات</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                 {active.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={employee.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                       {employee.name}
                     </td>
-                    <td className="px-4 py-3 tabular-nums text-slate-700">
+                    <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-gray-200">
                       {formatEGP(employee.baseSalary)}
                     </td>
-                    <td className="px-4 py-3 tabular-nums font-semibold text-slate-900">
+                    <td className="px-4 py-3 tabular-nums font-semibold text-slate-900 dark:text-gray-100">
                       {formatEGP(employee.netSalary)}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                       {formatDate(employee.hireDate)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Link
                           href={`/dashboard/employees/${employee.id}`}
-                          className="rounded-lg bg-brand-50 px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+                          className="rounded-lg bg-brand-50 px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 dark:text-brand-400"
                         >
                           كشف الحساب
                         </Link>
                         <button
                           type="button"
                           onClick={() => void setActive(employee, false)}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
                         >
                           تعطيل
                         </button>
@@ -216,33 +216,33 @@ export default function EmployeesPage() {
       </section>
 
       {inactive.length > 0 && (
-        <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-500">
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-500 dark:border-gray-800 dark:text-gray-400">
             غير نشط ({inactive.length})
           </h2>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-slate-100 dark:divide-gray-800">
             {inactive.map((employee) => (
               <li
                 key={employee.id}
                 className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
               >
                 <div>
-                  <span className="text-slate-500">{employee.name}</span>
-                  <span className="mr-3 text-xs text-slate-400">
+                  <span className="text-slate-500 dark:text-gray-400">{employee.name}</span>
+                  <span className="mr-3 text-xs text-slate-400 dark:text-gray-500">
                     أساسي {formatEGP(employee.baseSalary)}
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <Link
                     href={`/dashboard/employees/${employee.id}`}
-                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-400"
                   >
                     كشف الحساب
                   </Link>
                   <button
                     type="button"
                     onClick={() => void setActive(employee, true)}
-                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-400"
                   >
                     تفعيل
                   </button>

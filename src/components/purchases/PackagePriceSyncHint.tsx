@@ -57,7 +57,7 @@ export function PackagePriceSyncHint({
         />
         تنبيه: للمنتج أسعار عبوات مخصصة قديمة.
       </p>
-      <label className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-amber-800">
+      <label className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-amber-800 dark:text-amber-300">
         <input
           type="checkbox"
           checked={checked}

@@ -146,34 +146,34 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             التقارير والتحليلات
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             الأرباح والخسائر، الأكثر مبيعاً، وتنبيهات النواقص
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500 dark:text-gray-400">
               من
             </span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500">
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-slate-500 dark:text-gray-400">
               إلى
             </span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <button
@@ -185,7 +185,7 @@ export default function ReportsPage() {
           </button>
           <Link
             href="/dashboard/reports/supplier-statement"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             كشف حساب مورد
           </Link>
@@ -193,7 +193,7 @@ export default function ReportsPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
@@ -228,10 +228,10 @@ export default function ReportsPage() {
       <div>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div className="text-right">
-            <h2 className="text-sm font-semibold text-slate-800">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
               تقييم المخزون
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-gray-400">
               تكلفة الأصول مقابل قيمة البيع المتوقعة
             </p>
           </div>
@@ -249,16 +249,16 @@ export default function ReportsPage() {
             loading={isLoading}
             tone="neutral"
           />
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm">
-            <p className="text-xs font-semibold tracking-wide text-slate-500">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-gray-400">
               هامش الربح المتوقع
             </p>
             <p
               className={clsx(
                 "mt-2 text-2xl font-bold tabular-nums",
                 (inventory?.potentialGrossMargin ?? 0) < 0
-                  ? "text-red-700"
-                  : "text-emerald-700",
+                  ? "text-red-700 dark:text-red-300"
+                  : "text-emerald-700 dark:text-emerald-300",
               )}
             >
               {isLoading
@@ -266,7 +266,7 @@ export default function ReportsPage() {
                 : formatEGP(inventory?.potentialGrossMargin ?? 0)}
             </p>
             {!isLoading && inventory && (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
                 {inventory.marginPercent}% من قيمة البيع
               </p>
             )}
@@ -275,23 +275,23 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-800">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
               مؤشر الإيرادات اليومية
             </h2>
             <Link
               href="/dashboard/shifts"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               سجل الورديات
             </Link>
           </div>
           <div className="mt-4 h-72">
             {isLoading ? (
-              <p className="text-sm text-slate-400">جاري التحميل…</p>
+              <p className="text-sm text-slate-400 dark:text-gray-500">جاري التحميل…</p>
             ) : chartDaily.length === 0 ? (
-              <p className="text-sm text-slate-400">لا مبيعات في هذه الفترة</p>
+              <p className="text-sm text-slate-400 dark:text-gray-500">لا مبيعات في هذه الفترة</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartDaily}>
@@ -317,15 +317,15 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
             أفضل 10 منتجات مبيعاً
           </h2>
           <div className="mt-4 h-72">
             {isLoading ? (
-              <p className="text-sm text-slate-400">جاري التحميل…</p>
+              <p className="text-sm text-slate-400 dark:text-gray-500">جاري التحميل…</p>
             ) : chartSellers.length === 0 ? (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 dark:text-gray-500">
                 لا مبيعات منتجات في هذه الفترة
               </p>
             ) : (
@@ -356,18 +356,18 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3 text-right">
-          <h2 className="text-sm font-semibold text-slate-800">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-slate-200 px-4 py-3 text-right dark:border-gray-800">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
             تنبيهات نواقص المخزون
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-gray-400">
             منتجات بمخزون ≤ 5 — اطلب من الموردين لإعادة التوريد
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">المنتج</th>
                 <th className="px-4 py-3">كود الصنف</th>
@@ -375,12 +375,12 @@ export default function ReportsPage() {
                 <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     Loading…
                   </td>
@@ -389,26 +389,26 @@ export default function ReportsPage() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     No low-stock products — inventory looks healthy.
                   </td>
                 </tr>
               ) : (
                 lowStock.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                       {p.name}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-gray-300">
                       {p.sku || p.barcode || "—"}
                     </td>
                     <td
                       className={clsx(
                         "px-4 py-3 text-right font-semibold tabular-nums",
                         p.stockQuantity <= 0
-                          ? "text-red-700"
-                          : "text-amber-700",
+                          ? "text-red-700 dark:text-red-300"
+                          : "text-amber-700 dark:text-amber-300",
                       )}
                     >
                       {p.stockQuantity}
@@ -447,16 +447,16 @@ function KpiCard({
   const amount = value ?? 0;
   const color =
     tone === "expense"
-      ? "text-red-700"
+      ? "text-red-700 dark:text-red-300"
       : tone === "auto"
         ? amount < 0
-          ? "text-red-700"
-          : "text-emerald-700"
-        : "text-slate-900";
+          ? "text-red-700 dark:text-red-300"
+          : "text-emerald-700 dark:text-emerald-300"
+        : "text-slate-900 dark:text-gray-100";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm">
-      <p className="text-xs font-semibold tracking-wide text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 text-right shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-gray-400">
         {label}
       </p>
       <p className={clsx("mt-2 text-2xl font-bold tabular-nums", color)}>

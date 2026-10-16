@@ -91,17 +91,17 @@ export function BarcodeScannerModal({
           onClose();
         }}
       />
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Camera className="h-4 w-4 text-brand-600" />
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
               مسح الباركود
             </h2>
           </div>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             onClick={() => {
               void stopScanner();
               onClose();
@@ -118,7 +118,7 @@ export function BarcodeScannerModal({
           {error ? (
             <p className="text-sm text-red-600">{error}</p>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-gray-400">
               وجّه الكاميرا الخلفية نحو الباركود. يتوقف المسح تلقائياً عند القراءة.
             </p>
           )}

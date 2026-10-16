@@ -203,19 +203,19 @@ export default function UsersPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             المستخدمين والصلاحيات
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
             إنشاء حسابات الموظفين وتعيين الأدوار وأرقام PIN لنقطة البيع.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/dashboard/users/logs"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-slate-400 hover:bg-slate-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
           >
-            <ScrollText className="h-4 w-4 text-slate-500" />
+            <ScrollText className="h-4 w-4 text-slate-500 dark:text-gray-400" />
             سجل الحركات
           </Link>
           <button
@@ -233,14 +233,14 @@ export default function UsersPage() {
       </div>
 
       {error && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-gray-800">
+          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3">Username</th>
               <th className="px-4 py-3">Role</th>
@@ -250,16 +250,16 @@ export default function UsersPage() {
               <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   Loading…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   No users yet
                 </td>
               </tr>
@@ -268,36 +268,36 @@ export default function UsersPage() {
                 const isSelf = u.id === currentUserId;
                 const isActive = u.status === "ACTIVE";
                 return (
-                  <tr key={u.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                       {u.username}
                       {isSelf && (
-                        <span className="ml-2 text-xs font-normal text-slate-400">
+                        <span className="ml-2 text-xs font-normal text-slate-400 dark:text-gray-500">
                           (you)
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-gray-800 dark:text-gray-200">
                         <Shield className="h-3.5 w-3.5" />
                         {ROLE_LABELS[u.role] ?? u.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-slate-600 dark:text-gray-300">
                       {u.hasPin ? "Set" : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={
                           isActive
-                            ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
-                            : "rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                            ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : "rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300"
                         }
                       >
                         {isActive ? "Active" : "Suspended"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
@@ -325,7 +325,7 @@ export default function UsersPage() {
                         >
                           <span
                             className={clsx(
-                              "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                              "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-gray-900",
                               isActive && "translate-x-5",
                             )}
                           />
@@ -339,7 +339,7 @@ export default function UsersPage() {
                               ? "You cannot delete your own account"
                               : "Delete user"
                           }
-                          className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                          className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:text-gray-500 dark:hover:bg-red-950/40"
                           aria-label="Delete user"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -356,13 +356,13 @@ export default function UsersPage() {
 
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">New User</h2>
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">New User</h2>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -373,18 +373,18 @@ export default function UsersPage() {
               className="space-y-4 px-5 py-5"
             >
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Username
                 </span>
                 <input
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Password
                 </span>
                 <input
@@ -393,17 +393,17 @@ export default function UsersPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={4}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Role
                 </span>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 >
                   {ALL_ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -413,7 +413,7 @@ export default function UsersPage() {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   POS PIN (4 digits, optional)
                 </span>
                 <input
@@ -423,12 +423,12 @@ export default function UsersPage() {
                     setPinCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
                   }
                   placeholder="Required for Manager/Admin overrides"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
 
               {formError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {formError}
                 </p>
               )}
@@ -437,7 +437,7 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setCreateOpen(false)}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   إلغاء
                 </button>
@@ -456,14 +456,14 @@ export default function UsersPage() {
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="border-b border-slate-200 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                 حذف المستخدم؟
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
                 سيتم حذف{" "}
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 dark:text-gray-200">
                   {deleteTarget.username}
                 </span>{" "}
                 نهائياً. إذا كان لديه مبيعات أو ورديات أو سجلات، سيتم منع الحذف —
@@ -475,7 +475,7 @@ export default function UsersPage() {
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setDeleteTarget(null)}
-                className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 إلغاء
               </button>

@@ -99,7 +99,7 @@ function SupplierSelectFields({
           required
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
         >
           <option value="">
             {loaded && suppliers.length === 0 ? "لا يوجد موردون" : "اختر المورد…"}
@@ -115,7 +115,7 @@ function SupplierSelectFields({
           title="إضافة مورد"
           aria-label="إضافة مورد"
           onClick={() => setCreating(true)}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-700 dark:text-gray-300 dark:hover:text-brand-400"
         >
           <Plus size={18} />
         </button>
@@ -210,27 +210,27 @@ function SupplierCreateDialog({
         aria-modal="true"
         aria-labelledby="supplier-create-title"
         dir="rtl"
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900"
       >
         <h2
           id="supplier-create-title"
-          className="text-base font-semibold text-slate-900"
+          className="text-base font-semibold text-slate-900 dark:text-gray-100"
         >
           إضافة مورد جديد
         </h2>
         <label className="mt-4 block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">اسم المورد</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-gray-200">اسم المورد</span>
           <input
             ref={nameRef}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={saving}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
           />
         </label>
         <label className="mt-3 block space-y-1.5">
-          <span className="text-sm font-medium text-slate-700">
+          <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
             رقم الهاتف (اختياري)
           </span>
           <input
@@ -239,7 +239,7 @@ function SupplierCreateDialog({
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={saving}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
           />
         </label>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -248,7 +248,7 @@ function SupplierCreateDialog({
             type="button"
             onClick={cancel}
             disabled={saving}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             إلغاء
           </button>

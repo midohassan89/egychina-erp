@@ -39,8 +39,8 @@ export default async function ReturnsPage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">المرتجعات</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">المرتجعات</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
           طلبات الإرجاع من المتجر، الأحدث أولاً
         </p>
       </div>

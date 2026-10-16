@@ -47,7 +47,7 @@ export function PaymentSourceSelect({
 
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
         الخزينة / مصدر الدفع
       </span>
       <select
@@ -55,7 +55,7 @@ export function PaymentSourceSelect({
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50 dark:border-gray-800 dark:bg-gray-900"
       >
         <option value="TREASURY">الخزينة (نقدي)</option>
         {banks.map((b) => (

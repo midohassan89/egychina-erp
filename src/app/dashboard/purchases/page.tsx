@@ -50,10 +50,10 @@ function statusLabel(status: string) {
 function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "PAID"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300"
       : status === "PARTIAL"
-        ? "bg-amber-50 text-amber-900 ring-amber-200"
-        : "bg-red-50 text-red-800 ring-red-200";
+        ? "bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/40"
+        : "bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-300";
 
   return (
     <span
@@ -210,15 +210,15 @@ export default function PurchasesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-slate-900">المشتريات</h1>
-          <p className="mt-1 text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">المشتريات</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             سجل فواتير المشتريات وحالة الدفع والاستلام
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/dashboard/purchases/returns"
-            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40"
           >
             مرتجعات المشتريات
           </Link>
@@ -233,15 +233,15 @@ export default function PurchasesPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">رقم الفاتورة</th>
                 <th className="px-4 py-3">التاريخ</th>
@@ -252,12 +252,12 @@ export default function PurchasesPage() {
                 <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     Loading…
                   </td>
@@ -266,7 +266,7 @@ export default function PurchasesPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     No purchase invoices yet.
                   </td>
@@ -277,20 +277,20 @@ export default function PurchasesPage() {
                     isAdmin &&
                     (inv.status === "UNPAID" || inv.status === "PARTIAL");
                   return (
-                    <tr key={inv.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 font-medium tabular-nums text-slate-900">
+                    <tr key={inv.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                      <td className="px-4 py-3 font-medium tabular-nums text-slate-900 dark:text-gray-100">
                         {inv.invoiceNumber || `PI-${inv.id}`}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                         {new Date(inv.date).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                         {inv.supplierName}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                         {formatEGP(inv.totalAmount)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-gray-200">
                         {formatEGP(inv.paidAmount)}
                       </td>
                       <td className="px-4 py-3">
@@ -302,7 +302,7 @@ export default function PurchasesPage() {
                             <button
                               type="button"
                               onClick={() => openSettle(inv)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 dark:bg-amber-950/40"
                               title="تسوية يدوية"
                             >
                               <Wallet className="h-3.5 w-3.5" />
@@ -322,7 +322,7 @@ export default function PurchasesPage() {
                           <button
                             type="button"
                             onClick={() => void openDetails(inv.id)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                           >
                             <Eye className="h-3.5 w-3.5" />
                             عرض التفاصيل
@@ -340,13 +340,13 @@ export default function PurchasesPage() {
 
       {settleInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                   تسوية يدوية · Settle Invoice
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-gray-400">
                   {settleInvoice.invoiceNumber || `PI-${settleInvoice.id}`} ·{" "}
                   {settleInvoice.supplierName}
                 </p>
@@ -355,7 +355,7 @@ export default function PurchasesPage() {
                 type="button"
                 onClick={closeSettle}
                 disabled={settleSubmitting}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -366,20 +366,20 @@ export default function PurchasesPage() {
               className="space-y-4 px-5 py-5"
             >
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="text-xs text-slate-500">Invoice Total</p>
-                  <p className="font-semibold tabular-nums text-slate-900">
+                <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                  <p className="text-xs text-slate-500 dark:text-gray-400">Invoice Total</p>
+                  <p className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                     {formatEGP(settleInvoice.totalAmount)}
                   </p>
                 </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
-                  <p className="text-xs text-slate-500">Paid</p>
-                  <p className="font-semibold tabular-nums text-slate-900">
+                <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                  <p className="text-xs text-slate-500 dark:text-gray-400">Paid</p>
+                  <p className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                     {formatEGP(settleInvoice.paidAmount)}
                   </p>
                 </div>
-                <div className="rounded-xl bg-amber-50 px-3 py-2">
-                  <p className="text-xs text-amber-800">Remaining</p>
+                <div className="rounded-xl bg-amber-50 px-3 py-2 dark:bg-amber-950/40">
+                  <p className="text-xs text-amber-800 dark:text-amber-300">Remaining</p>
                   <p className="font-semibold tabular-nums text-amber-950">
                     {formatEGP(settleRemaining)}
                   </p>
@@ -387,7 +387,7 @@ export default function PurchasesPage() {
               </div>
 
               <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
                   المبلغ المسدد · Amount to allocate
                 </span>
                 <input
@@ -398,16 +398,16 @@ export default function PurchasesPage() {
                   required
                   value={settleAmount}
                   onChange={(e) => setSettleAmount(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
 
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-3 dark:border-amber-800">
                 <input
                   type="checkbox"
                   checked={statusOnly}
                   onChange={(e) => setStatusOnly(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-gray-700"
                 />
                 <span className="text-sm text-amber-950">
                   <span className="font-semibold">
@@ -421,14 +421,14 @@ export default function PurchasesPage() {
               </label>
 
               {!statusOnly && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   Unchecked: this will debit the Cash Safe (Treasury) and reduce
                   the supplier A/P balance by the allocated amount.
                 </p>
               )}
 
               {settleError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {settleError}
                 </p>
               )}
@@ -438,7 +438,7 @@ export default function PurchasesPage() {
                   type="button"
                   onClick={closeSettle}
                   disabled={settleSubmitting}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   Cancel
                 </button>
@@ -457,14 +457,14 @@ export default function PurchasesPage() {
 
       {(detailLoading || detail || detailError) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="flex max-h-[min(92dvh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex max-h-[min(92dvh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                   تفاصيل الفاتورة
                 </h2>
                 {detail && (
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-gray-400">
                     {detail.invoiceNumber || `PI-${detail.id}`} ·{" "}
                     {detail.supplierName}
                   </p>
@@ -477,7 +477,7 @@ export default function PurchasesPage() {
                   setDetailError(null);
                   setDetailLoading(false);
                 }}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -485,36 +485,36 @@ export default function PurchasesPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
               {detailLoading && (
-                <p className="py-8 text-center text-slate-400">Loading…</p>
+                <p className="py-8 text-center text-slate-400 dark:text-gray-500">Loading…</p>
               )}
               {detailError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {detailError}
                 </p>
               )}
               {detail && (
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">التاريخ</p>
-                      <p className="font-medium text-slate-900">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                      <p className="text-xs text-slate-500 dark:text-gray-400">التاريخ</p>
+                      <p className="font-medium text-slate-900 dark:text-gray-100">
                         {new Date(detail.date).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">الإجمالي</p>
-                      <p className="font-semibold tabular-nums text-slate-900">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                      <p className="text-xs text-slate-500 dark:text-gray-400">الإجمالي</p>
+                      <p className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                         {formatEGP(detail.totalAmount)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">المدفوع</p>
-                      <p className="font-semibold tabular-nums text-slate-900">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                      <p className="text-xs text-slate-500 dark:text-gray-400">المدفوع</p>
+                      <p className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                         {formatEGP(detail.paidAmount)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-xs text-slate-500">الحالة</p>
+                    <div className="rounded-xl bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+                      <p className="text-xs text-slate-500 dark:text-gray-400">الحالة</p>
                       <div className="mt-0.5">
                         <StatusBadge status={detail.status} />
                       </div>
@@ -522,7 +522,7 @@ export default function PurchasesPage() {
                   </div>
 
                   <table className="min-w-full text-left text-sm">
-                    <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:text-gray-400">
                       <tr>
                         <th className="py-2 pr-3">Product</th>
                         <th className="py-2 px-2 text-center">Qty</th>
@@ -530,14 +530,14 @@ export default function PurchasesPage() {
                         <th className="py-2 pl-2 text-right">Line total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                       {detail.items.map((item) => (
                         <tr key={item.id}>
                           <td className="py-2.5 pr-3">
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-slate-900 dark:text-gray-100">
                               {item.productName}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-slate-500 dark:text-gray-400">
                               {item.barcode || item.sku || "—"}
                             </p>
                           </td>

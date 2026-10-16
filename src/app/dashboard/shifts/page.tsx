@@ -105,30 +105,30 @@ export default function ShiftsHistoryPage() {
         <div className="text-right">
           <Link
             href="/dashboard/reports"
-            className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
+            className="mb-2 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
             التقارير
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             سجل الورديات
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             تقفيل الكاشير وتقارير Z
           </p>
         </div>
       </div>
 
       {error && (
-        <p className="dashboard-no-print rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="dashboard-no-print rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="dashboard-no-print overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="dashboard-no-print overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">رقم الوردية</th>
                 <th className="px-4 py-3">الكاشير</th>
@@ -139,12 +139,12 @@ export default function ShiftsHistoryPage() {
                 <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     Loading…
                   </td>
@@ -153,27 +153,27 @@ export default function ShiftsHistoryPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     No shifts recorded yet.
                   </td>
                 </tr>
               ) : (
                 shifts.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono text-xs font-semibold tabular-nums text-slate-900">
+                  <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-mono text-xs font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                       #{s.id}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-800">
+                    <td className="px-4 py-3 font-medium text-slate-800 dark:text-gray-200">
                       {s.cashierName}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                       {formatDateTime(s.startedAt)}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                       {formatDateTime(s.endedAt)}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                       {formatEGP(s.totalSales)}
                     </td>
                     <td className="px-4 py-3">
@@ -181,8 +181,8 @@ export default function ShiftsHistoryPage() {
                         className={clsx(
                           "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset",
                           s.status === "CLOSED"
-                            ? "bg-slate-100 text-slate-700 ring-slate-200"
-                            : "bg-emerald-50 text-emerald-800 ring-emerald-200",
+                            ? "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700"
+                            : "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
                         )}
                       >
                         {s.status === "CLOSED" ? "مغلق" : s.status === "OPEN" ? "مفتوح" : s.status}
@@ -208,20 +208,20 @@ export default function ShiftsHistoryPage() {
 
       {selected && report && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 dashboard-no-print">
-          <div className="flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                   Z-Report · Shift #{selected.id}
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-gray-400">
                   {selected.cashierName} · {formatDateTime(selected.startedAt)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -239,7 +239,7 @@ export default function ShiftsHistoryPage() {
                   <Meta label="عدد الفواتير" value={String(report.ticketCount)} />
                 </div>
 
-                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 dark:border-gray-800 dark:divide-gray-800">
                   <Row label="Starting cash" value={formatEGP(report.startingCash)} />
                   <Row label="Cash sales" value={formatEGP(report.cashSales)} />
                   <Row label="Visa" value={formatEGP(report.visaSales)} />
@@ -285,11 +285,11 @@ export default function ShiftsHistoryPage() {
               </div>
             </div>
 
-            <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-4">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-4 dark:border-gray-800">
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 Close
               </button>
@@ -311,11 +311,11 @@ export default function ShiftsHistoryPage() {
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-3 py-2">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+    <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-gray-800/60">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-gray-400">
         {label}
       </p>
-      <p className="mt-0.5 font-medium text-slate-900">{value}</p>
+      <p className="mt-0.5 font-medium text-slate-900 dark:text-gray-100">{value}</p>
     </div>
   );
 }
@@ -333,16 +333,16 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-      <span className={clsx("text-slate-600", strong && "font-semibold text-slate-800")}>
+      <span className={clsx("text-slate-600 dark:text-gray-300", strong && "font-semibold text-slate-800 dark:text-gray-200")}>
         {label}
       </span>
       <span
         className={clsx(
           "tabular-nums",
           strong && "font-bold",
-          tone === "bad" && "font-semibold text-red-700",
-          tone === "good" && "font-semibold text-emerald-700",
-          tone === "neutral" && "text-slate-900",
+          tone === "bad" && "font-semibold text-red-700 dark:text-red-300",
+          tone === "good" && "font-semibold text-emerald-700 dark:text-emerald-300",
+          tone === "neutral" && "text-slate-900 dark:text-gray-100",
         )}
       >
         {value}

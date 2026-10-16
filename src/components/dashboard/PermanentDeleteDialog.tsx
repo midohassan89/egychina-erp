@@ -29,8 +29,8 @@ export function PermanentDeleteDialog({
         onClick={onClose}
         disabled={isDeleting}
       />
-      <div className="relative z-10 w-full max-w-md rounded-xl border border-red-200 bg-white shadow-xl">
-        <div className="border-b border-red-100 bg-red-50 px-5 py-4">
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-red-200 bg-white shadow-xl dark:border-red-800 dark:bg-gray-900">
+        <div className="border-b border-red-100 bg-red-50 px-5 py-4 dark:border-red-900 dark:bg-red-950/40">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
             <div>
@@ -51,7 +51,7 @@ export function PermanentDeleteDialog({
             type="button"
             disabled={isDeleting}
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             إلغاء
           </button>

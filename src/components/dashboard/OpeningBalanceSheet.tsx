@@ -448,15 +448,15 @@ function OpeningBalanceSheet({
         <div>
           <Link
             href="/dashboard/inventory"
-            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800"
+            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
             المخزون
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             {mode === "edit" ? `أرصدة أول المدة #${documentId}` : "أرصدة أول المدة"}
           </h1>
-          <p className="mt-1 text-slate-500">
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             {mode === "edit"
               ? "أرصدة أول المدة — يتغير المخزون بفرق الكميات المحفوظة"
               : "أرصدة أول المدة — يضيف هذه القطع للمخزون الحالي ويضبط تكلفة القطعة"}
@@ -465,7 +465,7 @@ function OpeningBalanceSheet({
       </div>
 
       {!ready ? (
-        <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-400">
+        <p className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500">
           جاري تحميل أرصدة أول المدة…
         </p>
       ) : (
@@ -474,11 +474,11 @@ function OpeningBalanceSheet({
           e.preventDefault();
           void save();
         }}
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               هامش تقديري % للتكاليف الناقصة
             </span>
             <input
@@ -487,47 +487,47 @@ function OpeningBalanceSheet({
               step="0.01"
               value={marginPercent}
               onChange={(e) => setMarginPercent(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">التاريخ</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">التاريخ</span>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">ملاحظات</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">ملاحظات</span>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="اختياري"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
         </div>
 
         <div className="relative mt-5">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
           <input
             id="opening-product-search"
             value={productQuery}
             onChange={(e) => setProductQuery(e.target.value)}
             onKeyDown={(e) => void handleSearchKeyDown(e)}
             placeholder="امسح الباركود أو ابحث بالاسم / كود الصنف — اضغط Enter للإضافة"
-            className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             autoComplete="off"
           />
           {productQuery.trim().length > 0 &&
             (searching || lookupQuery === productQuery.trim()) && (
-              <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
                 {searching && productHits.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-400">جاري البحث…</li>
+                  <li className="px-3 py-2 text-sm text-slate-400 dark:text-gray-500">جاري البحث…</li>
                 ) : productHits.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-500">
+                  <li className="px-3 py-2 text-sm text-slate-500 dark:text-gray-400">
                     لا توجد منتجات مطابقة لـ «{productQuery.trim()}»
                   </li>
                 ) : (
@@ -539,10 +539,10 @@ function OpeningBalanceSheet({
                         className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-brand-50"
                       >
                         <span>
-                          <span className="block text-sm font-medium text-slate-900">
+                          <span className="block text-sm font-medium text-slate-900 dark:text-gray-100">
                             {product.name}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-gray-400">
                             {product.barcode || product.sku || `WC #${product.wcId}`} · المخزون{" "}
                             {product.stockQuantity}
                           </span>
@@ -558,19 +558,19 @@ function OpeningBalanceSheet({
 
         <div className="mt-4 max-h-[65vh] overflow-auto rounded-lg">
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
+            <thead className="text-xs font-semibold uppercase tracking-wide text-slate-500 [&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)] dark:text-gray-400">
               <tr>
                 <th className="py-2 pr-3">المنتج</th>
                 <th className="w-28 py-2 px-2">كمية الكراتين</th>
                 <th className="w-28 py-2 px-2">
-                  <span className="inline-flex items-center gap-1 text-slate-600">
+                  <span className="inline-flex items-center gap-1 text-slate-600 dark:text-gray-300">
                     <Boxes className="h-3.5 w-3.5" />
                     حجم الكرتونة
                   </span>
                 </th>
-                <th className="w-28 py-2 px-2 text-violet-700">كمية الفرط</th>
+                <th className="w-28 py-2 px-2 text-violet-700 dark:text-violet-200">كمية الفرط</th>
                 <th className="w-36 py-2 px-2">
-                  <span className="inline-flex items-center gap-1 text-slate-500">
+                  <span className="inline-flex items-center gap-1 text-slate-500 dark:text-gray-400">
                     <Wallet className="h-3.5 w-3.5" />
                     تكلفة القطعة
                   </span>
@@ -582,7 +582,7 @@ function OpeningBalanceSheet({
             <tbody className="[&_td]:border-b [&_td]:border-slate-100">
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400 dark:text-gray-500">
                     امسح أو ابحث واضغط Enter لإضافة المنتجات
                   </td>
                 </tr>
@@ -592,8 +592,8 @@ function OpeningBalanceSheet({
                   return (
                     <tr key={line.key}>
                       <td className="py-3 pr-3">
-                        <p className="font-medium text-slate-900">{line.productName}</p>
-                        <p className="text-xs text-slate-500">{stock} قطعة للمخزون</p>
+                        <p className="font-medium text-slate-900 dark:text-gray-100">{line.productName}</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">{stock} قطعة للمخزون</p>
                       </td>
                       <td className="px-2 py-3">
                         <input
@@ -613,7 +613,7 @@ function OpeningBalanceSheet({
                             }
                           }}
                           aria-label="Pack quantity"
-                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500"
+                          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 tabular-nums outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                         />
                       </td>
                       <td className="px-2 py-3">
@@ -630,7 +630,7 @@ function OpeningBalanceSheet({
                             focusById(`loose-qty-${line.key}`);
                           }}
                           aria-label="Pack size"
-                          className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 tabular-nums outline-none focus:border-slate-500"
+                          className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 tabular-nums outline-none focus:border-slate-500 dark:border-gray-700 dark:bg-gray-800/60"
                         />
                       </td>
                       <td className="px-2 py-3">
@@ -647,12 +647,12 @@ function OpeningBalanceSheet({
                             focusById("opening-product-search");
                           }}
                           aria-label="Loose quantity"
-                          className="w-full rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 tabular-nums text-violet-950 outline-none focus:border-violet-500"
+                          className="w-full rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 tabular-nums text-violet-950 outline-none focus:border-violet-500 dark:bg-violet-950/40"
                         />
                       </td>
                       <td className="px-2 py-3">
                         <div className="relative">
-                          <Wallet className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                          <Wallet className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
                           <input
                             id={`opening-piece-cost-${line.key}`}
                             type="number"
@@ -666,11 +666,11 @@ function OpeningBalanceSheet({
                               focusById("opening-product-search");
                             }}
                             aria-label="Piece cost"
-                            className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-100 py-1.5 pl-7 pr-2 tabular-nums text-slate-700 outline-none focus:border-slate-400 focus:bg-slate-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
                           />
                         </div>
                       </td>
-                      <td className="px-2 py-3 font-semibold tabular-nums text-slate-900">
+                      <td className="px-2 py-3 font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                         {formatEGP(totalValueOf(line))}
                       </td>
                       <td className="py-3 text-right">
@@ -679,7 +679,7 @@ function OpeningBalanceSheet({
                           onClick={() =>
                             setLines((prev) => prev.filter((row) => row.key !== line.key))
                           }
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-950/40"
                           aria-label="Remove line"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -694,13 +694,13 @@ function OpeningBalanceSheet({
         </div>
 
         {error && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
         )}
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-slate-600 dark:text-gray-300">
             إجمالي الورقة{" "}
-            <span className="font-semibold text-slate-900">{formatEGP(sheetTotal)}</span>
+            <span className="font-semibold text-slate-900 dark:text-gray-100">{formatEGP(sheetTotal)}</span>
           </p>
           <button
             type="submit"

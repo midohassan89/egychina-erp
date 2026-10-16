@@ -45,23 +45,23 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">My Profile</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">My Profile</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
           Change your password without needing an admin.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <dl className="mb-6 space-y-2 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Username</dt>
-            <dd className="font-medium text-slate-900">
+            <dt className="text-slate-500 dark:text-gray-400">Username</dt>
+            <dd className="font-medium text-slate-900 dark:text-gray-100">
               {session?.user?.name ?? "—"}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">Role</dt>
-            <dd className="font-medium text-slate-900">
+            <dt className="text-slate-500 dark:text-gray-400">Role</dt>
+            <dd className="font-medium text-slate-900 dark:text-gray-100">
               {session?.user?.role ?? "—"}
             </dd>
           </div>
@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               Current password
             </span>
             <input
@@ -78,11 +78,11 @@ export default function ProfilePage() {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               New password
             </span>
             <input
@@ -92,11 +92,11 @@ export default function ProfilePage() {
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               Confirm new password
             </span>
             <input
@@ -106,17 +106,17 @@ export default function ProfilePage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
               {error}
             </p>
           )}
           {success && (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
               {success}
             </p>
           )}

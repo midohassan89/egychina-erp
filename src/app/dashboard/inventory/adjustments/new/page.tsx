@@ -182,32 +182,32 @@ export default function NewInventoryAdjustmentPage() {
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/dashboard/inventory/adjustments"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
             تسوية جديدة · New Adjustment
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
             Negative qty removes stock (wastage). Stock syncs to WooCommerce.
           </p>
         </div>
       </div>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
-        <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3">
+        <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3 dark:border-gray-800 dark:bg-gray-900">
           <label className="block md:col-span-1">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               Adjustment type
             </span>
             <select
               required
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             >
               {ADJUSTMENT_TYPES.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -217,7 +217,7 @@ export default function NewInventoryAdjustmentPage() {
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               Date
             </span>
             <input
@@ -225,28 +225,28 @@ export default function NewInventoryAdjustmentPage() {
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
           <label className="block md:col-span-1">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
               Notes
             </span>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               placeholder="Optional"
             />
           </label>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
             Add products (name or barcode)
           </h2>
           <div className="relative mt-3">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
             <input
               value={productQuery}
               onChange={(e) => setProductQuery(e.target.value)}
@@ -257,12 +257,12 @@ export default function NewInventoryAdjustmentPage() {
                 }
               }}
               placeholder="Scan barcode or search by name…"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
             {(searching || productHits.length > 0) && productQuery.trim() && (
-              <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
                 {searching && (
-                  <li className="px-3 py-2 text-sm text-slate-400">
+                  <li className="px-3 py-2 text-sm text-slate-400 dark:text-gray-500">
                     Searching…
                   </li>
                 )}
@@ -275,21 +275,21 @@ export default function NewInventoryAdjustmentPage() {
                         className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-brand-50"
                       >
                         <span>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-slate-900 dark:text-gray-100">
                             {p.name}
                           </span>
-                          <span className="mt-0.5 block text-xs text-slate-500">
+                          <span className="mt-0.5 block text-xs text-slate-500 dark:text-gray-400">
                             {p.barcode || p.sku || `WC #${p.wcId}`}
                           </span>
                         </span>
-                        <span className="shrink-0 tabular-nums text-slate-600">
+                        <span className="shrink-0 tabular-nums text-slate-600 dark:text-gray-300">
                           stock {p.stockQuantity}
                         </span>
                       </button>
                     </li>
                   ))}
                 {!searching && productHits.length === 0 && (
-                  <li className="px-3 py-2 text-sm text-slate-400">
+                  <li className="px-3 py-2 text-sm text-slate-400 dark:text-gray-500">
                     No products found
                   </li>
                 )}
@@ -299,7 +299,7 @@ export default function NewInventoryAdjustmentPage() {
 
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:text-gray-400">
                 <tr>
                   <th className="py-2 pr-3">Product</th>
                   <th className="py-2 pr-3 text-right">On hand</th>
@@ -309,12 +309,12 @@ export default function NewInventoryAdjustmentPage() {
                   <th className="py-2" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
                 {lines.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
-                      className="py-8 text-center text-slate-400"
+                      className="py-8 text-center text-slate-400 dark:text-gray-500"
                     >
                       Search and add products. Use negative qty to remove stock
                       (e.g. −5 damaged).
@@ -331,14 +331,14 @@ export default function NewInventoryAdjustmentPage() {
                     return (
                       <tr key={line.key}>
                         <td className="py-2.5 pr-3">
-                          <p className="font-medium text-slate-900">
+                          <p className="font-medium text-slate-900 dark:text-gray-100">
                             {line.productName}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-slate-500 dark:text-gray-400">
                             {line.barcode || "—"}
                           </p>
                         </td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums text-slate-600">
+                        <td className="py-2.5 pr-3 text-right tabular-nums text-slate-600 dark:text-gray-300">
                           {line.currentStock}
                         </td>
                         <td className="py-2.5 pr-3 text-right">
@@ -359,7 +359,7 @@ export default function NewInventoryAdjustmentPage() {
                                 ),
                               )
                             }
-                            className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums outline-none focus:border-brand-500"
+                            className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-right font-semibold tabular-nums outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                           />
                         </td>
                         <td className="py-2.5 pr-3 text-right">
@@ -378,7 +378,7 @@ export default function NewInventoryAdjustmentPage() {
                                 ),
                               )
                             }
-                            className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-right tabular-nums outline-none focus:border-brand-500"
+                            className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-right tabular-nums outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                           />
                         </td>
                         <td
@@ -400,7 +400,7 @@ export default function NewInventoryAdjustmentPage() {
                                 prev.filter((l) => l.key !== line.key),
                               )
                             }
-                            className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-950/40"
                             aria-label="Remove line"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -415,9 +415,9 @@ export default function NewInventoryAdjustmentPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-900 px-5 py-4 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-900 px-5 py-4 text-white dark:border-gray-800">
           <div>
-            <p className="text-sm text-slate-400">Total financial impact</p>
+            <p className="text-sm text-slate-400 dark:text-gray-500">Total financial impact</p>
             <p
               className={`text-2xl font-bold tabular-nums ${
                 totalImpact < 0
@@ -429,7 +429,7 @@ export default function NewInventoryAdjustmentPage() {
             >
               {formatEGP(totalImpact)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
               qty change × unit cost (negative = inventory loss value)
             </p>
           </div>
@@ -451,7 +451,7 @@ export default function NewInventoryAdjustmentPage() {
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         )}

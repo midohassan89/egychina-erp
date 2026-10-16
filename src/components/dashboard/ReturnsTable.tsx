@@ -102,16 +102,16 @@ function ReturnsTableInner({ returns }: { returns: ReturnRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+      <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
         لا توجد طلبات إرجاع بعد
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <table className="min-w-full text-right text-sm">
-        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
           <tr>
             <th className="px-4 py-3">التاريخ</th>
             <th className="px-4 py-3">رقم الطلب</th>
@@ -120,19 +120,19 @@ function ReturnsTableInner({ returns }: { returns: ReturnRow[] }) {
             <th className="px-4 py-3">الحالة</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
           {rows.map((row) => (
             <tr key={row.id} className="align-top">
-              <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+              <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-gray-300">
                 {formatReturnDate(row.createdAt)}
               </td>
-              <td className="px-4 py-3 font-mono text-xs text-slate-800" dir="ltr">
+              <td className="px-4 py-3 font-mono text-xs text-slate-800 dark:text-gray-200" dir="ltr">
                 {row.orderId}
               </td>
-              <td className="px-4 py-3 font-medium text-slate-900">
+              <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                 {row.customerName}
               </td>
-              <td className="px-4 py-3 text-slate-700">
+              <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                 <ul className="space-y-1">
                   {row.items.map((item) => (
                     <li key={item.id}>
@@ -149,7 +149,7 @@ function ReturnsTableInner({ returns }: { returns: ReturnRow[] }) {
                     onChange={(event) => {
                       void updateStatus(row.id, event.target.value);
                     }}
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900"
                   >
                     {RETURN_STATUSES.map((status) => (
                       <option key={status} value={status}>
@@ -158,7 +158,7 @@ function ReturnsTableInner({ returns }: { returns: ReturnRow[] }) {
                     ))}
                   </select>
                   {savingId === row.id && (
-                    <span className="text-xs text-slate-500">جاري الحفظ…</span>
+                    <span className="text-xs text-slate-500 dark:text-gray-400">جاري الحفظ…</span>
                   )}
                 </div>
               </td>

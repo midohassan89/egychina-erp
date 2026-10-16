@@ -51,14 +51,14 @@ function NewProductForm() {
       <div className="flex items-center gap-3">
         <Link
           href="/dashboard/products"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <ArrowRight className="h-4 w-4" />
           رجوع
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">منتج جديد</h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">منتج جديد</h1>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-gray-400">
             يُحفظ في قاعدة بيانات النظام
           </p>
         </div>
@@ -69,7 +69,7 @@ function NewProductForm() {
         isLoading={submitting}
         cancelHref="/dashboard/products"
         submitLabel="إنشاء المنتج"
-        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-gray-800 dark:bg-gray-900"
       />
     </div>
   );

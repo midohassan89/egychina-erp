@@ -40,8 +40,8 @@ export default async function AutoTranslatePage() {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">أداة الترجمة الآلية</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">أداة الترجمة الآلية</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
           يترجم الاسم العربي إلى الإنجليزية والصينية ويحفظه على المنتج أو القسم.
         </p>
       </div>

@@ -184,8 +184,8 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">الموردين</h1>
-          <p className="mt-1 text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">الموردين</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             دليل الموردين ومتابعة المديونيات والمدفوعات
           </p>
         </div>
@@ -200,15 +200,15 @@ export default function SuppliersPage() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">الاسم</th>
                 <th className="px-4 py-3">الهاتف</th>
@@ -218,12 +218,12 @@ export default function SuppliersPage() {
                 <th className="px-4 py-3 text-right">الإجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     Loading…
                   </td>
@@ -232,32 +232,32 @@ export default function SuppliersPage() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     No suppliers yet. Create one to start purchase invoices.
                   </td>
                 </tr>
               ) : (
                 suppliers.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                       {s.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-slate-600 dark:text-gray-300">
                       {s.phone || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-gray-300">
                       {formatEGP(s.openingBalance ?? 0)}
                       {(s.unpaidOpeningBalance ?? 0) > 0.001 && (
-                        <span className="mt-0.5 block text-[10px] font-medium text-amber-700">
+                        <span className="mt-0.5 block text-[10px] font-medium text-amber-700 dark:text-amber-300">
                           unpaid {formatEGP(s.unpaidOpeningBalance ?? 0)}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                       {formatEGP(s.balance)}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-gray-400">
                       {new Date(s.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -265,7 +265,7 @@ export default function SuppliersPage() {
                         <button
                           type="button"
                           onClick={() => openEdit(s)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           تعديل
@@ -279,7 +279,7 @@ export default function SuppliersPage() {
                             setPaySupplier(s);
                             setPaySource("TREASURY");
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
                         >
                           <Banknote className="h-3.5 w-3.5" />
                           سداد دفعة
@@ -296,15 +296,15 @@ export default function SuppliersPage() {
 
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                 {editSupplier ? "تعديل مورد" : "مورد جديد"}
               </h2>
               <button
                 type="button"
                 onClick={closeForm}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -314,32 +314,32 @@ export default function SuppliersPage() {
               className="space-y-4 px-5 py-4"
             >
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Name
                 </span>
                 <input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Supplier name"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Phone
                 </span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Optional"
                 />
               </label>
 
               {isAdmin ? (
                 <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                  <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                     الرصيد الافتتاحي · Opening Balance
                   </span>
                   <input
@@ -348,16 +348,16 @@ export default function SuppliersPage() {
                     step="0.01"
                     value={openingBalance}
                     onChange={(e) => setOpeningBalance(e.target.value)}
-                    className="w-full rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5 text-sm font-semibold tabular-nums outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full rounded-xl border border-amber-200 bg-amber-50/40 px-3 py-2.5 text-sm font-semibold tabular-nums outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-amber-800"
                     placeholder="0.00"
                   />
-                  <span className="mt-1 block text-xs text-slate-500">
+                  <span className="mt-1 block text-xs text-slate-500 dark:text-gray-400">
                     Prior debt from the old system (مديونيات سابقة). Admin only.
                     Total owed = opening + purchases − payments.
                   </span>
                 </label>
               ) : editSupplier && editSupplier.openingBalance > 0 ? (
-                <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-gray-800/60 dark:text-gray-300">
                   Opening balance:{" "}
                   <strong className="tabular-nums">
                     {formatEGP(editSupplier.openingBalance)}
@@ -367,7 +367,7 @@ export default function SuppliersPage() {
               ) : null}
 
               {formError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {formError}
                 </p>
               )}
@@ -375,7 +375,7 @@ export default function SuppliersPage() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   إلغاء
                 </button>
@@ -398,13 +398,13 @@ export default function SuppliersPage() {
 
       {paySupplier && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                   سداد دفعة · Make Payment
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-gray-400">
                   {paySupplier.name} · balance {formatEGP(paySupplier.balance)}
                   {paySupplier.openingBalance > 0
                     ? ` · opening ${formatEGP(paySupplier.openingBalance)}`
@@ -414,7 +414,7 @@ export default function SuppliersPage() {
               <button
                 type="button"
                 onClick={() => setPaySupplier(null)}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -424,7 +424,7 @@ export default function SuppliersPage() {
               className="space-y-4 px-5 py-4"
             >
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Amount (EGP)
                 </span>
                 <input
@@ -434,19 +434,19 @@ export default function SuppliersPage() {
                   step="0.01"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="0.00"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Payment Source
                 </span>
                 <select
                   required
                   value={paySource}
                   onChange={(e) => setPaySource(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 >
                   <option value="TREASURY">Cash Safe (Treasury)</option>
                   {bankAccounts.map((b) => (
@@ -457,18 +457,18 @@ export default function SuppliersPage() {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   Notes (optional)
                 </span>
                 <input
                   value={payNotes}
                   onChange={(e) => setPayNotes(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="e.g. Cash to driver"
                 />
               </label>
               {payError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                   {payError}
                 </p>
               )}
@@ -476,7 +476,7 @@ export default function SuppliersPage() {
                 <button
                   type="button"
                   onClick={() => setPaySupplier(null)}
-                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   Cancel
                 </button>

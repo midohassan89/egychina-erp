@@ -54,7 +54,7 @@ export default function EditPurchaseInvoicePage({
 
   if (loading) {
     return (
-      <p className="py-12 text-center text-sm text-slate-500">
+      <p className="py-12 text-center text-sm text-slate-500 dark:text-gray-400">
         جاري تحميل الفاتورة…
       </p>
     );
@@ -62,7 +62,7 @@ export default function EditPurchaseInvoicePage({
 
   if (error || !invoice) {
     return (
-      <p className="py-12 text-center text-sm text-red-700">
+      <p className="py-12 text-center text-sm text-red-700 dark:text-red-300">
         {error ?? "تعذر تحميل الفاتورة"}
       </p>
     );

@@ -78,31 +78,31 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6" dir="rtl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">الإعدادات</h1>
-        <p className="mt-1 text-slate-500">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">الإعدادات</h1>
+        <p className="mt-1 text-slate-500 dark:text-gray-400">
           إعدادات المتجر المحفوظة في قاعدة البيانات
         </p>
       </div>
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+        className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
             نظام مكافآت النقاط
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
             هذه القيم تُستخدم عند طلبات المتجر بدلاً من الأرقام الثابتة.
           </p>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-slate-500">جاري التحميل…</p>
+          <p className="text-sm text-slate-500 dark:text-gray-400">جاري التحميل…</p>
         ) : (
           <>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 نقاط الكسب لكل 1 جنيه
               </span>
               <input
@@ -115,9 +115,9 @@ export default function SettingsPage() {
                   setEarnRatio(e.target.value);
                   setSaved(false);
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
-              <span className="mt-1 block text-xs text-slate-500">
+              <span className="mt-1 block text-xs text-slate-500 dark:text-gray-400">
                 points_earn_ratio — عدد النقاط التي يحصل عليها العميل عن كل 1
                 جنيه مدفوع من قيمة البضاعة.
                 {previewEarn != null
@@ -127,7 +127,7 @@ export default function SettingsPage() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 نقاط الاستبدال لكل 1 جنيه
               </span>
               <input
@@ -140,9 +140,9 @@ export default function SettingsPage() {
                   setRedeemValue(e.target.value);
                   setSaved(false);
                 }}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
-              <span className="mt-1 block text-xs text-slate-500">
+              <span className="mt-1 block text-xs text-slate-500 dark:text-gray-400">
                 points_redeem_value — عدد النقاط اللازمة لخصم 1 جنيه عند
                 الاستبدال.
                 {previewRedeem != null
@@ -154,12 +154,12 @@ export default function SettingsPage() {
         )}
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         )}
         {saved && (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
             تم حفظ إعدادات النقاط
           </p>
         )}

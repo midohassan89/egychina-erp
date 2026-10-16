@@ -227,8 +227,8 @@ function TreasuryPageInner() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-slate-900">الخزينة</h1>
-          <p className="mt-1 text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">الخزينة</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             أرصدة الخزينة والحسابات البنكية والتحويلات
           </p>
         </div>
@@ -250,7 +250,7 @@ function TreasuryPageInner() {
           </button>
           <Link
             href="/dashboard/expenses"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             إدارة المصروفات
           </Link>
@@ -258,7 +258,7 @@ function TreasuryPageInner() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
       )}
@@ -266,14 +266,14 @@ function TreasuryPageInner() {
       <div className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-8 text-white shadow-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium tracking-wide text-slate-400">
+            <p className="text-sm font-medium tracking-wide text-slate-400 dark:text-gray-500">
               الرصيد الحالي للخزينة
             </p>
             <p className="mt-2 text-4xl font-bold tabular-nums tracking-tight sm:text-5xl">
               {isLoading ? "…" : formatEGP(balance)}
             </p>
             {updatedAt && (
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-slate-500 dark:text-gray-400">
                 آخر تحديث {new Date(updatedAt).toLocaleString()}
               </p>
             )}
@@ -307,35 +307,35 @@ function TreasuryPageInner() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-800">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-slate-200 px-4 py-3 dark:border-gray-800">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
             الحسابات البنكية
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-gray-400">
             القنوات الرقمية — تُحدَّث تلقائياً عند إغلاق الوردية
           </p>
         </div>
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading ? (
-            <p className="text-sm text-slate-400">جاري التحميل…</p>
+            <p className="text-sm text-slate-400 dark:text-gray-500">جاري التحميل…</p>
           ) : bankAccounts.length === 0 ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-400 dark:text-gray-500">
               لا توجد حسابات بنكية — نفّذ db:seed
             </p>
           ) : (
             bankAccounts.map((b) => (
               <div
                 key={b.id}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-800/60"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
                   {b.code}
                 </p>
-                <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-gray-100">
                   {b.name}
                 </p>
-                <p className="mt-2 text-xl font-bold tabular-nums text-slate-900">
+                <p className="mt-2 text-xl font-bold tabular-nums text-slate-900 dark:text-gray-100">
                   {formatEGP(b.balance)}
                 </p>
               </div>
@@ -344,15 +344,15 @@ function TreasuryPageInner() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-800">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-slate-200 px-4 py-3 dark:border-gray-800">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
             سجل حركة الخزينة
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">التاريخ</th>
                 <th className="px-4 py-3">النوع</th>
@@ -361,12 +361,12 @@ function TreasuryPageInner() {
                 <th className="px-4 py-3">المرجع</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     جاري التحميل…
                   </td>
@@ -375,7 +375,7 @@ function TreasuryPageInner() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-10 text-center text-slate-400"
+                    className="px-4 py-10 text-center text-slate-400 dark:text-gray-500"
                   >
                     لا توجد حركات خزينة بعد. استخدم إيداع رصيد لإضافة رأس المال
                     الافتتاحي.
@@ -385,8 +385,8 @@ function TreasuryPageInner() {
                 transactions.map((t) => {
                   const isIn = t.type === "IN";
                   return (
-                    <tr key={t.id} className="hover:bg-slate-50/80">
-                      <td className="px-4 py-3 text-slate-700">
+                    <tr key={t.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                         {new Date(t.date).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
@@ -394,8 +394,8 @@ function TreasuryPageInner() {
                           className={clsx(
                             "inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset",
                             isIn
-                              ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-                              : "bg-red-50 text-red-800 ring-red-200",
+                              ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : "bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-300",
                           )}
                         >
                           {t.type}
@@ -404,16 +404,16 @@ function TreasuryPageInner() {
                       <td
                         className={clsx(
                           "px-4 py-3 text-right font-semibold tabular-nums",
-                          isIn ? "text-emerald-700" : "text-red-700",
+                          isIn ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300",
                         )}
                       >
                         {isIn ? "+" : "−"}
                         {formatEGP(t.amount)}
                       </td>
-                      <td className="px-4 py-3 text-slate-800">
+                      <td className="px-4 py-3 text-slate-800 dark:text-gray-200">
                         {t.description}
                       </td>
-                      <td className="px-4 py-3 text-xs font-medium text-slate-500">
+                      <td className="px-4 py-3 text-xs font-medium text-slate-500 dark:text-gray-400">
                         {t.reference || "—"}
                       </td>
                     </tr>
@@ -468,9 +468,9 @@ function TreasuryPageInner() {
             onSubmit={(e) => void handleWithdraw(e)}
             className="space-y-4 px-5 py-4"
           >
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-gray-800/60 dark:text-gray-300">
               الرصيد المتاح:{" "}
-              <span className="font-semibold tabular-nums text-slate-900">
+              <span className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                 {formatEGP(balance)}
               </span>
             </p>
@@ -509,13 +509,13 @@ function TreasuryPageInner() {
             className="space-y-4 px-5 py-4"
           >
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 من
               </span>
               <select
                 value={fromSide}
                 onChange={(e) => setFromSide(e.target.value as TransferSide)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               >
                 {transferOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -525,13 +525,13 @@ function TreasuryPageInner() {
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 إلى
               </span>
               <select
                 value={toSide}
                 onChange={(e) => setToSide(e.target.value as TransferSide)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               >
                 {transferOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -573,16 +573,16 @@ function ModalShell({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-            <p className="text-sm text-slate-500">{subtitle}</p>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">{title}</h2>
+            <p className="text-sm text-slate-500 dark:text-gray-400">{subtitle}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
           >
             <X className="h-5 w-5" />
           </button>
@@ -606,7 +606,7 @@ function AmountField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
         المبلغ (ج.م)
       </span>
       <input
@@ -619,7 +619,7 @@ function AmountField({
         onChange={(e) => onChange(e.target.value)}
         autoFocus
         className={clsx(
-          "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none focus:ring-2",
+          "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-lg font-semibold tabular-nums outline-none focus:ring-2 dark:border-gray-800",
           focusClass,
         )}
         placeholder="0.00"
@@ -641,7 +641,7 @@ function DescField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
         البيان
       </span>
       <input
@@ -649,7 +649,7 @@ function DescField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={clsx(
-          "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2",
+          "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 dark:border-gray-800",
           focusClass,
         )}
         placeholder={placeholder}
@@ -660,7 +660,7 @@ function DescField({
 
 function FormError({ message }: { message: string }) {
   return (
-    <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+    <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
       {message}
     </p>
   );
@@ -684,7 +684,7 @@ function FormActions({
       <button
         type="button"
         onClick={onCancel}
-        className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
       >
         إلغاء
       </button>

@@ -25,15 +25,15 @@ const BADGE: Record<
 > = {
   PURCHASE: {
     label: "Purchase 📥",
-    className: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+    className: "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
   },
   SALE: {
     label: "Sale 📤",
-    className: "bg-blue-50 text-blue-800 ring-blue-200",
+    className: "bg-blue-50 text-blue-800 ring-blue-200 dark:bg-blue-950/40",
   },
   STAFF_MEAL: {
     label: "Staff Meal 🍽️",
-    className: "bg-slate-100 text-slate-700 ring-slate-200",
+    className: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700",
   },
   SALE_RETURN: {
     label: "Sale return 📥",
@@ -41,15 +41,15 @@ const BADGE: Record<
   },
   PURCHASE_RETURN: {
     label: "Purchase return 📤",
-    className: "bg-orange-50 text-orange-800 ring-orange-200",
+    className: "bg-orange-50 text-orange-800 ring-orange-200 dark:bg-orange-950/40",
   },
   ADJUSTMENT: {
     label: "Adjustment",
-    className: "bg-amber-50 text-amber-900 ring-amber-200",
+    className: "bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/40",
   },
   OPENING: {
     label: "أرصدة أول المدة",
-    className: "bg-slate-50 text-slate-700 ring-slate-300",
+    className: "bg-slate-50 text-slate-700 ring-slate-300 dark:bg-gray-800/60 dark:text-gray-200",
   },
   OPENING_BALANCE: {
     label: "رصيد افتتاحي",
@@ -113,7 +113,7 @@ export default function ProductStockLedgerPage() {
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/dashboard/products"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
           Products
@@ -122,63 +122,63 @@ export default function ProductStockLedgerPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-500">
+          <p className="text-sm font-medium text-slate-500 dark:text-gray-400">
             Stock Ledger · كارت الصنف
           </p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-gray-100">
             {data?.product.name ?? "Product"}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
             {data?.product.barcode || data?.product.sku || "No barcode"}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
             On hand
           </p>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900">
+          <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900 dark:text-gray-100">
             {data?.product.stockQuantity ?? "—"}
           </p>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-gray-800 dark:bg-gray-800/60">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
                 Inventory statement
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
                 Newest movements first. A start date adds the opening balance
                 from every movement before that day.
               </p>
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
                   Start date
                 </span>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-900"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
                   End date
                 </span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-900"
                 />
               </label>
             </div>
@@ -186,7 +186,7 @@ export default function ProductStockLedgerPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3">Date & time</th>
                 <th className="px-4 py-3">Type</th>
@@ -198,16 +198,16 @@ export default function ProductStockLedgerPage() {
                 <th className="px-4 py-3 text-right">Balance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400 dark:text-gray-500">
                     Loading ledger…
                   </td>
                 </tr>
               ) : !data || data.movements.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400 dark:text-gray-500">
                     No stock movements yet.
                   </td>
                 </tr>
@@ -220,10 +220,10 @@ export default function ProductStockLedgerPage() {
                       className={
                         row.type === "OPENING"
                           ? "bg-slate-50/90"
-                          : "hover:bg-slate-50/80"
+                          : "hover:bg-slate-50/80 dark:hover:bg-gray-800/60"
                       }
                     >
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-gray-200">
                         {formatWhen(row.occurredAt)}
                       </td>
                       <td className="px-4 py-3">
@@ -236,17 +236,17 @@ export default function ProductStockLedgerPage() {
                           {badge.label}
                         </span>
                         {row.note ? (
-                          <p className="mt-1 text-xs text-slate-500">{row.note}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{row.note}</p>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                         {row.party || "—"}
                       </td>
-                      <td className="px-4 py-3 font-medium text-slate-900">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                         {row.href ? (
                           <Link
                             href={row.href}
-                            className="text-brand-700 hover:underline"
+                            className="text-brand-700 hover:underline dark:text-brand-400"
                           >
                             {row.reference}
                           </Link>
@@ -254,16 +254,16 @@ export default function ProductStockLedgerPage() {
                           row.reference
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-emerald-700">
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
                         {row.qtyIn > 0 ? `+${row.qtyIn}` : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-700">
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-700 dark:text-red-300">
                         {row.qtyOut > 0 ? `−${row.qtyOut}` : "—"}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-gray-200">
                         {row.unitAmount == null ? "—" : formatEGP(row.unitAmount)}
                       </td>
-                      <td className="px-4 py-3 text-right text-base font-bold tabular-nums text-slate-900">
+                      <td className="px-4 py-3 text-right text-base font-bold tabular-nums text-slate-900 dark:text-gray-100">
                         {row.runningBalance}
                       </td>
                     </tr>

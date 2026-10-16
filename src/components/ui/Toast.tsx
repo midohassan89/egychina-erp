@@ -47,23 +47,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={clsx(
               "pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg",
               item.tone === "success"
-                ? "border-emerald-200 bg-white text-emerald-900"
+                ? "border-emerald-200 bg-white text-emerald-900 dark:border-emerald-800 dark:bg-gray-900"
                 : item.tone === "info"
-                  ? "border-slate-200 bg-white text-slate-800"
-                  : "border-red-200 bg-white text-red-900",
+                  ? "border-slate-200 bg-white text-slate-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                  : "border-red-200 bg-white text-red-900 dark:border-red-800 dark:bg-gray-900",
             )}
           >
             {item.tone === "success" ? (
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
             ) : item.tone === "info" ? (
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500 dark:text-gray-400" />
             ) : (
               <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
             )}
             <p className="flex-1 font-medium">{item.message}</p>
             <button
               type="button"
-              className="text-slate-400 hover:text-slate-600"
+              className="text-slate-400 hover:text-slate-600 dark:text-gray-500"
               onClick={() =>
                 setItems((prev) => prev.filter((t) => t.id !== item.id))
               }

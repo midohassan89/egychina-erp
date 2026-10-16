@@ -1281,7 +1281,7 @@ function PurchaseFormInner({
             <input
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
               placeholder="مرجع المورد"
             />
           </label>
@@ -1295,7 +1295,7 @@ function PurchaseFormInner({
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>
         </div>
@@ -1317,7 +1317,7 @@ function PurchaseFormInner({
               onChange={(e) => setProductQuery(e.target.value)}
               onKeyDown={(e) => void handleSearchKeyDown(e)}
               placeholder="امسح الباركود أو ابحث بالاسم / كود الصنف — اضغط Enter للإضافة"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
               autoComplete="off"
             />
             {(productQuery.trim().length > 0 &&
@@ -1480,7 +1480,7 @@ function PurchaseFormInner({
                             else focusPackCost(line.key);
                           }}
                           aria-label="Number of cartons"
-                          className="w-14 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="w-14 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:bg-gray-800 dark:text-gray-100"
                         />
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
@@ -1564,7 +1564,7 @@ function PurchaseFormInner({
                               focusSearch();
                             }
                           }}
-                          className="w-20 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="w-20 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:bg-gray-800 dark:text-gray-100"
                           title="Supplier line total. Editing it recalculates the pack cost."
                         />
                       </td>
@@ -1716,7 +1716,7 @@ function PurchaseFormInner({
                 step="0.01"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
 

@@ -128,16 +128,16 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="text-right">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
           لوحة المؤشرات العامة
         </h1>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 text-slate-500 dark:text-gray-400">
           وحدات الحسابات والإدارة لسوق العبور
         </p>
       </div>
       {visibleSections.map((section) => (
         <section key={section.title} className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-500">
+          <h2 className="text-sm font-semibold text-slate-500 dark:text-gray-400">
             {section.title}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -145,13 +145,13 @@ export default async function DashboardPage() {
               <Link
                 key={href}
                 href={href}
-                className="rounded-xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:shadow-md"
+                className="rounded-xl border border-slate-200 bg-white p-4 text-right shadow-sm hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
               >
                 <div className="mb-2 inline-flex rounded-lg bg-brand-600 p-2 text-white">
                   <Icon className="h-4 w-4" />
                 </div>
-                <h3 className="font-semibold text-slate-900">{title}</h3>
-                <p className="mt-1 text-sm text-slate-500">{description}</p>
+                <h3 className="font-semibold text-slate-900 dark:text-gray-100">{title}</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">{description}</p>
               </Link>
             ))}
           </div>

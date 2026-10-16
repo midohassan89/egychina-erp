@@ -13,7 +13,7 @@ export default function NewPurchaseInvoicePage() {
   return (
     <Suspense
       fallback={
-        <p className="text-sm text-slate-500">جاري تحميل نموذج المشتريات…</p>
+        <p className="text-sm text-slate-500 dark:text-gray-400">جاري تحميل نموذج المشتريات…</p>
       }
     >
       <NewPurchaseInvoicePageInner />

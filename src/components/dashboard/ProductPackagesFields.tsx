@@ -218,13 +218,13 @@ export function ProductPackagesFields({
   }
 
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4">
+    <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 dark:bg-gray-800/40">
       <div>
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-gray-200">
           <Boxes className="h-5 w-5 shrink-0 text-emerald-600" />
           العبوات الإضافية (كرتونة / شرينك)
         </h3>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-gray-400">
           باركود مختلف يبيع عدداً من وحدات المنتج الأساسية. الاسم يُبنى بالعربية
           والإنجليزية والصينية من اسم المنتج.
         </p>
@@ -239,10 +239,10 @@ export function ProductPackagesFields({
         return (
           <div
             key={row.key}
-            className="space-y-3 rounded-lg border border-slate-200 bg-white p-3"
+            className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-500">
+              <span className="text-xs font-medium text-slate-500 dark:text-gray-400">
                 عبوة {index + 1}
               </span>
               <div className="flex items-center gap-1">
@@ -270,7 +270,7 @@ export function ProductPackagesFields({
                   onClick={() =>
                     onChange(packages.filter((item) => item.key !== row.key))
                   }
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   حذف
@@ -279,7 +279,7 @@ export function ProductPackagesFields({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-slate-700">
+                <span className="text-xs font-medium text-slate-700 dark:text-gray-200">
                   باركود العبوة
                 </span>
                 <input
@@ -287,11 +287,11 @@ export function ProductPackagesFields({
                   dir="ltr"
                   value={row.barcode}
                   onChange={(e) => update(row.key, { barcode: e.target.value })}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-left font-mono text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-left font-mono text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
               <div className="space-y-1 sm:col-span-2">
-                <span className="text-xs font-medium text-slate-700">
+                <span className="text-xs font-medium text-slate-700 dark:text-gray-200">
                   نوع التعبئة
                 </span>
                 <div
@@ -313,8 +313,8 @@ export function ProductPackagesFields({
                         className={clsx(
                           "flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-xs transition-all duration-200",
                           selected
-                            ? "border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700"
-                            : "border border-gray-200 bg-white text-gray-500 hover:border-emerald-300 hover:bg-gray-50",
+                            ? "border-2 border-emerald-500 bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : "border border-gray-200 bg-white text-gray-500 hover:border-emerald-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800",
                         )}
                       >
                         <Icon className="h-5 w-5" aria-hidden />
@@ -326,7 +326,7 @@ export function ProductPackagesFields({
               </div>
               <div className="space-y-1">
                 <label className="block space-y-1">
-                  <span className="text-xs font-medium text-slate-700">
+                  <span className="text-xs font-medium text-slate-700 dark:text-gray-200">
                     عدد القطع
                   </span>
                   <input
@@ -337,7 +337,7 @@ export function ProductPackagesFields({
                     value={row.packSize}
                     onChange={(e) => update(row.key, { packSize: e.target.value })}
                     placeholder="12"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
                 </label>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -352,8 +352,8 @@ export function ProductPackagesFields({
                         className={clsx(
                           "rounded-full border px-3 py-1 text-sm font-medium transition-colors duration-200",
                           active
-                            ? "border-emerald-500 bg-emerald-100 text-emerald-800"
-                            : "border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-gray-50",
+                            ? "border-emerald-500 bg-emerald-100 text-emerald-800 dark:text-emerald-300"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800",
                         )}
                       >
                         {quantity}
@@ -363,7 +363,7 @@ export function ProductPackagesFields({
                 </div>
               </div>
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-slate-700">
+                <span className="text-xs font-medium text-slate-700 dark:text-gray-200">
                   سعر العبوة
                 </span>
                 <input
@@ -373,25 +373,25 @@ export function ProductPackagesFields({
                   value={row.price}
                   onChange={(e) => update(row.key, { price: e.target.value })}
                   placeholder="يترك فارغاً لحساب السعر تلقائياً"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
             </div>
             {names.name && (
-              <div className="space-y-1 text-xs text-slate-500">
+              <div className="space-y-1 text-xs text-slate-500 dark:text-gray-400">
                 <p>
                   الاسم:{" "}
-                  <span className="font-medium text-slate-800">{names.name}</span>
+                  <span className="font-medium text-slate-800 dark:text-gray-200">{names.name}</span>
                 </p>
                 <p>
                   الإنجليزية:{" "}
-                  <span className="font-medium text-slate-800">
+                  <span className="font-medium text-slate-800 dark:text-gray-200">
                     {names.nameEn || "—"}
                   </span>
                 </p>
                 <p>
                   中文:{" "}
-                  <span className="font-medium text-slate-800">
+                  <span className="font-medium text-slate-800 dark:text-gray-200">
                     {names.nameZh || "—"}
                   </span>
                 </p>
@@ -404,7 +404,7 @@ export function ProductPackagesFields({
       <button
         type="button"
         onClick={() => onChange([...packages, emptyPackageDraft()])}
-        className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white/70 px-4 py-5 text-sm font-medium text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800"
+        className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white/70 px-4 py-5 text-sm font-medium text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-800 dark:border-gray-700 dark:text-gray-300"
       >
         <PackagePlus size={24} className="text-emerald-600" />
         اضغط هنا لإضافة كرتونة أو شرينك

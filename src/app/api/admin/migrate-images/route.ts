@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "products");
 
-function extensionFromUrl(imageUrl: string): string {
+/** Percent-encode a legacy WordPress URL once, including Arabic filenames. */
+function encodeOnce(url: string): string {
   try {
-    const raw = path.extname(new URL(imageUrl).pathname).toLowerCase();
-    if (/^\.[a-z0-9]{1,5}$/.test(raw)) return raw;
+    return encodeURI(decodeURI(url));
   } catch {
-    // fall through to the default
+    try {
+      return encodeURI(url);
+    } catch {
+      return url;
+    }
   }
-  return ".jpg";
 }
 
 /** GET /api/admin/migrate-images — download up to 50 external product images locally. */
@@ -47,15 +51,23 @@ export async function GET() {
     if (!sourceUrl) continue;
 
     try {
-      const response = await fetch(sourceUrl);
+      const response = await fetch(encodeOnce(sourceUrl));
       if (!response.ok) continue;
 
       const bytes = await response.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const extension = extensionFromUrl(sourceUrl);
-      const filename = `product-${product.id}${extension}`;
+      const webp = await sharp(Buffer.from(bytes))
+        .rotate()
+        .resize({
+          width: 800,
+          height: 800,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 70 })
+        .toBuffer();
+      const filename = `product-${product.id}.webp`;
 
-      fs.writeFileSync(path.join(UPLOAD_DIR, filename), buffer);
+      fs.writeFileSync(path.join(UPLOAD_DIR, filename), webp);
       await prisma.product.update({
         where: { id: product.id },
         data: { imageUrl: `/uploads/products/${filename}` },

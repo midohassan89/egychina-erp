@@ -38,7 +38,7 @@ export function PriceYieldBadges({
   const yieldPct = priceYield(cost, regularPrice, salePrice);
   if (!yieldPct) {
     return (
-      <span className="block text-center text-sm font-bold text-slate-300">—%</span>
+      <span className="block text-center text-sm font-bold text-slate-300 dark:text-gray-600">—%</span>
     );
   }
   const { marginPercent, markupPercent } = yieldPct;
@@ -47,8 +47,8 @@ export function PriceYieldBadges({
       <span
         className={
           marginPercent < 0
-            ? "w-full whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-center font-bold text-red-700"
-            : "w-full whitespace-nowrap rounded bg-emerald-50 px-1.5 py-0.5 text-center font-bold text-emerald-700"
+            ? "w-full whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-center font-bold text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            : "w-full whitespace-nowrap rounded bg-emerald-50 px-1.5 py-0.5 text-center font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
         }
         title="هامش الربح من إجمالي البيع (Profit Margin)"
       >
@@ -57,8 +57,8 @@ export function PriceYieldBadges({
       <span
         className={
           markupPercent < 0
-            ? "w-full whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-center font-bold text-red-700"
-            : "w-full whitespace-nowrap rounded bg-blue-50 px-1.5 py-0.5 text-center font-bold text-blue-700"
+            ? "w-full whitespace-nowrap rounded bg-red-50 px-1.5 py-0.5 text-center font-bold text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            : "w-full whitespace-nowrap rounded bg-blue-50 px-1.5 py-0.5 text-center font-bold text-blue-700 dark:bg-blue-950/40"
         }
         title="نسبة الإضافة على التكلفة (Markup)"
       >

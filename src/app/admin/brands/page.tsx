@@ -115,8 +115,8 @@ export default function BrandsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">العلامات التجارية</h1>
-          <p className="mt-1 text-slate-500">Brands used to group products</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">العلامات التجارية</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">Brands used to group products</p>
         </div>
         <button
           type="button"
@@ -129,12 +129,12 @@ export default function BrandsPage() {
       </div>
 
       {error && !modalOpen && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3">الشعار</th>
               <th className="px-4 py-3">الاسم</th>
@@ -144,16 +144,16 @@ export default function BrandsPage() {
               <th className="px-4 py-3">الإجراءات</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   Loading brands…
                 </td>
               </tr>
             ) : brands.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   No brands yet.
                 </td>
               </tr>
@@ -170,13 +170,13 @@ export default function BrandsPage() {
                         className="h-10 w-10 rounded-lg object-contain"
                       />
                     ) : (
-                      <span className="text-slate-300">—</span>
+                      <span className="text-slate-300 dark:text-gray-600">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{brand.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{brand.nameEn || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{brand.nameZh || "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">{brand.name}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{brand.nameEn || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{brand.nameZh || "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-gray-200">
                     {brand.productCount}
                   </td>
                   <td className="px-4 py-3">
@@ -184,7 +184,7 @@ export default function BrandsPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(brand)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         تعديل
@@ -192,7 +192,7 @@ export default function BrandsPage() {
                       <button
                         type="button"
                         onClick={() => void deleteBrand(brand)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         حذف
@@ -210,65 +210,65 @@ export default function BrandsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <form
             onSubmit={(event) => void saveBrand(event)}
-            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl"
+            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">
                 {editingId ? "تعديل العلامة" : "علامة جديدة"}
               </h2>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                 {error}
               </p>
             )}
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 الاسم (عربي)
               </span>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 Name (English)
               </span>
               <input
                 value={form.nameEn}
                 onChange={(e) => setForm((f) => ({ ...f, nameEn: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 名称 (中文)
               </span>
               <input
                 value={form.nameZh}
                 onChange={(e) => setForm((f) => ({ ...f, nameZh: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 Image URL
               </span>
               <input
                 value={form.image}
                 onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
                 placeholder="https://… or /uploads/…"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <div className="flex justify-end gap-2">
@@ -276,7 +276,7 @@ export default function BrandsPage() {
                 type="button"
                 onClick={() => setModalOpen(false)}
                 disabled={saving}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 إلغاء
               </button>

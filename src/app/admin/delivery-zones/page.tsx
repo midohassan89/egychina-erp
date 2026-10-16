@@ -131,8 +131,8 @@ export default function DeliveryZonesPage() {
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">مناطق التوصيل</h1>
-          <p className="mt-1 text-slate-500">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">مناطق التوصيل</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
             أسماء مناطق التوصيل ورسوم كل منطقة
           </p>
         </div>
@@ -147,12 +147,12 @@ export default function DeliveryZonesPage() {
       </div>
 
       {error && !modalOpen && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">{error}</p>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3 text-right">الاسم (عربي)</th>
               <th className="px-4 py-3 text-right">English</th>
@@ -162,39 +162,39 @@ export default function DeliveryZonesPage() {
               <th className="px-4 py-3 text-right">الإجراءات</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   جاري التحميل…
                 </td>
               </tr>
             ) : zones.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   لا توجد مناطق توصيل بعد.
                 </td>
               </tr>
             ) : (
               zones.map((zone) => (
-                <tr key={zone.id} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                <tr key={zone.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/60">
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                     <span className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-slate-400" />
+                      <MapPin className="h-4 w-4 text-slate-400 dark:text-gray-500" />
                       {zone.nameAr}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{zone.nameEn || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{zone.nameZh || "—"}</td>
-                  <td className="px-4 py-3 tabular-nums text-slate-700">
+                  <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{zone.nameEn || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{zone.nameZh || "—"}</td>
+                  <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-gray-200">
                     {formatEGP(zone.deliveryFee)}
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={
                         zone.isActive
-                          ? "inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"
-                          : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500"
+                          ? "inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : "inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500 dark:bg-gray-800 dark:text-gray-400"
                       }
                     >
                       {zone.isActive ? "نشطة" : "متوقفة"}
@@ -205,7 +205,7 @@ export default function DeliveryZonesPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(zone)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         تعديل
@@ -213,7 +213,7 @@ export default function DeliveryZonesPage() {
                       <button
                         type="button"
                         onClick={() => void deleteZone(zone)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         حذف
@@ -231,23 +231,23 @@ export default function DeliveryZonesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <form
             onSubmit={(event) => void saveZone(event)}
-            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl"
+            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">
                 {editingId ? "تعديل المنطقة" : "منطقة جديدة"}
               </h2>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 اسم المنطقة (عربي)
               </span>
               <input
@@ -257,12 +257,12 @@ export default function DeliveryZonesPage() {
                   setForm((prev) => ({ ...prev, nameAr: e.target.value }))
                 }
                 placeholder="مثال: تيدا الصناعية"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 Zone Name (English)
               </span>
               <input
@@ -272,12 +272,12 @@ export default function DeliveryZonesPage() {
                 }
                 placeholder="e.g. TEDA Industrial"
                 dir="ltr"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 Zone Name (Chinese)
               </span>
               <input
@@ -287,12 +287,12 @@ export default function DeliveryZonesPage() {
                 }
                 placeholder="例如：泰达工业区"
                 dir="ltr"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                 رسوم التوصيل (ج.م)
               </span>
               <input
@@ -304,24 +304,24 @@ export default function DeliveryZonesPage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, deliveryFee: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-gray-200">
               <input
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, isActive: e.target.checked }))
                 }
-                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700"
               />
               المنطقة نشطة وتظهر في المتجر
             </label>
 
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                 {error}
               </p>
             )}
@@ -330,7 +330,7 @@ export default function DeliveryZonesPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 إلغاء
               </button>

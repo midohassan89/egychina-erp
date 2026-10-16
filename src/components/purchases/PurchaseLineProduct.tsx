@@ -140,14 +140,14 @@ export function PurchaseLineProduct({
               role="dialog"
               aria-modal="true"
               aria-label="تعديل المنتج"
-              className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+              className="relative z-10 flex max-h-[min(92dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900"
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-slate-900">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
                     تعديل المنتج
                   </h2>
-                  <p className="truncate text-xs text-slate-400">
+                  <p className="truncate text-xs text-slate-400 dark:text-gray-500">
                     {product?.wcId != null ? `WC #${product.wcId} · ` : ""}
                     {name}
                   </p>
@@ -157,18 +157,18 @@ export function PurchaseLineProduct({
                   onClick={() => setOpen(false)}
                   disabled={saving}
                   aria-label="إغلاق"
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               {loading ? (
-                <div className="flex items-center justify-center gap-2 px-5 py-16 text-sm text-slate-500">
+                <div className="flex items-center justify-center gap-2 px-5 py-16 text-sm text-slate-500 dark:text-gray-400">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   جاري تحميل المنتج…
                 </div>
               ) : loadError ? (
-                <p className="px-5 py-10 text-sm text-red-700">{loadError}</p>
+                <p className="px-5 py-10 text-sm text-red-700 dark:text-red-300">{loadError}</p>
               ) : product ? (
                 <ProductForm
                   key={product.id}
@@ -200,7 +200,7 @@ export function PurchaseLineProduct({
         ) : (
           <span
             aria-hidden
-            className="h-8 w-8 shrink-0 rounded bg-slate-100"
+            className="h-8 w-8 shrink-0 rounded bg-slate-100 dark:bg-gray-800"
           />
         )
       ) : null}
@@ -213,7 +213,7 @@ export function PurchaseLineProduct({
         disabled={disabled}
         aria-label="تعديل المنتج"
         title="تعديل المنتج"
-        className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+        className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>

@@ -159,16 +159,16 @@ export default function PrintLabelsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/dashboard/inventory"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="h-4 w-4" />
             رجوع
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
               طباعة باركود
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-gray-400">
               ملصقات حرارية للطابعة — اسم المتجر والمنتج والسعر والباركود
             </p>
           </div>
@@ -184,12 +184,12 @@ export default function PrintLabelsPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1">
-            <h2 className="text-sm font-semibold text-slate-800">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-1 dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
               اختيار المنتج
             </h2>
             <label className="mt-3 block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
                 عدد النسخ
               </span>
               <input
@@ -198,11 +198,11 @@ export default function PrintLabelsPage() {
                 max={200}
                 value={copiesInput}
                 onChange={(e) => setCopiesInput(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>
             <div className="relative mt-3">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -213,12 +213,12 @@ export default function PrintLabelsPage() {
                   }
                 }}
                 placeholder="بحث بالاسم أو الباركود…"
-                className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full rounded-xl border border-slate-200 py-2.5 pr-3 pl-10 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
               {(searching || hits.length > 0) && query.trim() && (
-                <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900">
                   {searching && (
-                    <li className="px-3 py-2 text-sm text-slate-400">
+                    <li className="px-3 py-2 text-sm text-slate-400 dark:text-gray-500">
                       جاري البحث…
                     </li>
                   )}
@@ -230,10 +230,10 @@ export default function PrintLabelsPage() {
                           onClick={() => addProduct(p)}
                           className="flex w-full flex-col px-3 py-2.5 text-left text-sm hover:bg-brand-50"
                         >
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-slate-900 dark:text-gray-100">
                             {p.name}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-gray-400">
                             {p.barcode || p.sku || "بدون باركود"} ·{" "}
                             {formatEGP(p.salePrice ?? p.price)}
                           </span>
@@ -245,25 +245,25 @@ export default function PrintLabelsPage() {
             </div>
 
             {error && (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
                 {error}
               </p>
             )}
 
             <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto">
               {jobs.length === 0 ? (
-                <li className="text-sm text-slate-400">لا توجد ملصقات في القائمة</li>
+                <li className="text-sm text-slate-400 dark:text-gray-500">لا توجد ملصقات في القائمة</li>
               ) : (
                 jobs.map((job) => (
                   <li
                     key={job.key}
-                    className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
+                    className="flex items-start justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 dark:bg-gray-800/60"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-gray-100">
                         {job.name}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-gray-400">
                         {job.copies}× · {job.barcode}
                       </p>
                     </div>
@@ -274,7 +274,7 @@ export default function PrintLabelsPage() {
                           prev.filter((j) => j.key !== job.key),
                         )
                       }
-                      className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-950/40"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -284,26 +284,26 @@ export default function PrintLabelsPage() {
             </ul>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <h2 className="text-sm font-semibold text-slate-800">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2 dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
               معاينة على الشاشة
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
               {labels.length === 0 ? (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-400 dark:text-gray-500">
                   ستظهر الملصقات هنا قبل الطباعة.
                 </p>
               ) : (
                 labels.slice(0, 12).map((label) => (
                   <div
                     key={label.key}
-                    className="thermal-label-preview flex w-[50mm] flex-col items-center rounded border border-dashed border-slate-300 bg-white px-1 py-1 text-center"
+                    className="thermal-label-preview flex w-[50mm] flex-col items-center rounded border border-dashed border-slate-300 bg-white px-1 py-1 text-center dark:border-gray-700 dark:bg-gray-900"
                     dir="rtl"
                   >
                     <p className="text-[9px] font-bold leading-tight">
                       {STORE_NAME}
                     </p>
-                    <p className="mt-0.5 line-clamp-2 text-[8px] leading-tight text-slate-800">
+                    <p className="mt-0.5 line-clamp-2 text-[8px] leading-tight text-slate-800 dark:text-gray-200">
                       {label.name}
                     </p>
                     <p className="mt-0.5 text-[10px] font-bold tabular-nums">
@@ -323,7 +323,7 @@ export default function PrintLabelsPage() {
                 ))
               )}
               {labels.length > 12 && (
-                <p className="w-full text-xs text-slate-500">
+                <p className="w-full text-xs text-slate-500 dark:text-gray-400">
                   +{labels.length - 12} ملصق إضافي في قائمة الطباعة
                 </p>
               )}

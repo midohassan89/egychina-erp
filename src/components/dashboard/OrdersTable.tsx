@@ -113,7 +113,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+      <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
         لا توجد طلبات بعد
       </p>
     );
@@ -121,9 +121,9 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
               <th className="px-4 py-3">التاريخ</th>
               <th className="px-4 py-3">العميل</th>
@@ -134,33 +134,33 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
               <th className="px-4 py-3">الحالة</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {rows.map((order) => (
               <tr key={order.id} className="align-top">
-                <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-gray-300">
                   {formatOrderDate(order.createdAt)}
                 </td>
-                <td className="px-4 py-3 font-medium text-slate-900">
+                <td className="px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                   {order.customerName}
                 </td>
                 <td
-                  className="whitespace-nowrap px-4 py-3 text-slate-700"
+                  className="whitespace-nowrap px-4 py-3 text-slate-700 dark:text-gray-200"
                   dir="ltr"
                 >
                   {order.phone}
                 </td>
-                <td className="max-w-xs px-4 py-3 text-slate-700">
+                <td className="max-w-xs px-4 py-3 text-slate-700 dark:text-gray-200">
                   <p>{order.address}</p>
                   {order.deliveryTime && (
-                    <p className="mt-1 text-xs font-medium text-slate-800">
+                    <p className="mt-1 text-xs font-medium text-slate-800 dark:text-gray-200">
                       وقت التوصيل المحدد: {formatOrderDate(order.deliveryTime)}
                     </p>
                   )}
                   {order.notes && (
-                    <p className="mt-1 text-xs text-slate-500">{order.notes}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{order.notes}</p>
                   )}
                 </td>
-                <td className="px-4 py-3 text-slate-700">
+                <td className="px-4 py-3 text-slate-700 dark:text-gray-200">
                   <ul className="space-y-1">
                     {order.items.map((item) => (
                       <li key={item.id}>
@@ -169,7 +169,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                     ))}
                   </ul>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                   {formatEGP(order.totalAmount)}
                 </td>
                 <td className="px-4 py-3">
@@ -181,7 +181,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                         event.preventDefault();
                         void updateStatus(order.id, event.target.value);
                       }}
-                      className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60"
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900"
                     >
                       {statusChoices(order.status).map((status) => (
                         <option
@@ -197,12 +197,12 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                       ))}
                     </select>
                     {savingId === order.id && (
-                      <span className="text-xs text-slate-500">جاري الحفظ…</span>
+                      <span className="text-xs text-slate-500 dark:text-gray-400">جاري الحفظ…</span>
                     )}
                     <Link
                       href={`/print/order/${order.id}`}
                       target="_blank"
-                      className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                     >
                       طباعة
                     </Link>
