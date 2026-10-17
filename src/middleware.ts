@@ -34,6 +34,10 @@ export default auth((req) => {
     (pathname === "/api/settings" && req.method === "GET") ||
     (pathname === "/api/delivery-zones" &&
       (req.method === "GET" || req.method === "OPTIONS")) ||
+    (pathname === "/api/orders" &&
+      (req.method === "POST" || req.method === "OPTIONS")) ||
+    (pathname === "/api/coupons/validate" &&
+      (req.method === "POST" || req.method === "OPTIONS")) ||
     /^\/api\/customers\/[^/]+\/(addresses|orders)\/?$/.test(pathname) ||
     (pathname === "/api/returns" &&
       (req.method === "POST" || req.method === "OPTIONS"))

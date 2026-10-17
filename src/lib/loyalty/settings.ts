@@ -7,6 +7,21 @@ export const POINTS_REDEEM_VALUE_KEY = "points_redeem_value";
 
 export const DEFAULT_POINTS_EARN_RATIO = 10;
 export const DEFAULT_POINTS_REDEEM_VALUE = 1000;
+/** Smallest online redemption, and the only allowed step after that. */
+export const POINTS_REDEEM_STEP = 10_000;
+
+/** Online orders may redeem 0, or 10000, 20000, 30000… points. */
+export function onlinePointsRedeemError(points: number): string | null {
+  if (points === 0) return null;
+  if (
+    !Number.isInteger(points) ||
+    points < POINTS_REDEEM_STEP ||
+    points % POINTS_REDEEM_STEP !== 0
+  ) {
+    return "Points can only be redeemed in multiples of 10000, starting from 10000";
+  }
+  return null;
+}
 
 export interface LoyaltySettings {
   /** Points granted per 1 EGP spent. */

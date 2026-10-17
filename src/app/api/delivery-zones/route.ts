@@ -21,16 +21,22 @@ function serializeZone(zone: {
   nameEn: string;
   nameZh: string;
   deliveryFee: number;
+  minOrder: number;
+  estimatedTime: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }) {
   return {
     id: zone.id,
+    name: zone.nameAr,
     nameAr: zone.nameAr,
     nameEn: zone.nameEn,
     nameZh: zone.nameZh,
+    fee: zone.deliveryFee,
     deliveryFee: zone.deliveryFee,
+    minOrder: zone.minOrder,
+    estimatedTime: zone.estimatedTime,
     isActive: zone.isActive,
     createdAt: zone.createdAt.toISOString(),
     updatedAt: zone.updatedAt.toISOString(),
@@ -58,6 +64,11 @@ function parseFee(value: unknown): number | null {
   const fee = Number(value);
   if (!Number.isFinite(fee) || fee < 0) return null;
   return fee;
+}
+
+function parseEstimatedTime(value: unknown): string | null {
+  const text = String(value ?? "").trim().slice(0, 80);
+  return text || null;
 }
 
 /**
@@ -90,6 +101,8 @@ export async function POST(request: Request) {
     nameEn?: unknown;
     nameZh?: unknown;
     deliveryFee?: unknown;
+    minOrder?: unknown;
+    estimatedTime?: unknown;
     isActive?: unknown;
   };
   try {
@@ -103,6 +116,8 @@ export async function POST(request: Request) {
 
   const nameAr = optionalName(body.nameAr);
   const deliveryFee = parseFee(body.deliveryFee);
+  const minOrder =
+    body.minOrder == null || body.minOrder === "" ? 0 : parseFee(body.minOrder);
   if (!nameAr) {
     return NextResponse.json(
       { error: "nameAr is required" },
@@ -115,6 +130,12 @@ export async function POST(request: Request) {
       { status: 400, headers: corsHeaders },
     );
   }
+  if (minOrder == null) {
+    return NextResponse.json(
+      { error: "minOrder must be 0 or greater" },
+      { status: 400, headers: corsHeaders },
+    );
+  }
 
   const zone = await prisma.deliveryZone.create({
     data: {
@@ -122,6 +143,8 @@ export async function POST(request: Request) {
       nameEn: optionalName(body.nameEn),
       nameZh: optionalName(body.nameZh),
       deliveryFee,
+      minOrder,
+      estimatedTime: parseEstimatedTime(body.estimatedTime),
       isActive: body.isActive === false ? false : true,
     },
   });
@@ -143,6 +166,8 @@ export async function PUT(request: Request) {
     nameEn?: unknown;
     nameZh?: unknown;
     deliveryFee?: unknown;
+    minOrder?: unknown;
+    estimatedTime?: unknown;
     isActive?: unknown;
   };
   try {
@@ -195,6 +220,18 @@ export async function PUT(request: Request) {
     deliveryFee = parsed;
   }
 
+  let minOrder: number | undefined;
+  if (body.minOrder !== undefined) {
+    const parsed = parseFee(body.minOrder);
+    if (parsed == null) {
+      return NextResponse.json(
+        { error: "minOrder must be 0 or greater" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+    minOrder = parsed;
+  }
+
   const zone = await prisma.deliveryZone.update({
     where: { id },
     data: {
@@ -202,6 +239,10 @@ export async function PUT(request: Request) {
       ...(nameEn !== undefined ? { nameEn } : {}),
       ...(nameZh !== undefined ? { nameZh } : {}),
       ...(deliveryFee !== undefined ? { deliveryFee } : {}),
+      ...(minOrder !== undefined ? { minOrder } : {}),
+      ...(body.estimatedTime !== undefined
+        ? { estimatedTime: parseEstimatedTime(body.estimatedTime) }
+        : {}),
       ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
     },
   });

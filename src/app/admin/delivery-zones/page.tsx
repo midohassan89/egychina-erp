@@ -10,6 +10,8 @@ interface DeliveryZoneRow {
   nameEn: string;
   nameZh: string;
   deliveryFee: number;
+  minOrder: number;
+  estimatedTime: string | null;
   isActive: boolean;
 }
 
@@ -18,6 +20,8 @@ const emptyForm = {
   nameEn: "",
   nameZh: "",
   deliveryFee: "",
+  minOrder: "0",
+  estimatedTime: "",
   isActive: true,
 };
 
@@ -66,6 +70,8 @@ export default function DeliveryZonesPage() {
       nameEn: zone.nameEn ?? "",
       nameZh: zone.nameZh ?? "",
       deliveryFee: String(zone.deliveryFee),
+      minOrder: String(zone.minOrder ?? 0),
+      estimatedTime: zone.estimatedTime ?? "",
       isActive: zone.isActive,
     });
     setError(null);
@@ -75,12 +81,17 @@ export default function DeliveryZonesPage() {
   async function saveZone(event: FormEvent) {
     event.preventDefault();
     const deliveryFee = Number(form.deliveryFee);
+    const minOrder = Number(form.minOrder || 0);
     if (!form.nameAr.trim()) {
       setError("اسم المنطقة بالعربية مطلوب");
       return;
     }
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       setError("رسوم التوصيل يجب أن تكون 0 أو أكثر");
+      return;
+    }
+    if (!Number.isFinite(minOrder) || minOrder < 0) {
+      setError("الحد الأدنى للطلب يجب أن يكون 0 أو أكثر");
       return;
     }
 
@@ -96,6 +107,8 @@ export default function DeliveryZonesPage() {
           nameEn: form.nameEn.trim(),
           nameZh: form.nameZh.trim(),
           deliveryFee,
+          minOrder,
+          estimatedTime: form.estimatedTime.trim(),
           isActive: form.isActive,
         }),
       });
@@ -133,7 +146,7 @@ export default function DeliveryZonesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">مناطق التوصيل</h1>
           <p className="mt-1 text-slate-500 dark:text-gray-400">
-            أسماء مناطق التوصيل ورسوم كل منطقة
+            أسماء مناطق التوصيل، الحد الأدنى، والوقت التقريبي
           </p>
         </div>
         <button
@@ -158,6 +171,8 @@ export default function DeliveryZonesPage() {
               <th className="px-4 py-3 text-right">English</th>
               <th className="px-4 py-3 text-right">中文</th>
               <th className="px-4 py-3 text-right">رسوم التوصيل</th>
+              <th className="px-4 py-3 text-right">الحد الأدنى للطلب</th>
+              <th className="px-4 py-3 text-right">الوقت التقريبي للتوصيل</th>
               <th className="px-4 py-3 text-right">الحالة</th>
               <th className="px-4 py-3 text-right">الإجراءات</th>
             </tr>
@@ -165,13 +180,13 @@ export default function DeliveryZonesPage() {
           <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   جاري التحميل…
                 </td>
               </tr>
             ) : zones.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400 dark:text-gray-500">
                   لا توجد مناطق توصيل بعد.
                 </td>
               </tr>
@@ -188,6 +203,12 @@ export default function DeliveryZonesPage() {
                   <td className="px-4 py-3 text-slate-600 dark:text-gray-300">{zone.nameZh || "—"}</td>
                   <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-gray-200">
                     {formatEGP(zone.deliveryFee)}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-slate-700 dark:text-gray-200">
+                    {formatEGP(zone.minOrder ?? 0)}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-gray-300">
+                    {zone.estimatedTime || "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -304,6 +325,36 @@ export default function DeliveryZonesPage() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, deliveryFee: e.target.value }))
                 }
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                الحد الأدنى للطلب (ج.م)
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.minOrder}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, minOrder: e.target.value }))
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                الوقت التقريبي للتوصيل
+              </span>
+              <input
+                value={form.estimatedTime}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, estimatedTime: e.target.value }))
+                }
+                placeholder="مثال: 45 - 60 دقيقة"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
             </label>

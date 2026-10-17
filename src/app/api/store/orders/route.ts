@@ -9,7 +9,11 @@ import {
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
 import { resolveStoreCustomer } from "@/lib/store/storeAuth";
-import { getLoyaltySettings } from "@/lib/loyalty/settings";
+import { quoteCoupon } from "@/lib/coupons/quote";
+import {
+  getLoyaltySettings,
+  onlinePointsRedeemError,
+} from "@/lib/loyalty/settings";
 
 const SHIPPING_FEES = new Set([0, 50, 60, 80]);
 
@@ -239,6 +243,8 @@ export async function POST(request: Request) {
       totalAmount?: unknown;
       totalPrice?: unknown;
       shippingFee?: unknown;
+      deliveryZoneId?: unknown;
+      couponCode?: unknown;
       customerId?: unknown;
       pointsRedeemed?: unknown;
       expoPushToken?: unknown;
@@ -347,6 +353,12 @@ export async function POST(request: Request) {
           { status: 400, headers: corsHeaders },
         );
       }
+      if (parsed.getTime() < Date.now() + 60 * 60 * 1000) {
+        return NextResponse.json(
+          { error: "Scheduled delivery must be at least 1 hour from now" },
+          { status: 400, headers: corsHeaders },
+        );
+      }
       deliveryTime = parsed;
     }
 
@@ -418,28 +430,80 @@ export async function POST(request: Request) {
       addressOwnerCustomerId ||
       "";
     const isGuest = customerId.length === 0;
-    const pointsRedeemed = isGuest ? 0 : Number(body.pointsRedeemed ?? 0);
+    const requestedPoints = Number(body.pointsRedeemed ?? 0);
+    if (!isGuest && requestedPoints !== 0) {
+      const pointsError = onlinePointsRedeemError(requestedPoints);
+      if (pointsError) {
+        return NextResponse.json(
+          { error: pointsError },
+          { status: 400, headers: corsHeaders },
+        );
+      }
+    }
+    const pointsRedeemed = isGuest ? 0 : requestedPoints;
     const loyalty = await getLoyaltySettings();
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const discount = isGuest ? 0 : pointsRedeemed / loyalty.pointsRedeemValue;
-    const paidGoods = Math.max(0, subtotal - discount);
+    const pointsDiscount = isGuest ? 0 : pointsRedeemed / loyalty.pointsRedeemValue;
+
+    const couponCode = pickString(body.couponCode).toUpperCase();
+    let couponId: string | null = null;
+    let couponDiscount = 0;
+    if (couponCode) {
+      const coupon = await prisma.coupon.findUnique({ where: { code: couponCode } });
+      const quoted = quoteCoupon(coupon, subtotal);
+      if (!quoted.ok) {
+        return NextResponse.json(
+          { error: quoted.error },
+          { status: 400, headers: corsHeaders },
+        );
+      }
+      couponId = quoted.quote.id;
+      couponDiscount = quoted.quote.discountAmount;
+    }
+
+    const deliveryZoneId = pickString(body.deliveryZoneId);
+    const zone = deliveryZoneId
+      ? await prisma.deliveryZone.findUnique({
+          where: { id: deliveryZoneId },
+          select: { id: true, isActive: true, minOrder: true, deliveryFee: true },
+        })
+      : null;
+    if (deliveryZoneId && (!zone || !zone.isActive)) {
+      return NextResponse.json(
+        { error: "Delivery zone not found" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+    if (zone && subtotal + 0.001 < zone.minOrder) {
+      return NextResponse.json(
+        { error: "Order is below the delivery zone minimum" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    const paidGoods = Math.max(0, subtotal - couponDiscount - pointsDiscount);
     const pointsEarned = isGuest
       ? null
       : Math.floor(paidGoods * loyalty.pointsEarnRatio);
 
-    // Mobile often sends only totalPrice (goods + shipping) without shippingFee
+    // Mobile often sends only totalPrice (goods + shipping) without shippingFee.
+    // A selected zone uses that zone's fee. Older clients keep the fixed fee list.
     let shippingFee = Number(body.shippingFee);
-    if (!Number.isFinite(shippingFee)) {
-      const inferred = Math.round((finalTotal - (isGuest ? subtotal : paidGoods)) * 100) / 100;
+    if (zone) {
+      if (!Number.isFinite(shippingFee)) shippingFee = zone.deliveryFee;
+    } else if (!Number.isFinite(shippingFee)) {
+      const inferred = Math.round((finalTotal - paidGoods) * 100) / 100;
       shippingFee = SHIPPING_FEES.has(inferred) ? inferred : 0;
     }
 
     if (
       !Number.isInteger(pointsRedeemed) ||
       pointsRedeemed < 0 ||
-      !SHIPPING_FEES.has(shippingFee) ||
-      (!isGuest && discount - subtotal > 0.001) ||
-      Math.abs((isGuest ? subtotal : paidGoods) + shippingFee - finalTotal) > 0.02
+      (zone
+        ? Math.abs(shippingFee - zone.deliveryFee) > 0.02
+        : !SHIPPING_FEES.has(shippingFee)) ||
+      couponDiscount + pointsDiscount - subtotal > 0.001 ||
+      Math.abs(paidGoods + shippingFee - finalTotal) > 0.02
     ) {
       return NextResponse.json(
         { error: "Order total does not match the calculated amount" },
@@ -527,6 +591,28 @@ export async function POST(request: Request) {
         }
       }
 
+      if (couponId) {
+        const fresh = await tx.coupon.findUnique({ where: { id: couponId } });
+        const again = quoteCoupon(fresh, subtotal);
+        if (!again.ok || Math.abs(again.quote.discountAmount - couponDiscount) > 0.001) {
+          throw new Error(again.ok ? "Coupon is no longer valid" : again.error);
+        }
+        const bumped = await tx.coupon.updateMany({
+          where: {
+            id: couponId,
+            isActive: true,
+            AND: [
+              { usedCount: fresh!.usedCount },
+              ...(fresh!.usageLimit != null
+                ? [{ usedCount: { lt: fresh!.usageLimit } }]
+                : []),
+            ],
+          },
+          data: { usedCount: { increment: 1 } },
+        });
+        if (bumped.count !== 1) throw new Error("Coupon usage limit reached");
+      }
+
       const created = await tx.order.create({
         data: {
           customerName: finalName,
@@ -536,6 +622,11 @@ export async function POST(request: Request) {
           ...(linkedAddressId ? { customerAddressId: linkedAddressId } : {}),
           notes,
           totalAmount: finalTotal,
+          shippingFee,
+          couponDiscount,
+          pointsDiscount,
+          ...(couponCode ? { couponCode } : {}),
+          ...(zone ? { deliveryZoneId: zone.id } : {}),
           ...(linkedCustomerId ? { customerId: linkedCustomerId } : {}),
           ...(!isGuest
             ? { pointsEarned, pointsRedeemed }
@@ -617,7 +708,17 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not create order";
 
-    if (message === "Customer not found" || message === "Insufficient points") {
+    if (
+      message === "Customer not found" ||
+      message === "Insufficient points" ||
+      message === "Coupon not found" ||
+      message === "Coupon is inactive" ||
+      message === "Coupon has expired" ||
+      message === "Coupon usage limit reached" ||
+      message === "Order is below the coupon minimum" ||
+      message === "Coupon is no longer valid" ||
+      message === "Coupon is invalid"
+    ) {
       return NextResponse.json({ error: message }, { status: 400, headers: corsHeaders });
     }
 

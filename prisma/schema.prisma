@@ -609,11 +609,34 @@ model DeliveryZone {
   /** Chinese name shown on the storefront. */
   nameZh      String   @default("")
   deliveryFee Float
+  /** Minimum goods subtotal required for this zone. */
+  minOrder    Float    @default(0)
+  /** Shown to the customer, e.g. "45 - 60 دقيقة". */
+  estimatedTime String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   addresses Address[]
+  orders    Order[]
+
+  @@index([isActive])
+}
+
+/// Storefront promo code. `code` is always stored uppercase.
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  /** PERCENTAGE | FIXED */
+  discountType  String    @default("PERCENTAGE")
+  discountValue Float
+  minOrder      Float     @default(0)
+  maxDiscount   Float?
+  usageLimit    Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
 
   @@index([isActive])
 }
@@ -700,6 +723,13 @@ model Order {
   customer       Customer?   @relation(fields: [customerId], references: [id])
   pointsEarned   Int?
   pointsRedeemed Int?
+  /** EGP taken off the goods subtotal for pointsRedeemed. */
+  pointsDiscount Float       @default(0)
+  couponCode     String?
+  couponDiscount Float       @default(0)
+  deliveryZoneId String?
+  deliveryZone   DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  shippingFee    Float       @default(0)
   /** Set when completion points have been added, so a status change cannot award them twice. */
   pointsAwarded  Boolean     @default(false)
   createdAt      DateTime    @default(now())
@@ -708,6 +738,7 @@ model Order {
 
   @@index([customerId])
   @@index([customerAddressId])
+  @@index([deliveryZoneId])
 }
 
 model OrderItem {
