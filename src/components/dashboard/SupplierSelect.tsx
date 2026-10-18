@@ -99,7 +99,7 @@ function SupplierSelectFields({
           required
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
         >
           <option value="">
             {loaded && suppliers.length === 0 ? "لا يوجد موردون" : "اختر المورد…"}
@@ -226,7 +226,7 @@ function SupplierCreateDialog({
             onChange={(e) => setName(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={saving}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
           />
         </label>
         <label className="mt-3 block space-y-1.5">
@@ -239,7 +239,7 @@ function SupplierCreateDialog({
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={saving}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-gray-700"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-left text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
           />
         </label>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

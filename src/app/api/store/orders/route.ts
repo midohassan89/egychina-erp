@@ -10,6 +10,7 @@ import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { persistSaleRecord } from "@/lib/reports/persistSale";
 import { resolveStoreCustomer } from "@/lib/store/storeAuth";
 import { quoteCoupon } from "@/lib/coupons/quote";
+import { allocateOrderNumber, orderChannelFrom } from "@/lib/orders/orderNumber";
 import {
   getLoyaltySettings,
   onlinePointsRedeemError,
@@ -165,7 +166,32 @@ export async function GET(request: Request) {
       include: {
         items: {
           include: {
-            product: { select: { id: true, name: true, imageUrl: true } },
+            product: {
+              select: {
+                id: true,
+                name: true,
+                nameEn: true,
+                nameZh: true,
+                imageUrl: true,
+                isWeighed: true,
+              },
+            },
+          },
+        },
+        deliveryZone: {
+          select: {
+            id: true,
+            nameAr: true,
+            nameEn: true,
+            nameZh: true,
+            deliveryFee: true,
+            estimatedTime: true,
+          },
+        },
+        returnRequests: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            items: { select: { id: true, orderItemId: true, quantity: true } },
           },
         },
       },
@@ -184,6 +210,8 @@ export async function GET(request: Request) {
           : null,
         orders: orders.map((order) => ({
           id: order.id,
+          orderNumber: order.orderNumber,
+          customerId: order.customerId,
           customerName: order.customerName,
           phone: order.phone,
           address: order.address,
@@ -192,13 +220,51 @@ export async function GET(request: Request) {
           totalAmount: order.totalAmount,
           status: order.status,
           createdAt: order.createdAt.toISOString(),
+          shippingFee: order.shippingFee,
+          couponCode: order.couponCode,
+          couponDiscount: order.couponDiscount,
+          pointsDiscount: order.pointsDiscount,
+          pointsRedeemed: order.pointsRedeemed ?? 0,
+          deliveryTime: order.deliveryTime
+            ? order.deliveryTime.toISOString()
+            : null,
+          deliveryZone: order.deliveryZone
+            ? {
+                id: order.deliveryZone.id,
+                name: order.deliveryZone.nameAr,
+                nameEn: order.deliveryZone.nameEn,
+                nameZh: order.deliveryZone.nameZh,
+                fee: order.deliveryZone.deliveryFee,
+                estimatedTime: order.deliveryZone.estimatedTime,
+              }
+            : null,
           items: order.items.map((item) => ({
             id: item.id,
+            orderItemId: item.id,
             productId: item.productId,
             productName: item.product.name,
+            name: item.product.name,
+            nameEn: item.product.nameEn,
+            nameZh: item.product.nameZh,
             imageUrl: item.product.imageUrl,
+            isWeighed: item.product.isWeighed === true,
             quantity: item.quantity,
             price: item.price,
+            lineTotal: Math.round(item.price * item.quantity * 100) / 100,
+          })),
+          returns: order.returnRequests.map((request) => ({
+            id: request.id,
+            orderId: order.id,
+            status: request.status,
+            createdAt: request.createdAt.toISOString(),
+            items: request.items.map((item) => ({
+              id: item.id,
+              orderItemId: item.orderItemId,
+              productId:
+                order.items.find((line) => line.id === item.orderItemId)
+                  ?.productId ?? null,
+              quantity: item.quantity,
+            })),
           })),
         })),
       },
@@ -244,6 +310,9 @@ export async function POST(request: Request) {
       totalPrice?: unknown;
       shippingFee?: unknown;
       deliveryZoneId?: unknown;
+      channel?: unknown;
+      source?: unknown;
+      platform?: unknown;
       couponCode?: unknown;
       customerId?: unknown;
       pointsRedeemed?: unknown;
@@ -344,8 +413,9 @@ export async function POST(request: Request) {
       body.deliveryTime,
       body.scheduledDeliveryTime,
     );
+    const isAsap = deliveryTimeRaw.toUpperCase() === "ASAP";
     let deliveryTime: Date | null = null;
-    if (deliveryTimeRaw) {
+    if (deliveryTimeRaw && !isAsap) {
       const parsed = new Date(deliveryTimeRaw);
       if (Number.isNaN(parsed.getTime())) {
         return NextResponse.json(
@@ -591,6 +661,16 @@ export async function POST(request: Request) {
         }
       }
 
+      const orderNumber = await allocateOrderNumber(
+        tx,
+        orderChannelFrom(
+          body.channel ??
+            body.source ??
+            body.platform ??
+            request.headers.get("x-channel"),
+        ),
+      );
+
       if (couponId) {
         const fresh = await tx.coupon.findUnique({ where: { id: couponId } });
         const again = quoteCoupon(fresh, subtotal);
@@ -621,6 +701,7 @@ export async function POST(request: Request) {
           ...(deliveryTime ? { deliveryTime } : {}),
           ...(linkedAddressId ? { customerAddressId: linkedAddressId } : {}),
           notes,
+          orderNumber,
           totalAmount: finalTotal,
           shippingFee,
           couponDiscount,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { productUnits } from "@/lib/products/units";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
     const unordered = orderedIds.length
       ? await prisma.product.findMany({
           where: { id: { in: orderedIds } },
-          include: { brand: true },
+          include: { brand: true, packages: true },
         })
       : [];
     const byId = new Map(unordered.map((product) => [product.id, product]));
@@ -91,6 +92,16 @@ export async function GET(req: NextRequest) {
       categoryId: product.categoryId,
       stock: product.stockQuantity,
       stockStatus: product.stockStatus,
+      units: productUnits(product.packages),
+      packages: product.packages.map((row) => ({
+        id: row.id,
+        name: row.name,
+        nameEn: row.nameEn,
+        nameZh: row.nameZh,
+        barcode: row.barcode,
+        price: row.price,
+        packSize: row.packSize,
+      })),
       brand: product.brand
         ? {
             id: product.brand.id,

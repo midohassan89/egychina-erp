@@ -1,21 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStoreApiKey } from "@/lib/store/storeAuth";
+import {
+  requireStoreApiKey,
+  resolveCustomerIdFromRequest,
+  resolvePhoneFromRequest,
+  resolveStoreCustomer,
+} from "@/lib/store/storeAuth";
 
 export const dynamic = "force-dynamic";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, x-api-key, x-customer-id",
+  "Access-Control-Allow-Headers":   "Content-Type, x-api-key, x-customer-id, x-customer-phone, x-phone, Authorization",
 };
 
-type IncomingItem = { orderItemId?: unknown; quantity?: unknown };
+type IncomingItem = {
+  orderItemId?: unknown;
+  productId?: unknown;
+  quantity?: unknown;
+};
 
 /**
  * POST /api/returns
  * Storefront return request for specific order lines.
- * Body: { orderId, customerId, items: [{ orderItemId, quantity }] }
+ * Body: { orderId, customerId?, reason?, items: [{ productId | orderItemId, quantity }] }
  */
 export async function POST(request: Request) {
   if (!requireStoreApiKey(request)) {
@@ -25,7 +34,13 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { orderId?: unknown; customerId?: unknown; items?: unknown };
+  let body: {
+    orderId?: unknown;
+    customerId?: unknown;
+    phone?: unknown;
+    reason?: unknown;
+    items?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -36,9 +51,12 @@ export async function POST(request: Request) {
   }
 
   const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
-  const customerId =
-    typeof body.customerId === "string" ? body.customerId.trim() : "";
-  if (!orderId || !customerId) {
+  const requestedCustomerId = resolveCustomerIdFromRequest(
+    request,
+    body.customerId,
+  );
+  const phone = resolvePhoneFromRequest(request, body.phone);
+  if (!orderId || (!requestedCustomerId && !phone)) {
     return NextResponse.json(
       { error: "orderId and customerId are required" },
       { status: 400, headers: corsHeaders },
@@ -51,19 +69,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const requested = new Map<string, number>();
-  for (const raw of body.items as IncomingItem[]) {
-    const orderItemId =
-      typeof raw.orderItemId === "string" ? raw.orderItemId.trim() : "";
-    const quantity = Number(raw.quantity);
-    const roundedQty = Math.round(quantity * 1000) / 1000;
-    if (!orderItemId || !Number.isFinite(roundedQty) || roundedQty <= 0) {
-      return NextResponse.json(
-        { error: "Each item needs an orderItemId and a quantity greater than 0" },
-        { status: 400, headers: corsHeaders },
-      );
-    }
-    requested.set(orderItemId, (requested.get(orderItemId) ?? 0) + roundedQty);
+  const customer = await resolveStoreCustomer(prisma, {
+    customerId: requestedCustomerId,
+    phone,
+    createIfMissing: false,
+  });
+  const customerId = customer?.id ?? "";
+  if (!customerId) {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: 403, headers: corsHeaders },
+    );
   }
 
   const order = await prisma.order.findUnique({
@@ -71,7 +87,7 @@ export async function POST(request: Request) {
     select: {
       id: true,
       customerId: true,
-      items: { select: { id: true, quantity: true } },
+      items: { select: { id: true, productId: true, quantity: true } },
     },
   });
   if (!order) {
@@ -85,6 +101,30 @@ export async function POST(request: Request) {
       { error: "Forbidden" },
       { status: 403, headers: corsHeaders },
     );
+  }
+
+  const requested = new Map<string, number>();
+  for (const raw of body.items as IncomingItem[]) {
+    const explicitId =
+      typeof raw.orderItemId === "string" ? raw.orderItemId.trim() : "";
+    const productId =
+      typeof raw.productId === "string" ? raw.productId.trim() : "";
+    const orderItemId =
+      explicitId ||
+      order.items.find((item) => item.productId === productId)?.id ||
+      "";
+    const quantity = Number(raw.quantity);
+    const roundedQty = Math.round(quantity * 1000) / 1000;
+    if (!orderItemId || !Number.isFinite(roundedQty) || roundedQty <= 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Each item needs a productId or orderItemId and a quantity greater than 0",
+        },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+    requested.set(orderItemId, (requested.get(orderItemId) ?? 0) + roundedQty);
   }
 
   const purchased = new Map(order.items.map((item) => [item.id, item.quantity]));

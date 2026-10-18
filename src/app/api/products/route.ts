@@ -6,6 +6,7 @@ import {
   CreateProductError,
 } from "@/lib/products/createProduct";
 import { expandPosCatalog } from "@/lib/products/mapProduct";
+import { productUnits } from "@/lib/products/units";
 import type { Prisma } from "@prisma/client";
 
 /** Live inventory is stockQuantity. Do not select the removed storefront `stock` column. */
@@ -359,6 +360,7 @@ export async function GET(request: Request) {
         price: row.price,
         isFavorite: row.isFavorite,
       })),
+      units: productUnits(p.packages),
       updatedAt: p.updatedAt.toISOString(),
     };
     });

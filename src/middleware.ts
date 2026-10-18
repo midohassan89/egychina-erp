@@ -30,6 +30,7 @@ export default auth((req) => {
     pathname.startsWith("/api/price-checker") ||
     pathname.startsWith("/api/store") ||
     pathname.startsWith("/api/customer") ||
+    (req.method === "GET" && /^\/api\/products\/[^/]+$/.test(pathname)) ||
     pathname.startsWith("/api/driver") ||
     (pathname === "/api/settings" && req.method === "GET") ||
     (pathname === "/api/delivery-zones" &&

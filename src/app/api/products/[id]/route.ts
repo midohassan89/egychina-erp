@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { productUnits } from "@/lib/products/units";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import {
@@ -33,6 +35,46 @@ function errorResponse(error: unknown) {
   }
   console.error("[api/products/[id]]", error);
   return NextResponse.json({ error: "Request failed" }, { status: 500 });
+}
+
+/** GET /api/products/[id] — one product with its sellable units. */
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const session = await auth();
+  const staff = Boolean(session?.user && requireEditor(session.user.role));
+
+  const product = await prisma.product.findFirst({
+    where: {
+      OR: [{ id }, { wcId: Number.isFinite(Number(id)) ? Number(id) : -1 }],
+      ...(staff ? {} : { isDeleted: false }),
+    },
+    include: { packages: true, category: true, brand: true },
+  });
+  if (!product) {
+    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: product.id,
+    wcId: product.wcId,
+    name: product.name,
+    nameEn: product.nameEn,
+    nameZh: product.nameZh,
+    barcode: product.barcode,
+    price: product.price,
+    salePrice: product.salePrice,
+    imageUrl: product.imageUrl,
+    stockQuantity: product.stockQuantity,
+    isWeighed: product.isWeighed,
+    categoryName: product.category?.name ?? null,
+    brandName: product.brand?.name ?? null,
+    ...(staff ? { buyingCost: product.buyingCost, sku: product.sku } : {}),
+    packages: product.packages,
+    units: productUnits(product.packages),
+  });
 }
 
 /**

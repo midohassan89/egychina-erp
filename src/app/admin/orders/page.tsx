@@ -15,6 +15,7 @@ export default async function OrdersPage() {
 
   const rows: OrderRow[] = orders.map((order) => ({
     id: order.id,
+    orderNumber: order.orderNumber,
     customerName: order.customerName,
     phone: order.phone,
     address: order.address,

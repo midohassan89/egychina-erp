@@ -64,8 +64,8 @@ export function InvoiceMarginSelector({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <p className="mb-2 text-sm font-medium text-slate-700 dark:text-gray-200">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <p className="mb-2 text-sm font-medium text-slate-700 dark:text-gray-100">
         نسبة الربح الافتراضية للفاتورة
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -82,7 +82,7 @@ export function InvoiceMarginSelector({
                 "cursor-pointer rounded-full px-2.5 py-1 text-xs transition disabled:opacity-40",
                 selected
                   ? "bg-emerald-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-emerald-100 dark:bg-gray-800 dark:text-gray-200",
+                  : "bg-gray-100 text-gray-700 hover:bg-emerald-100 dark:bg-slate-900 dark:text-gray-100 dark:hover:bg-slate-700",
               )}
             >
               {margin}%

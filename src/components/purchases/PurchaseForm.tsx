@@ -1247,7 +1247,7 @@ function PurchaseFormInner({
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/dashboard/purchases"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-gray-300 dark:hover:bg-slate-700 dark:hover:text-gray-100"
         >
           <ArrowLeft className="h-4 w-4" />
           المشتريات
@@ -1255,10 +1255,10 @@ function PurchaseFormInner({
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
           {editing ? "تعديل فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
         </h1>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 text-slate-500 dark:text-gray-300">
           {editing
             ? `تعديل فاتورة المشتريات رقم ${initialData!.id}. يتم تعديل المخزون بفرق الكميات.`
             : "امسح أو ابحث عن منتج، اضغط Enter لإضافته، ثم أدخل الكمية والتكلفة. استلام المخزون يُزامن مع ووكومرس دفعة واحدة."}
@@ -1266,28 +1266,28 @@ function PurchaseFormInner({
       </div>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
-        <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3">
+        <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-3 dark:border-slate-700 dark:bg-slate-800">
           <div className="sm:col-span-1">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-100">
               المورد
             </span>
             <SupplierSelect value={supplierId} onChange={setSupplierId} />
           </div>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-100">
               رقم الفاتورة (اختياري)
             </span>
             <input
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
               placeholder="مرجع المورد"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
+            <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-100">
               التاريخ
             </span>
             <input
@@ -1295,7 +1295,7 @@ function PurchaseFormInner({
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
             />
           </label>
         </div>
@@ -1306,8 +1306,8 @@ function PurchaseFormInner({
           disabled={isSubmitting}
         />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-800">بنود الفاتورة</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-100">بنود الفاتورة</h2>
           <div className="relative mt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -1317,12 +1317,12 @@ function PurchaseFormInner({
               onChange={(e) => setProductQuery(e.target.value)}
               onKeyDown={(e) => void handleSearchKeyDown(e)}
               placeholder="امسح الباركود أو ابحث بالاسم / كود الصنف — اضغط Enter للإضافة"
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
               autoComplete="off"
             />
             {(productQuery.trim().length > 0 &&
               (searching || lookupQuery === productQuery.trim())) && (
-              <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              <ul className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                 {searching && productHits.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-slate-400">
                     جاري البحث…
@@ -1338,7 +1338,7 @@ function PurchaseFormInner({
                         setQuickAddQuery(productQuery.trim());
                         setQuickAddOpen(true);
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-left text-sm font-semibold text-brand-800 hover:bg-brand-100"
+                      className="flex w-full items-center gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-left text-sm font-semibold text-brand-800 hover:bg-brand-100 dark:bg-slate-900 dark:text-gray-100 dark:hover:bg-slate-700"
                     >
                       <Plus className="h-4 w-4 shrink-0" />
                       إضافة منتج جديد
@@ -1350,13 +1350,13 @@ function PurchaseFormInner({
                       <button
                         type="button"
                         onClick={() => void addProduct(p)}
-                        className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-brand-50"
+                        className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-brand-50 dark:hover:bg-slate-700"
                       >
                         <span>
-                          <span className="block text-sm font-medium text-slate-900">
+                          <span className="block text-sm font-medium text-slate-900 dark:text-gray-100">
                             {p.name}
                           </span>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-gray-300">
                             {p.scannedPackage
                               ? `${p.scannedPackage.name} · حجم الكرتونة ${p.scannedPackage.packSize}`
                               : `${p.barcode || p.sku || `WC #${p.wcId}`} · المخزون ${p.stockQuantity}`}
@@ -1386,42 +1386,42 @@ function PurchaseFormInner({
                 <col className="w-28" />
                 <col className="w-10" />
               </colgroup>
-              <thead className="[&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)]">
+              <thead className="[&_th]:sticky [&_th]:top-0 [&_th]:z-20 [&_th]:bg-white [&_th]:shadow-[inset_0_-1px_0_0_#e2e8f0,0_6px_8px_-6px_rgba(15,23,42,0.18)] dark:[&_th]:bg-slate-800 dark:[&_th]:shadow-[inset_0_-1px_0_0_#334155,0_6px_8px_-6px_rgba(0,0,0,0.45)]">
                 <tr>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     صورة
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     المنتج
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     كراتين
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     حجم الكرتونة
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     تكلفة الكرتونة
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     إجمالي البند
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     للمخزون
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     السعر العادي
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     سعر التخفيض
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700">
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     الربح / الإضافة
                   </th>
-                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700" />
+                  <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100" />
                 </tr>
               </thead>
-              <tbody className="[&_td]:border-b [&_td]:border-slate-100">
+              <tbody className="[&_td]:border-b [&_td]:border-slate-100 dark:[&_td]:border-slate-700">
                 {lines.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="py-8 text-center text-slate-400">
@@ -1443,11 +1443,11 @@ function PurchaseFormInner({
                         ) : (
                           <span
                             aria-hidden
-                            className="mx-auto block h-8 w-8 rounded bg-slate-100"
+                            className="mx-auto block h-8 w-8 rounded bg-slate-100 dark:bg-slate-900"
                           />
                         )}
                       </td>
-                      <td className="overflow-hidden px-2 py-2 text-start align-middle font-medium text-slate-900">
+                      <td className="overflow-hidden px-2 py-2 text-start align-middle font-medium text-slate-900 dark:text-gray-100">
                         <PurchaseLineProduct
                           productId={line.productId}
                           name={line.productName}
@@ -1480,7 +1480,7 @@ function PurchaseFormInner({
                             else focusPackCost(line.key);
                           }}
                           aria-label="Number of cartons"
-                          className="w-14 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:bg-gray-800 dark:text-gray-100"
+                          className="w-14 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
                         />
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
@@ -1504,7 +1504,7 @@ function PurchaseFormInner({
                             }}
                             aria-label="Pieces per carton"
                             title="Pieces in one carton or box"
-                            className="w-14 rounded-lg border border-slate-300 bg-slate-50 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-slate-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-14 rounded-lg border border-slate-300 bg-slate-50 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                           {packSync[line.key] === "saving" && (
                             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
@@ -1535,7 +1535,7 @@ function PurchaseFormInner({
                               focusLineTotal(line.key);
                             }}
                             aria-label="Pack cost"
-                            className="w-20 rounded-lg border border-slate-200 bg-slate-100 px-1.5 py-1.5 text-sm tabular-nums text-slate-700 outline-none [appearance:textfield] focus:border-slate-400 focus:bg-slate-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-20 rounded-lg border border-slate-200 bg-slate-100 px-1.5 py-1.5 text-sm tabular-nums text-slate-700 outline-none [appearance:textfield] focus:border-slate-400 focus:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100 dark:focus:bg-slate-900 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                         </div>
                       </td>
@@ -1564,7 +1564,7 @@ function PurchaseFormInner({
                               focusSearch();
                             }
                           }}
-                          className="w-20 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:bg-gray-800 dark:text-gray-100"
+                          className="w-20 rounded-lg border border-slate-200 px-1.5 py-1.5 text-sm tabular-nums outline-none [appearance:textfield] focus:border-brand-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
                           title="Supplier line total. Editing it recalculates the pack cost."
                         />
                       </td>
@@ -1574,10 +1574,10 @@ function PurchaseFormInner({
                           const pieceCost = pieceCostOf(line);
                           return (
                             <div className="leading-tight break-words">
-                              <p className="font-semibold tabular-nums text-slate-900">
+                              <p className="font-semibold tabular-nums text-slate-900 dark:text-gray-100">
                                 {pieces} قطعة
                               </p>
-                              <p className="text-xs tabular-nums text-slate-500">
+                              <p className="text-xs tabular-nums text-slate-500 dark:text-gray-300">
                                 {formatEGP(pieceCost)} / قطعة
                               </p>
                             </div>
@@ -1607,7 +1607,7 @@ function PurchaseFormInner({
                               if (isBlankOrZero(line.salePrice)) focusSalePrice(line.key);
                               else focusSearch();
                             }}
-                            className="w-20 rounded-lg border-2 border-blue-400 bg-white px-1.5 py-1.5 text-sm tabular-nums text-blue-950 outline-none [appearance:textfield] focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-20 rounded-lg border-2 border-blue-400 bg-white px-1.5 py-1.5 text-sm tabular-nums text-blue-950 outline-none [appearance:textfield] focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             aria-label="Regular selling price"
                           />
                           </div>
@@ -1652,7 +1652,7 @@ function PurchaseFormInner({
                                 e.preventDefault();
                                 focusSearch();
                               }}
-                              className="w-20 rounded-lg border border-amber-300 bg-amber-50 px-1.5 py-1.5 text-sm tabular-nums text-amber-950 outline-none [appearance:textfield] placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              className="w-20 rounded-lg border border-amber-300 bg-amber-50 px-1.5 py-1.5 text-sm tabular-nums text-amber-950 outline-none [appearance:textfield] placeholder:text-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/40 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100 dark:placeholder:text-gray-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               aria-label="Sale selling price"
                             />
                           </div>
@@ -1683,7 +1683,7 @@ function PurchaseFormInner({
                         <button
                           type="button"
                           onClick={() => removeLine(line.key)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                           aria-label="Remove line"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1696,18 +1696,18 @@ function PurchaseFormInner({
             </table>
           </div>
 
-          <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+          <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 dark:border-slate-700">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">
+              <span className="text-sm font-medium text-slate-500 dark:text-gray-300">
                 إجمالي الفاتورة
               </span>
-              <span className="text-2xl font-bold tabular-nums text-slate-900">
+              <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-gray-100">
                 {formatEGP(totalAmount)}
               </span>
             </div>
 
             <label className="block max-w-xs">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-100">
                 المبلغ المدفوع الآن (ج.م)
               </span>
               <input
@@ -1716,18 +1716,18 @@ function PurchaseFormInner({
                 step="0.01"
                 value={paidAmount}
                 onChange={(e) => setPaidAmount(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-base font-semibold tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
               />
             </label>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
-              <span className="text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900">
+              <span className="text-slate-600 dark:text-gray-300">
                 المستحق / زيادة الذمم:{" "}
-                <strong className="tabular-nums text-slate-900">
+                <strong className="tabular-nums text-slate-900 dark:text-gray-100">
                   {formatEGP(dueAmount)}
                 </strong>
               </span>
-              <span className="font-semibold text-slate-800">
+              <span className="font-semibold text-slate-800 dark:text-gray-100">
                 الحالة: {previewStatusLabel}
               </span>
             </div>
@@ -1735,12 +1735,12 @@ function PurchaseFormInner({
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </p>
         )}
         {successNote && (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
             {successNote}
           </p>
         )}
@@ -1748,7 +1748,7 @@ function PurchaseFormInner({
         <div className="flex justify-end gap-2">
           <Link
             href="/dashboard/purchases"
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-gray-100 dark:hover:bg-slate-700"
           >
             إلغاء
           </Link>

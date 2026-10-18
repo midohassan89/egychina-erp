@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
-import { sendExpoPush } from "@/lib/push/expo";
-import {
-  normalizeOrderStatus,
-  orderStatusLabel,
-} from "@/lib/orders/status";
+import { orderStatusNotification } from "@/lib/notifications/orderStatusCopy";
+import { pushToCustomer } from "@/lib/notifications/pushCustomer";
+import { normalizeOrderStatus } from "@/lib/orders/status";
 import { applyOrderStatusLoyalty } from "@/lib/orders/loyalty";
 
 /** PATCH /api/admin/orders/[id] — update a storefront order status. */
@@ -45,12 +43,13 @@ export async function PATCH(
       where: { id },
       select: {
         id: true,
+        orderNumber: true,
         status: true,
         phone: true,
         customerId: true,
         pointsEarned: true,
         pointsAwarded: true,
-        customer: { select: { expoPushToken: true } },
+        customer: { select: { expoPushToken: true, pushToken: true } },
       },
     });
     if (!existing) {
@@ -66,7 +65,7 @@ export async function PATCH(
       let customer = existing.customerId
         ? await prisma.customer.findUnique({
             where: { id: existing.customerId },
-            select: { id: true, expoPushToken: true, phone: true },
+            select: { id: true, expoPushToken: true, pushToken: true, phone: true },
           })
         : null;
 
@@ -79,34 +78,27 @@ export async function PATCH(
               ...(digits ? [{ phone: { contains: digits.slice(-10) } }] : []),
             ],
           },
-          select: { id: true, expoPushToken: true, phone: true },
+          select: { id: true, expoPushToken: true, pushToken: true, phone: true },
         });
       }
 
-      const token = customer?.expoPushToken?.trim() ?? "";
-      if (token) {
-        const result = await sendExpoPush({
-          to: token,
-          sound: "default",
-          title: "تحديث حالة الطلب 📦",
-          body: `طلبك رقم #${order.id} أصبح الآن: ${orderStatusLabel(newStatus)}`,
+      const number = existing.orderNumber || order.id.slice(0, 8).toUpperCase();
+      const copy = orderStatusNotification(newStatus, number);
+      if (customer) {
+        await prisma.customerNotification.create({
           data: {
-            type: "order_status",
+            customerId: customer.id,
+            ...copy,
+            type: "ORDER",
             orderId: order.id,
-            status: newStatus,
           },
         });
-        console.log("[api/admin/orders/[id]] expo push", {
+        await pushToCustomer(customer, copy.titleAr, copy.bodyAr, {
+          type: "order_status",
           orderId: order.id,
-          customerId: customer?.id,
-          ok: result.ok,
-          error: result.error,
+          orderNumber: number,
+          status: newStatus,
         });
-      } else {
-        console.warn(
-          "[api/admin/orders/[id]] no expoPushToken for order",
-          order.id,
-        );
       }
     }
 

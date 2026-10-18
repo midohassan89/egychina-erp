@@ -14,6 +14,7 @@ import {
 
 export interface OrderRow {
   id: string;
+  orderNumber?: string | null;
   customerName: string;
   phone: string;
   address: string;
@@ -56,7 +57,16 @@ function formatOrderDate(iso: string): string {
 function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
   const { toast } = useToast();
   const [rows, setRows] = useState(orders);
+  const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? rows.filter((order) =>
+        [order.orderNumber, order.customerName, order.phone, order.id]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(needle)),
+      )
+    : rows;
 
   async function updateStatus(id: string, status: string) {
     const previous = rows;
@@ -111,7 +121,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
     }
   }
 
-  if (rows.length === 0) {
+  if (visible.length === 0 && rows.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
         لا توجد طلبات بعد
@@ -121,10 +131,17 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
 
   return (
     <div className="space-y-3">
+      <input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="بحث برقم الطلب أو الهاتف أو الاسم"
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+      />
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
+              <th className="px-4 py-3">رقم الطلب</th>
               <th className="px-4 py-3">التاريخ</th>
               <th className="px-4 py-3">العميل</th>
               <th className="px-4 py-3">الهاتف</th>
@@ -135,8 +152,11 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
-            {rows.map((order) => (
+            {visible.map((order) => (
               <tr key={order.id} className="align-top">
+                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-gray-100" dir="ltr">
+                  {order.orderNumber || "—"}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-gray-300">
                   {formatOrderDate(order.createdAt)}
                 </td>

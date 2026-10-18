@@ -111,6 +111,7 @@ model Product {
   brand           Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
   linkedProduct   Product?  @relation("ProductToBundle", fields: [linkedProductId], references: [id])
   virtualBundles  Product[] @relation("ProductToBundle")
+  wishlistItems   WishlistItem[]
 
   purchaseItems       PurchaseInvoiceItem[]
   purchaseReturns     PurchaseReturnItem[]
@@ -515,6 +516,8 @@ model Sale {
   /** Set when the sale was saved despite a business-rule issue (oversell, no shift). */
   requiresAudit Boolean  @default(false)
   auditReason   String?
+  /** Readable cashier number, e.g. POS-1001. Store checkouts leave this empty. */
+  orderNumber   String?  @unique
   createdAt     DateTime @default(now())
 
   lines SaleLine[]
@@ -587,12 +590,19 @@ model Customer {
   expoPushToken String?
   /** Firebase Cloud Messaging (FCM) device token. */
   pushToken     String?
+  /** Optional 4-digit app PIN, stored as salt:hash. Never returned to clients. */
+  pinHash       String?
+  /** Set when the customer deletes the account. The phone is freed for a new signup. */
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   pointsTransactions PointsTransaction[]
   orders             Order[]
   returnRequests     ReturnRequest[]
+  wishlistItems      WishlistItem[]
+  notifications      CustomerNotification[]
+  chatMessages       ChatMessage[]
   /** Shared addresses for the mobile app and website. */
   addresses          Address[]
   /** Earlier full-address rows used by the store checkout API. */
@@ -617,8 +627,9 @@ model DeliveryZone {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  addresses Address[]
-  orders    Order[]
+  addresses         Address[]
+  customerAddresses CustomerAddress[]
+  orders            Order[]
 
   @@index([isActive])
 }
@@ -680,12 +691,22 @@ model CustomerAddress {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   /** e.g. Home, Work */
   title       String
+  /** Person who receives the delivery. */
+  recipientName String?
   fullAddress String
+  /** Chalet number or extra address details. fullAddress stays the checkout snapshot. */
+  details     String?
+  /** Contact number for this address. */
+  phone       String?
+  deliveryZoneId String?
+  deliveryZone   DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   orders Order[]
+
+  @@index([deliveryZoneId])
 
   @@index([customerId])
   @@index([customerId, isDefault])
@@ -716,6 +737,8 @@ model Order {
   /** Optional link to the saved CustomerAddress used at checkout. */
   customerAddressId String?
   customerAddress   CustomerAddress? @relation(fields: [customerAddressId], references: [id], onDelete: SetNull)
+  /** Readable number such as APP-1001, WEB-1002, or POS-1003. */
+  orderNumber    String?     @unique
   notes          String?
   totalAmount    Float
   status         OrderStatus @default(PENDING)
@@ -815,4 +838,62 @@ model DriverExpense {
   @@index([status])
   @@index([createdAt])
   @@index([linkedExpenseId])
+}
+
+/// One counter per channel so APP / WEB / POS numbers stay sequential.
+model OrderNumberCounter {
+  channel   String @id
+  nextValue Int    @default(1001)
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+}
+
+/// In-app notification. customerId is null only for a stored broadcast template.
+model CustomerNotification {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  titleAr    String
+  titleEn    String    @default("")
+  titleZh    String    @default("")
+  bodyAr     String
+  bodyEn     String    @default("")
+  bodyZh     String    @default("")
+  /** GENERAL | ORDER | BROADCAST */
+  type       String    @default("GENERAL")
+  orderId    String?
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([orderId])
+}
+
+model ChatMessage {
+  id               String   @id @default(cuid())
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /** CUSTOMER | ADMIN */
+  senderRole       String
+  originalText     String
+  /** ar | en | zh */
+  originalLang     String
+  textAr           String
+  textEn           String
+  textZh           String
+  isReadByAdmin    Boolean  @default(false)
+  isReadByCustomer Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }

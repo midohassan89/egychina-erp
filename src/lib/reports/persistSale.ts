@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { roundMoney, roundQty } from "@/lib/pos/money";
 import { resolveProductUnitCost } from "@/lib/inventory/resolveUnitCost";
 import type { PaymentMethod } from "@/types/woocommerce";
+import { allocateOrderNumber } from "@/lib/orders/orderNumber";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -120,13 +121,18 @@ export async function persistSaleRecord(
     ? input.auditReason.trim().slice(0, 500)
     : null;
 
+  const paymentMethod = String(input.paymentMethod || "cash");
+  const orderNumber =
+    paymentMethod === "store" ? null : await allocateOrderNumber(db, "POS");
+
   return db.sale.create({
     data: {
       localId,
+      orderNumber,
       shiftId: input.shiftId != null ? Number(input.shiftId) : null,
       userId: input.userId ?? null,
       total: roundMoney(input.total),
-      paymentMethod: String(input.paymentMethod || "cash"),
+      paymentMethod,
       isReturn,
       status: "completed",
       wooOrderId: input.wooOrderId ?? null,

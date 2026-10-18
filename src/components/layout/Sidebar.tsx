@@ -16,7 +16,9 @@ import {
   Languages,
   LayoutDashboard,
   LogOut,
+  Bell,
   MapPin,
+  MessageCircle,
   Package,
   PackagePlus,
   PanelRightClose,
@@ -147,6 +149,18 @@ const NAV_GROUPS: NavGroup[] = [
         href: "/dashboard/coupons",
         label: "أكواد الخصم",
         icon: Ticket,
+      },
+      {
+        key: "notifications",
+        href: "/dashboard/notifications",
+        label: "إشعارات العملاء",
+        icon: Bell,
+      },
+      {
+        key: "chat",
+        href: "/dashboard/chat",
+        label: "محادثات العملاء",
+        icon: MessageCircle,
       },
     ],
   },
@@ -350,6 +364,24 @@ export function Sidebar({
   const allowed = useMemo(() => new Set(navKeysForRole(role)), [role]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+
+  useEffect(() => {
+    if (!navKeysForRole(role).includes("chat")) return;
+    let stopped = false;
+    async function loadUnread() {
+      const res = await fetch("/api/dashboard/chat", { cache: "no-store" });
+      if (!res.ok || stopped) return;
+      const body = (await res.json()) as { unread?: number };
+      if (!stopped) setChatUnread(body.unread ?? 0);
+    }
+    void loadUnread();
+    const timer = window.setInterval(() => void loadUnread(), 20000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [role]);
 
   const groups = useMemo(
     () =>
@@ -611,6 +643,11 @@ export function Sidebar({
                       >
                         <ItemIcon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{item.label}</span>
+                        {item.key === "chat" && chatUnread > 0 && (
+                          <span className="ms-auto rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-white">
+                            {chatUnread}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

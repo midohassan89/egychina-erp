@@ -128,8 +128,8 @@ export async function findCustomerByIdOrPhone(
   const phone = phoneRaw ? normalizeLoyaltyPhone(phoneRaw) || phoneRaw : "";
 
   if (customerId) {
-    const byId = await db.customer.findUnique({
-      where: { id: customerId },
+    const byId = await db.customer.findFirst({
+      where: { id: customerId, deletedAt: null },
       select: { id: true, phone: true, name: true },
     });
     if (byId) return byId;
@@ -139,6 +139,7 @@ export async function findCustomerByIdOrPhone(
 
   return db.customer.findFirst({
     where: {
+      deletedAt: null,
       OR: [
         { phone },
         { phone: phoneRaw },

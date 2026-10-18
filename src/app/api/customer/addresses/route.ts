@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { serializeCustomerAddress } from "@/lib/customers/profile";
 import {
   requireStoreApiKey,
   resolveCustomerIdFromRequest,
@@ -11,30 +12,24 @@ export const dynamic = "force-dynamic";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
     "Content-Type, x-api-key, x-customer-id, x-customer-phone, x-phone, Authorization",
 };
 
-function serializeAddress(address: {
-  id: string;
-  customerId: string;
-  title: string;
-  fullAddress: string;
-  isDefault: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: address.id,
-    customerId: address.customerId,
-    title: address.title,
-    fullAddress: address.fullAddress,
-    isDefault: address.isDefault,
-    createdAt: address.createdAt.toISOString(),
-    updatedAt: address.updatedAt.toISOString(),
-  };
-}
+const addressInclude = {
+  deliveryZone: {
+    select: {
+      id: true,
+      nameAr: true,
+      nameEn: true,
+      nameZh: true,
+      deliveryFee: true,
+      minOrder: true,
+      estimatedTime: true,
+    },
+  },
+} as const;
 
 /**
  * GET /api/customer/addresses
@@ -83,6 +78,7 @@ export async function GET(request: Request) {
     const addresses = await prisma.customerAddress.findMany({
       where: { customerId: customer.id },
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+      include: addressInclude,
     });
 
     return NextResponse.json(
@@ -90,7 +86,7 @@ export async function GET(request: Request) {
         ok: true,
         customerId: customer.id,
         phone: customer.phone,
-        addresses: addresses.map(serializeAddress),
+        addresses: addresses.map(serializeCustomerAddress),
       },
       { headers: { ...corsHeaders, "Cache-Control": "no-store" } },
     );
@@ -126,8 +122,15 @@ export async function POST(request: Request) {
       name?: unknown;
       fullName?: unknown;
       title?: unknown;
+      label?: unknown;
+      recipientName?: unknown;
       fullAddress?: unknown;
       address?: unknown;
+      details?: unknown;
+      street?: unknown;
+      contactPhone?: unknown;
+      addressPhone?: unknown;
+      deliveryZoneId?: unknown;
       isDefault?: unknown;
     };
 
@@ -146,10 +149,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const title = String(body.title ?? "").trim().slice(0, 80);
-    const fullAddress = String(body.fullAddress ?? body.address ?? "")
+    const title = String(body.label ?? body.title ?? "").trim().slice(0, 80);
+    const details = String(body.details ?? body.street ?? "").trim().slice(0, 1000);
+    const fullAddress = String(body.fullAddress ?? body.address ?? details)
       .trim()
       .slice(0, 1000);
+    const recipientName = String(body.recipientName ?? "").trim().slice(0, 120) || null;
+    const addressPhone =
+      String(body.addressPhone ?? body.contactPhone ?? "").trim().slice(0, 30) || null;
+    const deliveryZoneId = String(body.deliveryZoneId ?? "").trim() || null;
     const isDefault = body.isDefault === true;
 
     if (!title) {
@@ -190,13 +198,26 @@ export async function POST(request: Request) {
         });
       }
 
+      if (deliveryZoneId) {
+        const zone = await tx.deliveryZone.findFirst({
+          where: { id: deliveryZoneId, isActive: true },
+          select: { id: true },
+        });
+        if (!zone) throw new Error("Delivery zone not found");
+      }
+
       const address = await tx.customerAddress.create({
         data: {
           customerId: customer.id,
           title,
+          recipientName,
           fullAddress,
+          details: details || null,
+          phone: addressPhone,
+          deliveryZoneId,
           isDefault: makeDefault,
         },
+        include: addressInclude,
       });
 
       return { customer, address };
@@ -208,17 +229,17 @@ export async function POST(request: Request) {
         customerId: result.customer.id,
         phone: result.customer.phone,
         fullName: result.customer.name,
-        address: serializeAddress(result.address),
+        address: serializeCustomerAddress(result.address),
       },
       { status: 201, headers: corsHeaders },
     );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not save address";
-    if (message === "Customer not found") {
+    if (message === "Customer not found" || message === "Delivery zone not found") {
       return NextResponse.json(
         { error: message },
-        { status: 404, headers: corsHeaders },
+        { status: message === "Customer not found" ? 404 : 400, headers: corsHeaders },
       );
     }
     console.error("[api/customer/addresses POST]", error);
@@ -227,6 +248,43 @@ export async function POST(request: Request) {
       { status: 500, headers: corsHeaders },
     );
   }
+}
+
+/** PUT /api/customer/addresses — body must include id. */
+export async function PUT(request: Request) {
+  if (!requireStoreApiKey(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+  }
+  let body: { id?: unknown } = {};
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400, headers: corsHeaders });
+  }
+  const id = String(body.id ?? "").trim();
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400, headers: corsHeaders });
+  }
+  const forwarded = new Request(request.url, {
+    method: "PATCH",
+    headers: request.headers,
+    body: JSON.stringify(body),
+  });
+  const { PATCH } = await import("./[id]/route");
+  return PATCH(forwarded, { params: Promise.resolve({ id }) });
+}
+
+/** DELETE /api/customer/addresses?id= */
+export async function DELETE(request: Request) {
+  if (!requireStoreApiKey(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+  }
+  const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400, headers: corsHeaders });
+  }
+  const { DELETE: remove } = await import("./[id]/route");
+  return remove(request, { params: Promise.resolve({ id }) });
 }
 
 export async function OPTIONS() {
