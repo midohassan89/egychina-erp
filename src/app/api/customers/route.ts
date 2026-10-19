@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
+import { groupCustomers } from "@/lib/customers/mergePhones";
 
 /** GET /api/customers — loyalty customers for the dashboard. */
 export async function GET() {
@@ -14,6 +15,7 @@ export async function GET() {
   }
 
   const customers = await prisma.customer.findMany({
+    where: { deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -26,13 +28,15 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    customers: customers.map((customer) => ({
-      id: customer.id,
-      name: customer.name,
-      phone: customer.phone,
-      pointsBalance: customer.pointsBalance,
-      ordersCount: customer._count.orders,
-      createdAt: customer.createdAt.toISOString(),
-    })),
+    customers: groupCustomers(
+      customers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        pointsBalance: customer.pointsBalance,
+        ordersCount: customer._count.orders,
+        createdAt: customer.createdAt,
+      })),
+    ),
   });
 }

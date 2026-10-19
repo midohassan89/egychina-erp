@@ -8,6 +8,16 @@ export function formatEGP(amount: number): string {
   return egp.format(Number.isFinite(amount) ? amount : 0);
 }
 
+/** Negative amounts stay `-3,400.90 EGP` so RTL layout cannot flip the minus sign. */
+export function formatSignedEgp(amount: number): string {
+  const n = Number.isFinite(amount) ? amount : 0;
+  const abs = Math.abs(n).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return n < 0 ? `-${abs} EGP` : `${abs} EGP`;
+}
+
 export function parsePrice(value: string | number | null | undefined): number {
   const n = typeof value === "number" ? value : parseFloat(String(value ?? "0"));
   return Number.isFinite(n) ? n : 0;

@@ -15,6 +15,16 @@ interface AuditRow {
   user: { id: string; username: string; role: string };
 }
 
+const ENTITY_AR: Record<string, string> = {
+  PRODUCT: "منتج",
+  ORDER: "طلب",
+  INVOICE: "فاتورة",
+  SALE: "فاتورة",
+  INVENTORY: "مخزون",
+  USER: "مستخدم",
+  POS: "نقطة البيع",
+};
+
 const ACTION_STYLES: Record<string, string> = {
   CREATE: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
   UPDATE: "bg-sky-50 text-sky-800",
@@ -38,12 +48,21 @@ export default function AuditLogsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<AuditRow | null>(null);
+  const [username, setUsername] = useState("");
+  const [entity, setEntity] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/users/audit-logs");
+      const params = new URLSearchParams();
+      if (username.trim()) params.set("username", username.trim());
+      if (entity) params.set("entity", entity);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const res = await fetch(`/api/users/audit-logs?${params.toString()}`);
       const body = (await res.json()) as { error?: string; logs?: AuditRow[] };
       if (!res.ok) throw new Error(body.error ?? "Failed to load audit logs");
       setLogs(body.logs ?? []);
@@ -52,7 +71,7 @@ export default function AuditLogsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [username, entity, from, to]);
 
   useEffect(() => {
     void load();
@@ -67,13 +86,35 @@ export default function AuditLogsPage() {
             className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-gray-100"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Users
+            العودة للمستخدمين
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">Audit Trail</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">سجل الرقابة والعمليات</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-            سجل النشاط — who did what, newest first (Admin only)
+            من نفّذ الحركة، الأحدث أولاً
           </p>
         </div>
+      </div>
+
+      <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/90 sm:grid-cols-4">
+        <input
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          placeholder="اسم المستخدم"
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+        />
+        <select
+          value={entity}
+          onChange={(event) => setEntity(event.target.value)}
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+        >
+          <option value="">كل الأنواع</option>
+          <option value="PRODUCT">منتج</option>
+          <option value="ORDER">طلب</option>
+          <option value="INVOICE">فاتورة</option>
+          <option value="INVENTORY">مخزون</option>
+        </select>
+        <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+        <input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
       </div>
 
       {error && (
@@ -86,11 +127,11 @@ export default function AuditLogsPage() {
         <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-gray-800">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-gray-800/60 dark:text-gray-400">
             <tr>
-              <th className="px-4 py-3">Date / Time</th>
-              <th className="px-4 py-3">User</th>
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Entity</th>
-              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">التاريخ</th>
+              <th className="px-4 py-3">المستخدم</th>
+              <th className="px-4 py-3">الحركة</th>
+              <th className="px-4 py-3">النوع</th>
+              <th className="px-4 py-3">المعرّف</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -133,7 +174,7 @@ export default function AuditLogsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-gray-200">
-                    {log.entity}
+                    {ENTITY_AR[log.entity] ?? log.entity}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-gray-400">
                     {log.entityId ?? "—"}

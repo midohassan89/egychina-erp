@@ -21,7 +21,7 @@ export async function GET() {
   if (denied) return denied;
   const notifications = await prisma.customerNotification.findMany({
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: 400,
     include: { customer: { select: { id: true, name: true, phone: true } } },
   });
   return NextResponse.json({

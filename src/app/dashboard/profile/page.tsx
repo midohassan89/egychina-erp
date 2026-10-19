@@ -18,7 +18,7 @@ export default function ProfilePage() {
     setSuccess(null);
 
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match");
+      setError("كلمة المرور الجديدة وتأكيدها غير متطابقين");
       return;
     }
 
@@ -30,8 +30,8 @@ export default function ProfilePage() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       const body = (await res.json()) as { error?: string; message?: string };
-      if (!res.ok) throw new Error(body.error ?? "Could not update password");
-      setSuccess(body.message ?? "Password updated");
+      if (!res.ok) throw new Error(body.error ?? "تعذر تحديث كلمة المرور");
+      setSuccess("تم تحديث كلمة المرور");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -45,24 +45,32 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">My Profile</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">ملفي الشخصي</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-          Change your password without needing an admin.
+          يمكنك تحديث كلمة المرور من هنا.
         </p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <dl className="mb-6 space-y-2 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500 dark:text-gray-400">Username</dt>
+            <dt className="text-slate-500 dark:text-gray-400">اسم المستخدم</dt>
             <dd className="font-medium text-slate-900 dark:text-gray-100">
               {session?.user?.name ?? "—"}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500 dark:text-gray-400">Role</dt>
+            <dt className="text-slate-500 dark:text-gray-400">الصلاحية</dt>
             <dd className="font-medium text-slate-900 dark:text-gray-100">
-              {session?.user?.role ?? "—"}
+              {(
+                {
+                  ADMIN: "مدير",
+                  MANAGER: "مدير تشغيل",
+                  ACCOUNTANT: "محاسب",
+                  CASHIER: "كاشير",
+                  DRIVER: "سائق",
+                } as Record<string, string>
+              )[session?.user?.role ?? ""] ?? session?.user?.role ?? "—"}
             </dd>
           </div>
         </dl>
@@ -70,7 +78,7 @@ export default function ProfilePage() {
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              Current password
+              كلمة المرور الحالية
             </span>
             <input
               type="password"
@@ -83,7 +91,7 @@ export default function ProfilePage() {
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              New password
+              كلمة المرور الجديدة
             </span>
             <input
               type="password"
@@ -97,7 +105,7 @@ export default function ProfilePage() {
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              Confirm new password
+              تأكيد كلمة المرور
             </span>
             <input
               type="password"
@@ -126,7 +134,7 @@ export default function ProfilePage() {
             disabled={isSaving}
             className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
           >
-            {isSaving ? "Updating…" : "Update password"}
+            {isSaving ? "جاري التحديث…" : "تحديث كلمة المرور"}
           </button>
         </form>
       </div>

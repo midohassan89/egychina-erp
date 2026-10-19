@@ -24,6 +24,13 @@ type FleetExpense = {
 };
 
 const STATUS_FILTERS = ["PENDING", "APPROVED", "PARTIAL", "REJECTED", ""] as const;
+const STATUS_AR: Record<string, string> = {
+  PENDING: "قيد المراجعة",
+  APPROVED: "معتمد",
+  PARTIAL: "اعتماد جزئي",
+  REJECTED: "مرفوض",
+  "": "الكل",
+};
 
 const CATEGORY_AR: Record<string, string> = {
   FUEL: "وقود",
@@ -130,7 +137,7 @@ function FleetPageInner() {
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700",
               )}
             >
-              {s || "الكل"}
+              {STATUS_AR[s] ?? s}
             </button>
           ))}
         </div>
@@ -174,7 +181,7 @@ function FleetPageInner() {
                   </p>
                   <p className="mt-1 text-xs text-slate-400 dark:text-gray-500">
                     {new Date(row.createdAt).toLocaleString("ar-EG")} ·{" "}
-                    <span className="font-semibold">{row.status}</span>
+                    <span className="font-semibold">{STATUS_AR[row.status] ?? row.status}</span>
                     {row.linkedExpenseId != null && (
                       <> · مصروف #{row.linkedExpenseId}</>
                     )}

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { auth } from "@/auth";
 import { canManageUsers, isManagerOrAdmin } from "@/lib/auth/roles";
+import { prisma } from "@/lib/prisma";
+import { formatEGP } from "@/lib/pos/money";
 
 type Card = {
   href: string;
@@ -113,6 +115,32 @@ export default async function DashboardPage() {
   const session = await auth();
   const showUsers = canManageUsers(session?.user?.role);
   const showAudit = isManagerOrAdmin(session?.user?.role);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const [sales, activeOrders, treasury, criticalStock] = await Promise.all([
+    prisma.sale.aggregate({
+      where: {
+        status: "completed",
+        isReturn: false,
+        paymentMethod: { not: "STAFF_MEAL" },
+        createdAt: { gte: start },
+      },
+      _sum: { total: true },
+    }),
+    prisma.order.count({
+      where: { status: { in: ["PENDING", "CONFIRMED", "PREPARING", "SHIPPED"] } },
+    }),
+    prisma.treasury.findUnique({ where: { id: 1 }, select: { balance: true } }),
+    prisma.product.count({
+      where: { isDeleted: false, stockQuantity: { lte: 5 } },
+    }),
+  ]);
+  const todayKpis = [
+    { label: "إجمالي مبيعات اليوم", value: formatEGP(sales._sum.total ?? 0) },
+    { label: "طلبات الأونلاين النشطة", value: activeOrders.toLocaleString("ar-EG") },
+    { label: "رصيد الخزينة الحالي", value: formatEGP(treasury?.balance ?? 0) },
+    { label: "أصناف نافذة أو حرجة", value: criticalStock.toLocaleString("ar-EG") },
+  ];
 
   const visibleSections = sections
     .map((section) => ({
@@ -135,6 +163,21 @@ export default async function DashboardPage() {
           وحدات الحسابات والإدارة لسوق العبور
         </p>
       </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {todayKpis.map((kpi) => (
+          <div
+            key={kpi.label}
+            className="rounded-xl border border-slate-200 bg-white p-4 text-right shadow-sm dark:border-slate-800 dark:bg-slate-900/90"
+          >
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">
+              {kpi.label}
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900 dark:text-white" dir="ltr">
+              {kpi.value}
+            </p>
+          </div>
+        ))}
+      </section>
       {visibleSections.map((section) => (
         <section key={section.title} className="space-y-3">
           <h2 className="text-sm font-semibold text-slate-500 dark:text-gray-400">

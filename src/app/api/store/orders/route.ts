@@ -501,8 +501,12 @@ export async function POST(request: Request) {
       "";
     const isGuest = customerId.length === 0;
     const requestedPoints = Number(body.pointsRedeemed ?? 0);
+    const loyalty = await getLoyaltySettings();
     if (!isGuest && requestedPoints !== 0) {
-      const pointsError = onlinePointsRedeemError(requestedPoints);
+      const pointsError = onlinePointsRedeemError(
+        requestedPoints,
+        loyalty.pointsRedeemStep,
+      );
       if (pointsError) {
         return NextResponse.json(
           { error: pointsError },
@@ -511,7 +515,6 @@ export async function POST(request: Request) {
       }
     }
     const pointsRedeemed = isGuest ? 0 : requestedPoints;
-    const loyalty = await getLoyaltySettings();
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const pointsDiscount = isGuest ? 0 : pointsRedeemed / loyalty.pointsRedeemValue;
 

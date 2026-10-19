@@ -15,14 +15,18 @@ import {
 } from "recharts";
 import { clsx } from "clsx";
 import { ShoppingCart } from "lucide-react";
-import { formatEGP } from "@/lib/pos/money";
+import { formatEGP, formatSignedEgp } from "@/lib/pos/money";
+import { CostAnomaliesPanel } from "@/components/reports/CostAnomaliesPanel";
 
 interface Kpis {
   totalRevenue: number;
   cogs: number;
   grossProfit: number;
+  operationalGrossProfit?: number;
   totalExpenses: number;
   netProfit: number;
+  operationalNetProfit?: number;
+  anomalousCogs?: number;
 }
 
 interface DailyPoint {
@@ -45,8 +49,12 @@ interface LowStockRow {
 
 interface InventoryValuation {
   totalAssetValue: number;
+  operationalAssetValue?: number;
   expectedRetailValue: number;
   potentialGrossMargin: number;
+  operationalGrossMargin?: number;
+  anomalyCount?: number;
+  excessCost?: number;
   marginPercent: number;
 }
 
@@ -198,7 +206,7 @@ export default function ReportsPage() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label="إجمالي الإيرادات"
           value={kpis?.totalRevenue}
@@ -223,7 +231,20 @@ export default function ReportsPage() {
           loading={isLoading}
           tone="auto"
         />
+        <KpiCard
+          label="صافي الربح التشغيلي"
+          value={kpis?.operationalNetProfit ?? kpis?.netProfit}
+          loading={isLoading}
+          tone="auto"
+          hint={
+            kpis?.anomalousCogs
+              ? "بعد استبعاد تكلفة أعلى من سعر البيع"
+              : undefined
+          }
+        />
       </div>
+
+      <CostAnomaliesPanel />
 
       <div>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -254,16 +275,21 @@ export default function ReportsPage() {
               هامش الربح المتوقع
             </p>
             <p
+              dir="ltr"
               className={clsx(
                 "mt-2 text-2xl font-bold tabular-nums",
-                (inventory?.potentialGrossMargin ?? 0) < 0
+                (inventory?.operationalGrossMargin ?? inventory?.potentialGrossMargin ?? 0) < 0
                   ? "text-red-700 dark:text-red-300"
                   : "text-emerald-700 dark:text-emerald-300",
               )}
             >
               {isLoading
                 ? "…"
-                : formatEGP(inventory?.potentialGrossMargin ?? 0)}
+                : formatSignedEgp(
+                    inventory?.operationalGrossMargin ??
+                      inventory?.potentialGrossMargin ??
+                      0,
+                  )}
             </p>
             {!isLoading && inventory && (
               <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
@@ -438,20 +464,21 @@ function KpiCard({
   value,
   loading,
   tone,
+  hint,
 }: {
   label: string;
   value?: number;
   loading: boolean;
   tone: "neutral" | "auto" | "expense";
+  hint?: string;
 }) {
   const amount = value ?? 0;
+  const negative = amount < 0;
   const color =
-    tone === "expense"
+    tone === "expense" || (tone === "auto" && negative)
       ? "text-red-700 dark:text-red-300"
       : tone === "auto"
-        ? amount < 0
-          ? "text-red-700 dark:text-red-300"
-          : "text-emerald-700 dark:text-emerald-300"
+        ? "text-emerald-700 dark:text-emerald-300"
         : "text-slate-900 dark:text-gray-100";
 
   return (
@@ -459,9 +486,12 @@ function KpiCard({
       <p className="text-xs font-semibold tracking-wide text-slate-500 dark:text-gray-400">
         {label}
       </p>
-      <p className={clsx("mt-2 text-2xl font-bold tabular-nums", color)}>
-        {loading ? "…" : formatEGP(amount)}
+      <p dir="ltr" className={clsx("mt-2 text-2xl font-bold tabular-nums", color)}>
+        {loading ? "…" : negative ? formatSignedEgp(amount) : formatEGP(amount)}
       </p>
+      {hint && !loading && (
+        <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{hint}</p>
+      )}
     </div>
   );
 }

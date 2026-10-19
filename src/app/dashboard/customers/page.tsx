@@ -10,6 +10,7 @@ interface CustomerRow {
   pointsBalance: number;
   ordersCount: number;
   createdAt: string;
+  duplicateIds?: string[];
 }
 
 export default function CustomersPage() {
@@ -17,6 +18,11 @@ export default function CustomersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const [merging, setMerging] = useState(false);
+  const duplicateCount = customers.reduce(
+    (sum, customer) => sum + (customer.duplicateIds?.length ?? 0),
+    0,
+  );
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -42,11 +48,28 @@ export default function CustomersPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6" dir="rtl">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">العملاء ونقاط الولاء</h1>
-        <p className="mt-1 text-slate-500 dark:text-gray-400">
-          سجل عملاء المتجر ورصيد النقاط وعدد الطلبات
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">العملاء ونقاط الولاء</h1>
+          <p className="mt-1 text-slate-500 dark:text-gray-400">
+            سجل عملاء المتجر ورصيد النقاط وعدد الطلبات. أرقام 01 و +20 تُعرض كعميل واحد.
+          </p>
+        </div>
+        {duplicateCount > 0 && (
+          <button
+            type="button"
+            disabled={merging}
+            onClick={() => {
+              setMerging(true);
+              void fetch("/api/customers/merge-duplicates", { method: "POST" })
+                .then(() => load())
+                .finally(() => setMerging(false));
+            }}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {merging ? "جاري الدمج…" : `دمج الأرقام المكررة (${duplicateCount})`}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -135,26 +158,48 @@ function EditPointsModal({
   onClose: () => void;
   onSaved: (customer: CustomerRow) => void;
 }) {
-  const [points, setPoints] = useState(String(customer.pointsBalance));
+  const [mode, setMode] = useState<"add" | "deduct" | "set">("add");
+  const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const value = Number(amount);
+  const valid =
+    mode === "set"
+      ? Number.isInteger(value) && value >= 0
+      : Number.isInteger(value) && value > 0;
+  const nextBalance = !valid
+    ? null
+    : mode === "add"
+      ? customer.pointsBalance + value
+      : mode === "deduct"
+        ? Math.max(0, customer.pointsBalance - value)
+        : value;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const next = Number(points);
-    if (!Number.isInteger(next) || next < 0) {
-      setError("أدخل عدداً صحيحاً أكبر من أو يساوي صفر");
+    if (!valid) {
+      setError("أدخل عدداً صحيحاً صالحاً");
       return;
     }
     setSaving(true);
     setError(null);
     try {
+      if ((customer.duplicateIds?.length ?? 0) > 0) {
+        const merged = await fetch("/api/customers/merge-duplicates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: [customer.id, ...(customer.duplicateIds ?? [])] }),
+        });
+        if (!merged.ok) throw new Error("تعذر دمج الأرقام المكررة قبل تعديل النقاط");
+      }
       const res = await fetch(`/api/customers/${customer.id}/points`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pointsBalance: next,
+          mode,
+          amount: value,
+          pointsBalance: mode === "set" ? value : undefined,
           note: note.trim() || null,
         }),
       });
@@ -165,7 +210,7 @@ function EditPointsModal({
       if (!res.ok || !body.customer) {
         throw new Error(body.error ?? "Could not update points");
       }
-      onSaved(body.customer);
+      onSaved({ ...body.customer, duplicateIds: [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update points");
     } finally {
@@ -195,17 +240,45 @@ function EditPointsModal({
           </button>
         </div>
         <div className="space-y-4 px-5 py-4">
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                ["add", "➕ إضافة نقاط"],
+                ["deduct", "➖ خصم نقاط"],
+                ["set", "🎯 تعيين الرصيد مباشرة"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                className={`rounded-xl px-2 py-2 text-xs font-semibold ${
+                  mode === id
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-gray-100"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-gray-100">
+            الرصيد قبل التعديل: {customer.pointsBalance.toLocaleString("ar-EG")}
+            {nextBalance != null
+              ? ` · بعد التعديل: ${nextBalance.toLocaleString("ar-EG")}`
+              : ""}
+          </p>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              رصيد النقاط
+              {mode === "set" ? "الرصيد الجديد" : "عدد النقاط"}
             </span>
             <input
               type="number"
               min={0}
               step={1}
               required
-              value={points}
-              onChange={(e) => setPoints(e.target.value)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             />
           </label>

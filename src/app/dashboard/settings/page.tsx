@@ -5,6 +5,10 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 export default function SettingsPage() {
   const [earnRatio, setEarnRatio] = useState("");
   const [redeemValue, setRedeemValue] = useState("");
+  const [redeemStep, setRedeemStep] = useState("10000");
+  const [storeName, setStoreName] = useState("");
+  const [storePhone, setStorePhone] = useState("");
+  const [receiptFooter, setReceiptFooter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +23,18 @@ export default function SettingsPage() {
         error?: string;
         points_earn_ratio?: number;
         points_redeem_value?: number;
+        points_redeem_step?: number;
+        store_name?: string;
+        store_phone?: string;
+        receipt_footer?: string;
       };
       if (!res.ok) throw new Error(body.error ?? "Failed to load settings");
       setEarnRatio(String(body.points_earn_ratio ?? ""));
       setRedeemValue(String(body.points_redeem_value ?? ""));
+      setRedeemStep(String(body.points_redeem_step ?? 10000));
+      setStoreName(body.store_name ?? "");
+      setStorePhone(body.store_phone ?? "");
+      setReceiptFooter(body.receipt_footer ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -57,16 +69,28 @@ export default function SettingsPage() {
         body: JSON.stringify({
           points_earn_ratio: previewEarn,
           points_redeem_value: previewRedeem,
+          points_redeem_step: Number(redeemStep),
+          store_name: storeName,
+          store_phone: storePhone,
+          receipt_footer: receiptFooter,
         }),
       });
       const body = (await res.json()) as {
         error?: string;
         points_earn_ratio?: number;
         points_redeem_value?: number;
+        points_redeem_step?: number;
+        store_name?: string;
+        store_phone?: string;
+        receipt_footer?: string;
       };
       if (!res.ok) throw new Error(body.error ?? "Could not save settings");
       setEarnRatio(String(body.points_earn_ratio ?? previewEarn));
       setRedeemValue(String(body.points_redeem_value ?? previewRedeem));
+      setRedeemStep(String(body.points_redeem_step ?? redeemStep));
+      setStoreName(body.store_name ?? storeName);
+      setStorePhone(body.store_phone ?? storePhone);
+      setReceiptFooter(body.receipt_footer ?? receiptFooter);
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
@@ -149,6 +173,42 @@ export default function SettingsPage() {
                   ? ` مثال: ${previewRedeem.toLocaleString("ar-EG")} نقطة = 1 جنيه.`
                   : ""}
               </span>
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                الحد الأدنى لاستبدال النقاط
+              </span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                required
+                value={redeemStep}
+                onChange={(e) => {
+                  setRedeemStep(e.target.value);
+                  setSaved(false);
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </label>
+
+            <div className="border-t border-slate-200 pt-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
+                الفاتورة والمتجر
+              </h2>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">اسم المتجر</span>
+              <input value={storeName} onChange={(e) => { setStoreName(e.target.value); setSaved(false); }} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">هاتف / واتساب خدمة العملاء</span>
+              <input value={storePhone} onChange={(e) => { setStorePhone(e.target.value); setSaved(false); }} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">نص تذييل إيصال الكاشير</span>
+              <textarea rows={3} value={receiptFooter} onChange={(e) => { setReceiptFooter(e.target.value); setSaved(false); }} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100" />
             </label>
           </>
         )}

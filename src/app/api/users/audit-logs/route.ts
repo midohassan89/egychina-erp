@@ -17,8 +17,24 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const take = Math.min(Number(searchParams.get("limit") ?? 200) || 200, 500);
+  const username = searchParams.get("username")?.trim();
+  const entity = searchParams.get("entity")?.trim();
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
   const logs = await prisma.auditLog.findMany({
+    where: {
+      ...(entity ? { entity } : {}),
+      ...(username ? { user: { username: { contains: username } } } : {}),
+      ...(from || to
+        ? {
+            createdAt: {
+              ...(from ? { gte: new Date(`${from}T00:00:00`) } : {}),
+              ...(to ? { lte: new Date(`${to}T23:59:59`) } : {}),
+            },
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     take,
     include: {

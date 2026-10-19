@@ -26,7 +26,38 @@ export async function PATCH(
   }
 
   try {
-    const body = (await request.json()) as { status?: unknown };
+    const body = (await request.json()) as {
+      status?: unknown;
+      assignedDriverId?: unknown;
+    };
+    if (body.assignedDriverId !== undefined && body.status === undefined) {
+      const driverId =
+        body.assignedDriverId == null || String(body.assignedDriverId).trim() === ""
+          ? null
+          : String(body.assignedDriverId);
+      if (driverId) {
+        const driver = await prisma.user.findFirst({
+          where: { id: driverId, role: "DRIVER" },
+          select: { id: true, username: true },
+        });
+        if (!driver) {
+          return NextResponse.json({ error: "السائق غير موجود" }, { status: 400 });
+        }
+      }
+      const assigned = await prisma.order.update({
+        where: { id },
+        data: { assignedDriverId: driverId },
+        select: {
+          assignedDriverId: true,
+          assignedDriver: { select: { username: true } },
+        },
+      });
+      return NextResponse.json({
+        ok: true,
+        assignedDriverId: assigned.assignedDriverId,
+        assignedDriverName: assigned.assignedDriver?.username ?? null,
+      });
+    }
     const newStatus = normalizeOrderStatus(String(body.status ?? ""));
     console.log("ADMIN STATUS UPDATE:", { orderId: id, newStatus });
     if (!newStatus) {

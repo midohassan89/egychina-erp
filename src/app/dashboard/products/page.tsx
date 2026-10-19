@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { CostAnomaliesPanel } from "@/components/reports/CostAnomaliesPanel";
 import { PermanentDeleteDialog } from "@/components/dashboard/PermanentDeleteDialog";
 import { ProductEditModal } from "@/components/dashboard/ProductEditModal";
 import type { ProductFormValues } from "@/components/products/ProductForm";
@@ -878,6 +879,7 @@ function ProductsManagement() {
 
   return (
     <div className="relative space-y-6">
+      <CostAnomaliesPanel />
       {bulkBusy && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-[1px]">
           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-xl dark:border-gray-800 dark:bg-gray-900">

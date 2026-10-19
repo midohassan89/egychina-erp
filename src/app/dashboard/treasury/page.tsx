@@ -398,7 +398,7 @@ function TreasuryPageInner() {
                               : "bg-red-50 text-red-800 ring-red-200 dark:bg-red-950/40 dark:text-red-300",
                           )}
                         >
-                          {t.type}
+                          {isIn ? "إيداع / وارد" : "سحب / منصرف"}
                         </span>
                       </td>
                       <td

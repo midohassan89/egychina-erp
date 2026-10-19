@@ -1,8 +1,13 @@
 export const ADJUSTMENT_TYPES = [
   {
     id: "WASTAGE",
-    labelAr: "الهالك",
+    labelAr: "تالف/هالك",
     labelEn: "Wastage",
+  },
+  {
+    id: "EXPIRED",
+    labelAr: "منتهي الصلاحية",
+    labelEn: "Expired",
   },
   {
     id: "LOSS",
@@ -16,7 +21,7 @@ export const ADJUSTMENT_TYPES = [
   },
   {
     id: "MANUAL_COUNT",
-    labelAr: "جرد يدوي",
+    labelAr: "تعديل جرد",
     labelEn: "Manual count",
   },
 ] as const;
@@ -30,5 +35,5 @@ export function isAdjustmentType(value: string): value is AdjustmentTypeId {
 export function adjustmentTypeLabel(type: string): string {
   const found = ADJUSTMENT_TYPES.find((t) => t.id === type);
   if (!found) return type;
-  return `${found.labelAr} / ${found.labelEn}`;
+  return found.labelAr;
 }

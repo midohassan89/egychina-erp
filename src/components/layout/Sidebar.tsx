@@ -365,6 +365,7 @@ export function Sidebar({
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
 
   useEffect(() => {
     if (!navKeysForRole(role).includes("chat")) return;
@@ -377,6 +378,44 @@ export function Sidebar({
     }
     void loadUnread();
     const timer = window.setInterval(() => void loadUnread(), 20000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [role]);
+
+  useEffect(() => {
+    if (!navKeysForRole(role).includes("orders")) return;
+    let stopped = false;
+    let seen = new Set<string>();
+    let ready = false;
+    async function loadPending() {
+      const res = await fetch("/api/admin/orders/alerts", { cache: "no-store" });
+      if (!res.ok || stopped) return;
+      const body = (await res.json()) as { count?: number; ids?: string[] };
+      const ids = body.ids ?? [];
+      if (ready && ids.some((id) => !seen.has(id))) {
+        try {
+          const audio = new AudioContext();
+          const tone = audio.createOscillator();
+          const gain = audio.createGain();
+          tone.frequency.value = 880;
+          gain.gain.value = 0.04;
+          tone.connect(gain);
+          gain.connect(audio.destination);
+          tone.start();
+          tone.stop(audio.currentTime + 0.18);
+          window.setTimeout(() => void audio.close(), 400);
+        } catch {
+          // Autoplay can be blocked until the next click.
+        }
+      }
+      seen = new Set(ids);
+      ready = true;
+      if (!stopped) setPendingOrders(body.count ?? ids.length);
+    }
+    void loadPending();
+    const timer = window.setInterval(() => void loadPending(), 30000);
     return () => {
       stopped = true;
       window.clearInterval(timer);
@@ -648,6 +687,11 @@ export function Sidebar({
                             {chatUnread}
                           </span>
                         )}
+                        {item.key === "orders" && pendingOrders > 0 && (
+                          <span className="ms-auto rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+                            {pendingOrders}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
@@ -664,13 +708,16 @@ export function Sidebar({
                       href={item.href}
                       title={item.label}
                       className={clsx(
-                        "flex items-center justify-center rounded-lg px-2 py-2.5 transition-colors",
+                        "relative flex items-center justify-center rounded-lg px-2 py-2.5 transition-colors",
                         active
                           ? "bg-orange-600 text-white"
                           : "text-slate-400 hover:bg-slate-800 hover:text-white",
                       )}
                     >
                       <ItemIcon className="h-5 w-5 shrink-0" />
+                      {item.key === "orders" && pendingOrders > 0 && (
+                        <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-red-600" />
+                      )}
                     </Link>
                   );
                 })}

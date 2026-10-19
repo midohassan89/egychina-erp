@@ -22,20 +22,22 @@ export async function PATCH(
 
   const { id } = await context.params;
 
-  let body: { pointsBalance?: unknown; note?: unknown };
+  let body: {
+    pointsBalance?: unknown;
+    amount?: unknown;
+    mode?: unknown;
+    note?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const pointsBalance = Number(body.pointsBalance);
-  if (!Number.isInteger(pointsBalance) || pointsBalance < 0) {
-    return NextResponse.json(
-      { error: "pointsBalance must be a whole number of 0 or more" },
-      { status: 400 },
-    );
-  }
+  const mode =
+    body.mode === "add" || body.mode === "deduct" || body.mode === "set"
+      ? body.mode
+      : "set";
 
   const note =
     body.note != null && String(body.note).trim()
@@ -50,6 +52,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
+  const amount = Number(mode === "set" ? body.pointsBalance ?? body.amount : body.amount);
+  if (!Number.isInteger(amount) || (mode === "set" ? amount < 0 : amount <= 0)) {
+    return NextResponse.json(
+      { error: "أدخل عدداً صحيحاً صالحاً" },
+      { status: 400 },
+    );
+  }
+  const pointsBalance =
+    mode === "add"
+      ? existing.pointsBalance + amount
+      : mode === "deduct"
+        ? Math.max(0, existing.pointsBalance - amount)
+        : amount;
   const delta = pointsBalance - existing.pointsBalance;
 
   const customer = await prisma.$transaction(async (tx) => {
@@ -66,7 +81,7 @@ export async function PATCH(
       },
     });
 
-    if (delta !== 0) {
+    if (delta !== 0 || note) {
       await tx.pointsTransaction.create({
         data: {
           customerId: id,
@@ -74,7 +89,11 @@ export async function PATCH(
           type: "ADJUST",
           description:
             note ??
-            `Admin set balance from ${existing.pointsBalance} to ${pointsBalance}`,
+            (mode === "add"
+              ? `إضافة ${amount} نقطة`
+              : mode === "deduct"
+                ? `خصم ${amount} نقطة`
+                : `تعيين الرصيد من ${existing.pointsBalance} إلى ${pointsBalance}`),
         },
       });
     }

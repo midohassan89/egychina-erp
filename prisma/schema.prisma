@@ -53,6 +53,7 @@ model User {
   auditLogs AuditLog[]
   driverExpenses DriverExpense[] @relation("DriverExpenses")
   reviewedDriverExpenses DriverExpense[] @relation("DriverExpenseReviewer")
+  assignedOrders Order[] @relation("AssignedDriverOrders")
 }
 
 /// Immutable activity log for accountability (who did what).
@@ -755,6 +756,9 @@ model Order {
   shippingFee    Float       @default(0)
   /** Set when completion points have been added, so a status change cannot award them twice. */
   pointsAwarded  Boolean     @default(false)
+  /** Delivery driver assigned from the dashboard. */
+  assignedDriverId String?
+  assignedDriver   User?    @relation("AssignedDriverOrders", fields: [assignedDriverId], references: [id], onDelete: SetNull)
   createdAt      DateTime    @default(now())
   items          OrderItem[]
   returnRequests ReturnRequest[]
@@ -762,6 +766,7 @@ model Order {
   @@index([customerId])
   @@index([customerAddressId])
   @@index([deliveryZoneId])
+  @@index([assignedDriverId])
 }
 
 model OrderItem {

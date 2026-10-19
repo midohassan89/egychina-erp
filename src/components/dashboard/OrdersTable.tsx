@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatEGP } from "@/lib/pos/money";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
   MANUAL_ORDER_STATUSES,
@@ -23,11 +24,31 @@ export interface OrderRow {
   totalAmount: number;
   status: string;
   createdAt: string;
+  couponCode?: string | null;
+  couponDiscount?: number;
+  pointsRedeemed?: number | null;
+  pointsDiscount?: number;
+  shippingFee?: number;
+  assignedDriverId?: string | null;
+  assignedDriverName?: string | null;
   items: {
     id: string;
     quantity: number;
+    price?: number;
     productName: string;
+    imageUrl?: string | null;
+    isWeighed?: boolean;
+    packSize?: number;
   }[];
+}
+
+export interface DriverOption {
+  id: string;
+  username: string;
+}
+
+function displayOrderNumber(order: { id: string; orderNumber?: string | null }) {
+  return order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`;
 }
 
 function displayStatus(status: string): OrderStatusCode {
@@ -54,11 +75,18 @@ function formatOrderDate(iso: string): string {
   });
 }
 
-function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
+function OrdersTableInner({
+  orders,
+  drivers,
+}: {
+  orders: OrderRow[];
+  drivers: DriverOption[];
+}) {
   const { toast } = useToast();
   const [rows, setRows] = useState(orders);
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<OrderRow | null>(null);
   const needle = query.trim().toLowerCase();
   const visible = needle
     ? rows.filter((order) =>
@@ -121,6 +149,42 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
     }
   }
 
+  async function assignDriver(id: string, driverId: string) {
+    const previous = rows;
+    const driver = drivers.find((item) => item.id === driverId);
+    setRows((current) =>
+      current.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              assignedDriverId: driverId || null,
+              assignedDriverName: driver?.username ?? null,
+            }
+          : row,
+      ),
+    );
+    setSavingId(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedDriverId: driverId || null }),
+      });
+      const body = (await res.json()) as {
+        error?: string;
+        assignedDriverName?: string | null;
+      };
+      if (!res.ok) throw new Error(body.error ?? "تعذر تعيين السائق");
+      toast(driver ? `تم تعيين السائق ${driver.username}` : "تم إلغاء تعيين السائق", "success");
+    } catch (err) {
+      setRows(previous);
+      toast(err instanceof Error ? err.message : "تعذر تعيين السائق", "error");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   if (visible.length === 0 && rows.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
@@ -148,6 +212,7 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
               <th className="px-4 py-3">العنوان / ملاحظات</th>
               <th className="px-4 py-3">الأصناف</th>
               <th className="px-4 py-3">الإجمالي</th>
+              <th className="px-4 py-3">السائق</th>
               <th className="px-4 py-3">الحالة</th>
             </tr>
           </thead>
@@ -155,7 +220,14 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
             {visible.map((order) => (
               <tr key={order.id} className="align-top">
                 <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-gray-100" dir="ltr">
-                  {order.orderNumber || "—"}
+                  {displayOrderNumber(order)}
+                  <button
+                    type="button"
+                    onClick={() => setDetail(order)}
+                    className="mt-1 block text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  >
+                    👁️ التفاصيل
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-slate-600 dark:text-gray-300">
                   {formatOrderDate(order.createdAt)}
@@ -191,6 +263,23 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900 dark:text-gray-100">
                   {formatEGP(order.totalAmount)}
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={order.assignedDriverId ?? ""}
+                    disabled={savingId === order.id}
+                    onChange={(event) => {
+                      void assignDriver(order.id, event.target.value);
+                    }}
+                    className="max-w-[10rem] rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">بدون سائق</option>
+                    {drivers.map((driver) => (
+                      <option key={driver.id} value={driver.id}>
+                        {driver.username}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -233,14 +322,97 @@ function OrdersTableInner({ orders }: { orders: OrderRow[] }) {
           </tbody>
         </table>
       </div>
+      {detail && (
+        <OrderDetailsModal order={detail} onClose={() => setDetail(null)} />
+      )}
     </div>
   );
 }
 
-export function OrdersTable({ orders }: { orders: OrderRow[] }) {
+function OrderDetailsModal({
+  order,
+  onClose,
+}: {
+  order: OrderRow;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl dark:bg-slate-900">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100" dir="ltr">
+              {displayOrderNumber(order)}
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-gray-300">
+              {order.customerName} · {formatOrderDate(order.createdAt)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-slate-800"
+          >
+            إغلاق
+          </button>
+        </div>
+        <div className="space-y-4 px-5 py-4 text-sm text-slate-800 dark:text-gray-100">
+          <p>
+            <span className="text-slate-500 dark:text-gray-400">الهاتف: </span>
+            <span dir="ltr">{order.phone}</span>
+          </p>
+          <p>
+            <span className="text-slate-500 dark:text-gray-400">العنوان: </span>
+            {order.address}
+          </p>
+          {order.notes && (
+            <p>
+              <span className="text-slate-500 dark:text-gray-400">ملاحظات العميل: </span>
+              {order.notes}
+            </p>
+          )}
+          <ul className="space-y-3">
+            {order.items.map((item) => (
+              <li key={item.id} className="flex items-center gap-3">
+                <SafeImage
+                  src={item.imageUrl}
+                  alt={item.productName}
+                  className="h-12 w-12 rounded-lg bg-slate-100 object-cover dark:bg-slate-800"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{item.productName}</p>
+                  <p className="text-xs text-slate-500 dark:text-gray-400">
+                    {item.isWeighed ? "وزن" : "عبوة"}
+                    {item.packSize && item.packSize > 1 ? ` · ${item.packSize} قطعة` : ""} · الكمية{" "}
+                    {item.quantity}
+                    {item.price != null ? ` · ${formatEGP(item.price)}` : ""}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="grid gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-800 sm:grid-cols-2">
+            <p>الكوبون: {order.couponCode || "—"} {order.couponDiscount ? `(${formatEGP(order.couponDiscount)})` : ""}</p>
+            <p>النقاط المستبدلة: {(order.pointsRedeemed ?? 0).toLocaleString("ar-EG")} {order.pointsDiscount ? `(${formatEGP(order.pointsDiscount)})` : ""}</p>
+            <p>رسوم التوصيل: {formatEGP(order.shippingFee ?? 0)}</p>
+            <p className="font-bold">الإجمالي: {formatEGP(order.totalAmount)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function OrdersTable({
+  orders,
+  drivers = [],
+}: {
+  orders: OrderRow[];
+  drivers?: DriverOption[];
+}) {
   return (
     <ToastProvider>
-      <OrdersTableInner orders={orders} />
+      <OrdersTableInner orders={orders} drivers={drivers} />
     </ToastProvider>
   );
 }

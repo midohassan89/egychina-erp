@@ -402,10 +402,10 @@ export default function SuppliersPage() {
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
-                  سداد دفعة · Make Payment
+                  سداد دفعة
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-gray-400">
-                  {paySupplier.name} · balance {formatEGP(paySupplier.balance)}
+                  {paySupplier.name} · الرصيد {formatEGP(paySupplier.balance)}
                   {paySupplier.openingBalance > 0
                     ? ` · opening ${formatEGP(paySupplier.openingBalance)}`
                     : ""}
@@ -425,7 +425,7 @@ export default function SuppliersPage() {
             >
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  Amount (EGP)
+                  المبلغ (ج.م)
                 </span>
                 <input
                   required
@@ -440,7 +440,7 @@ export default function SuppliersPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  Payment Source
+                  مصدر الدفع
                 </span>
                 <select
                   required
@@ -448,7 +448,7 @@ export default function SuppliersPage() {
                   onChange={(e) => setPaySource(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 >
-                  <option value="TREASURY">Cash Safe (Treasury)</option>
+                  <option value="TREASURY">الخزينة</option>
                   {bankAccounts.map((b) => (
                     <option key={b.id} value={String(b.id)}>
                       {b.name} ({formatEGP(b.balance)})

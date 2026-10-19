@@ -220,7 +220,7 @@ function SupplierStatementPageInner() {
       </div>
 
       <div className="supplier-statement-print mt-6 space-y-4">
-        <header className="supplier-statement-header">
+        <header className="supplier-statement-header rounded-xl border border-transparent p-4 dark:border-slate-800 dark:bg-slate-900/90 dark:text-white">
           <h1 className="text-xl font-bold text-slate-900 dark:text-gray-100">{STORE_NAME}</h1>
           <p className="text-sm text-slate-600 dark:text-gray-300">
             كشف حساب مورد
@@ -381,7 +381,7 @@ function SummaryChip({
         "rounded-xl border px-4 py-3",
         emphasize
           ? "border-slate-800 bg-slate-900 text-white"
-          : "border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-900",
+          : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/90 dark:text-white",
       )}
     >
       <p

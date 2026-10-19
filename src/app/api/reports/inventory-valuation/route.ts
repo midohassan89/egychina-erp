@@ -26,9 +26,11 @@ export async function GET() {
       id: true,
       name: true,
       sku: true,
+      barcode: true,
       stockQuantity: true,
       price: true,
       salePrice: true,
+      buyingCost: true,
     },
     orderBy: { name: "asc" },
   });
@@ -46,6 +48,7 @@ export async function GET() {
   }
 
   let totalAssetValue = 0;
+  let operationalAssetValue = 0;
   let expectedRetailValue = 0;
   let skuWithStock = 0;
   let totalUnits = 0;
@@ -53,15 +56,19 @@ export async function GET() {
   const lines = products.map((p) => {
     const qty = Math.max(0, p.stockQuantity);
     const unitCost = roundMoney(
-      unitCostByProduct.get(p.id) ?? p.price ?? 0,
+      unitCostByProduct.get(p.id) ?? (p.buyingCost > 0 ? p.buyingCost : p.price ?? 0),
     );
     const retailPrice = roundMoney(
       p.salePrice != null && p.salePrice > 0 ? p.salePrice : p.price,
     );
     const assetValue = roundMoney(qty * unitCost);
     const retailValue = roundMoney(qty * retailPrice);
+    const cappedCost =
+      retailPrice > 0 && unitCost > retailPrice ? retailPrice : unitCost;
+    const operationalValue = roundMoney(qty * cappedCost);
 
     totalAssetValue += assetValue;
+    operationalAssetValue += operationalValue;
     expectedRetailValue += retailValue;
     if (qty > 0) {
       skuWithStock += 1;
@@ -72,34 +79,60 @@ export async function GET() {
       productId: p.id,
       name: p.name,
       sku: p.sku,
+      barcode: p.barcode,
       stockQuantity: qty,
+      buyingCost: roundMoney(p.buyingCost),
+      price: roundMoney(p.price),
       unitCost,
       retailPrice,
       assetValue,
       retailValue,
+      anomalous: retailPrice > 0 && (unitCost > retailPrice || p.buyingCost > retailPrice),
     };
   });
 
   totalAssetValue = roundMoney(totalAssetValue);
+  operationalAssetValue = roundMoney(operationalAssetValue);
   expectedRetailValue = roundMoney(expectedRetailValue);
   const potentialGrossMargin = roundMoney(
     expectedRetailValue - totalAssetValue,
+  );
+  const operationalGrossMargin = roundMoney(
+    expectedRetailValue - operationalAssetValue,
   );
   const marginPercent =
     expectedRetailValue > 0.001
       ? roundMoney((potentialGrossMargin / expectedRetailValue) * 100)
       : 0;
+  const anomalies = lines
+    .filter((line) => line.anomalous)
+    .sort((a, b) => b.assetValue - b.retailValue - (a.assetValue - a.retailValue));
 
   return NextResponse.json({
     summary: {
       totalAssetValue,
+      operationalAssetValue,
       expectedRetailValue,
       potentialGrossMargin,
+      operationalGrossMargin,
+      anomalyCount: anomalies.length,
+      excessCost: roundMoney(totalAssetValue - operationalAssetValue),
       marginPercent,
       productCount: products.length,
       skuWithStock,
       totalUnits,
     },
+    anomalies: anomalies.slice(0, 200).map((line) => ({
+      id: line.productId,
+      name: line.name,
+      sku: line.sku,
+      barcode: line.barcode,
+      stockQuantity: line.stockQuantity,
+      buyingCost: line.buyingCost,
+      unitCost: line.unitCost,
+      price: line.price,
+      retailPrice: line.retailPrice,
+    })),
     // Top holdings by asset value (for optional detail)
     topByAssetValue: [...lines]
       .filter((l) => l.stockQuantity > 0)

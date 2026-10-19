@@ -260,10 +260,10 @@ export default function PurchaseReturnsPage() {
               <tr>
                 <th className="px-4 py-3">ID</th>
                 <th className="px-4 py-3">التاريخ</th>
-                <th className="px-4 py-3">Supplier</th>
-                <th className="px-4 py-3 text-center">Lines</th>
-                <th className="px-4 py-3 text-right">Total Amount</th>
-                <th className="px-4 py-3">Notes</th>
+                <th className="px-4 py-3">المورد</th>
+                <th className="px-4 py-3 text-center">البنود</th>
+                <th className="px-4 py-3 text-right">الإجمالي</th>
+                <th className="px-4 py-3">ملاحظات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
@@ -337,7 +337,7 @@ export default function PurchaseReturnsPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                      Supplier
+                      المورد
                     </span>
                     <select
                       required
@@ -345,7 +345,7 @@ export default function PurchaseReturnsPage() {
                       onChange={(e) => setSupplierId(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                     >
-                      <option value="">Select supplier…</option>
+                      <option value="">اختر المورد…</option>
                       {suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -355,7 +355,7 @@ export default function PurchaseReturnsPage() {
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                      Date
+                      التاريخ
                     </span>
                     <input
                       type="date"
@@ -369,7 +369,7 @@ export default function PurchaseReturnsPage() {
 
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                    Notes (optional)
+                    ملاحظات (اختياري)
                   </span>
                   <input
                     value={notes}
@@ -424,10 +424,10 @@ export default function PurchaseReturnsPage() {
                   <table className="min-w-full text-left text-sm">
                     <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
                       <tr>
-                        <th className="px-3 py-2">Product</th>
-                        <th className="w-24 px-2 py-2">Qty</th>
-                        <th className="w-32 px-2 py-2">Unit cost</th>
-                        <th className="w-28 px-2 py-2 text-right">Line</th>
+                        <th className="px-3 py-2">الصنف</th>
+                        <th className="w-24 px-2 py-2">الكمية</th>
+                        <th className="w-32 px-2 py-2">تكلفة الوحدة</th>
+                        <th className="w-28 px-2 py-2 text-right">الإجمالي</th>
                         <th className="w-10 py-2" />
                       </tr>
                     </thead>
@@ -517,7 +517,7 @@ export default function PurchaseReturnsPage() {
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-white">
-                  <span className="text-sm text-slate-300 dark:text-gray-600">Return total</span>
+                  <span className="text-sm text-slate-300 dark:text-gray-600">إجمالي المرتجع</span>
                   <span className="text-2xl font-bold tabular-nums">
                     {formatEGP(totalAmount)}
                   </span>

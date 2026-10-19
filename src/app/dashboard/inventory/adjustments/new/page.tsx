@@ -185,14 +185,14 @@ export default function NewInventoryAdjustmentPage() {
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          رجوع
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
-            تسوية جديدة · New Adjustment
+            تسوية جديدة
           </h1>
           <p className="text-sm text-slate-500 dark:text-gray-400">
-            Negative qty removes stock (wastage). Stock syncs to WooCommerce.
+            الكمية السالبة تخصم من المخزون (تالف أو هالك أو منتهي الصلاحية).
           </p>
         </div>
       </div>
@@ -201,7 +201,7 @@ export default function NewInventoryAdjustmentPage() {
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3 dark:border-gray-800 dark:bg-gray-900">
           <label className="block md:col-span-1">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              Adjustment type
+              نوع التسوية
             </span>
             <select
               required
@@ -211,14 +211,14 @@ export default function NewInventoryAdjustmentPage() {
             >
               {ADJUSTMENT_TYPES.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.labelAr} / {t.labelEn}
+                  {t.labelAr}
                 </option>
               ))}
             </select>
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              Date
+              التاريخ
             </span>
             <input
               type="date"

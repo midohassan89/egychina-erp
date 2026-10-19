@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     prisma.inventoryAdjustment.findMany({
       where: {
         date: dateFilter,
-        type: { in: ["WASTAGE", "LOSS", "PRODUCTION_USE"] },
+        type: { in: ["WASTAGE", "LOSS", "PRODUCTION_USE", "EXPIRED"] },
       },
       include: { items: true },
     }),
@@ -50,6 +50,7 @@ export async function GET(request: Request) {
 
   let totalRevenue = 0;
   let cogs = 0;
+  let operationalCogs = 0;
   const dailyMap = new Map<string, number>();
 
   // Seed daily buckets for continuous chart
@@ -72,13 +73,22 @@ export async function GET(request: Request) {
 
     const sign = sale.isReturn ? -1 : 1;
     for (const line of sale.lines) {
-      cogs += sign * line.quantity * line.unitCost;
+      const raw = sign * line.quantity * line.unitCost;
+      cogs += raw;
+      const price = line.unitPrice > 0 ? line.unitPrice : line.unitCost;
+      const capped =
+        line.unitPrice > 0 && line.unitCost > line.unitPrice
+          ? sign * line.quantity * price
+          : raw;
+      operationalCogs += capped;
     }
   }
 
   totalRevenue = roundMoney(totalRevenue);
   cogs = roundMoney(cogs);
+  operationalCogs = roundMoney(operationalCogs);
   const grossProfit = roundMoney(totalRevenue - cogs);
+  const operationalGrossProfit = roundMoney(totalRevenue - operationalCogs);
 
   const expenseTotal = roundMoney(
     expenses.reduce((sum, e) => sum + e.amount, 0),
@@ -100,6 +110,8 @@ export async function GET(request: Request) {
 
   const totalExpenses = roundMoney(expenseTotal + wastageLoss);
   const netProfit = roundMoney(grossProfit - totalExpenses);
+  const operationalNetProfit = roundMoney(operationalGrossProfit - totalExpenses);
+  const anomalousCogs = roundMoney(cogs - operationalCogs);
 
   const dailyRevenue = [...dailyMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -114,10 +126,13 @@ export async function GET(request: Request) {
       totalRevenue,
       cogs,
       grossProfit,
+      operationalGrossProfit,
       totalExpenses,
       expenseTotal,
       wastageLoss,
       netProfit,
+      operationalNetProfit,
+      anomalousCogs,
     },
     dailyRevenue,
     meta: {

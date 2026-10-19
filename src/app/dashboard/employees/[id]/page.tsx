@@ -288,15 +288,15 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-4 shadow-sm ${
+      className={`rounded-xl border p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:text-white ${
         emphasize
           ? "border-brand-200 bg-brand-50"
           : "border-slate-200 bg-white"
       }`}
     >
-      <p className="text-xs font-medium text-slate-500 dark:text-gray-400">{label}</p>
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-300">{label}</p>
       <p
-        className={`mt-1 text-xl font-bold tabular-nums ${
+        className={`mt-1 text-xl font-bold tabular-nums dark:text-white ${
           emphasize ? "text-brand-800" : "text-slate-900"
         }`}
       >
