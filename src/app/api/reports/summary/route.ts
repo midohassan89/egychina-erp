@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const dateFilter = { gte: start, lte: end };
 
-  const [sales, expenses, adjustments] = await Promise.all([
+  const [sales, expenses, adjustments, onlineOrders] = await Promise.all([
     prisma.sale.findMany({
       where: { status: "completed", createdAt: dateFilter },
       include: { lines: true },
@@ -46,9 +46,14 @@ export async function GET(request: Request) {
       },
       include: { items: true },
     }),
+    prisma.order.findMany({
+      where: { createdAt: dateFilter, status: { not: "CANCELLED" } },
+      select: { totalAmount: true },
+    }),
   ]);
 
   let totalRevenue = 0;
+  let posRevenue = 0;
   let cogs = 0;
   let operationalCogs = 0;
   const dailyMap = new Map<string, number>();
@@ -68,6 +73,7 @@ export async function GET(request: Request) {
     if (sale.paymentMethod === "STAFF_MEAL") continue;
 
     totalRevenue += sale.total;
+    if (sale.paymentMethod !== "store") posRevenue += sale.total;
     const key = toDateKey(sale.createdAt);
     dailyMap.set(key, roundMoney((dailyMap.get(key) ?? 0) + sale.total));
 
@@ -108,6 +114,10 @@ export async function GET(request: Request) {
   }
   wastageLoss = roundMoney(wastageLoss);
 
+  const onlineRevenue = roundMoney(
+    onlineOrders.reduce((sum, order) => sum + order.totalAmount, 0),
+  );
+  posRevenue = roundMoney(posRevenue);
   const totalExpenses = roundMoney(expenseTotal + wastageLoss);
   const netProfit = roundMoney(grossProfit - totalExpenses);
   const operationalNetProfit = roundMoney(operationalGrossProfit - totalExpenses);
@@ -124,6 +134,8 @@ export async function GET(request: Request) {
     },
     kpis: {
       totalRevenue,
+      posRevenue,
+      onlineRevenue,
       cogs,
       grossProfit,
       operationalGrossProfit,

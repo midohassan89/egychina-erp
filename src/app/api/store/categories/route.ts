@@ -23,6 +23,7 @@ export async function GET() {
         nameEn: true,
         nameZh: true,
         slug: true,
+        image: true,
         _count: { select: { products: true } },
       },
       orderBy: { products: { _count: "desc" } },

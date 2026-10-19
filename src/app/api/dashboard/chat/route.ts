@@ -61,13 +61,39 @@ export async function GET(request: Request) {
     where: { customerId, senderRole: "CUSTOMER", isReadByAdmin: false },
     data: { isReadByAdmin: true },
   });
-  const messages = await prisma.chatMessage.findMany({
-    where: { customerId },
-    orderBy: { createdAt: "asc" },
-    take: 200,
-  });
+  const [messages, customer] = await Promise.all([
+    prisma.chatMessage.findMany({
+      where: { customerId },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+    }),
+    prisma.customer.findFirst({
+      where: { id: customerId },
+      select: {
+        phone: true,
+        pointsBalance: true,
+        orders: {
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          select: { id: true, orderNumber: true, status: true, createdAt: true },
+        },
+      },
+    }),
+  ]);
   return NextResponse.json({
     ok: true,
+    customer: customer
+      ? {
+          phone: customer.phone,
+          pointsBalance: customer.pointsBalance,
+          orders: customer.orders.map((order) => ({
+            id: order.id,
+            orderNumber: order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`,
+            status: order.status,
+            createdAt: order.createdAt.toISOString(),
+          })),
+        }
+      : null,
     messages: messages.map((row) => ({
       id: row.id,
       senderRole: row.senderRole,

@@ -573,6 +573,8 @@ model Category {
   /** English website slug (مثل: pastas). */
   slug        String    @unique
   description String?
+  /** Optional icon or image shown in the store and mobile app. */
+  image       String?
   products    Product[]
 
   createdAt   DateTime  @default(now())
@@ -759,6 +761,8 @@ model Order {
   /** Delivery driver assigned from the dashboard. */
   assignedDriverId String?
   assignedDriver   User?    @relation("AssignedDriverOrders", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  /** Set when this order's cash was deposited from the driver's custody. */
+  codSettledAt   DateTime?
   createdAt      DateTime    @default(now())
   items          OrderItem[]
   returnRequests ReturnRequest[]

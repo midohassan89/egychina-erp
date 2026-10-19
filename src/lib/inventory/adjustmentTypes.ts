@@ -24,6 +24,11 @@ export const ADJUSTMENT_TYPES = [
     labelAr: "تعديل جرد",
     labelEn: "Manual count",
   },
+  {
+    id: "CUSTOMER_RETURN",
+    labelAr: "مرتجع عميل",
+    labelEn: "Customer return",
+  },
 ] as const;
 
 export type AdjustmentTypeId = (typeof ADJUSTMENT_TYPES)[number]["id"];

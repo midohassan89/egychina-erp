@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getLoyaltySettings } from "@/lib/loyalty/settings";
 import { roundMoney } from "@/lib/pos/money";
 
 /**
@@ -48,11 +49,8 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json({
-        found: true,
+        ...(await publicCard(product, packPrice)),
         barcode: raw,
-        name: product.name,
-        price: packPrice,
-        imageUrl: product.imageUrl,
         isScale: true,
       });
     }
@@ -69,17 +67,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const displayPrice =
-      product.salePrice != null && product.salePrice > 0
-        ? product.salePrice
-        : product.price;
-
     return NextResponse.json({
-      found: true,
+      ...(await publicCard(product)),
       barcode: lookup,
-      name: product.name,
-      price: displayPrice,
-      imageUrl: product.imageUrl,
       isScale: false,
     });
   } catch (error) {
@@ -89,6 +79,37 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
+}
+
+type PublicProduct = NonNullable<Awaited<ReturnType<typeof findByBarcodeVariants>>>;
+
+async function publicCard(product: PublicProduct, forcedPrice?: number) {
+  const regular = product.price;
+  const sale = product.salePrice;
+  const onSale = forcedPrice == null && sale != null && sale > 0 && sale < regular;
+  const displayPrice = forcedPrice ?? (onSale ? sale : regular);
+  const loyalty = await getLoyaltySettings();
+  return {
+    found: true,
+    name: product.name,
+    nameEn: product.nameEn,
+    nameZh: product.nameZh,
+    price: displayPrice,
+    regularPrice: regular,
+    salePrice: onSale ? sale : null,
+    savingsPercent: onSale ? Math.round(((regular - sale) / regular) * 100) : 0,
+    imageUrl: product.imageUrl,
+    pointsEarned: Math.max(0, Math.round(displayPrice * loyalty.pointsEarnRatio)),
+    units: product.packages.map((unit) => ({
+      name: unit.name,
+      nameEn: unit.nameEn,
+      nameZh: unit.nameZh,
+      packSize: unit.packSize,
+      barcode: unit.barcode,
+      price: unit.price ?? roundMoney(regular * unit.packSize),
+      highlighted: unit.barcode === product.matchedBarcode,
+    })),
+  };
 }
 
 async function findByBarcodeVariants(code: string) {
@@ -101,19 +122,39 @@ async function findByBarcodeVariants(code: string) {
     new Set([trimmed, unpadded, padded5, code.replace(/\D/g, "")].filter(Boolean)),
   );
 
-  return prisma.product.findFirst({
+  const select = {
+    name: true,
+    nameEn: true,
+    nameZh: true,
+    price: true,
+    salePrice: true,
+    imageUrl: true,
+    packages: {
+      select: {
+        name: true,
+        nameEn: true,
+        nameZh: true,
+        packSize: true,
+        price: true,
+        barcode: true,
+      },
+    },
+  } as const;
+
+  const product = await prisma.product.findFirst({
     where: {
       isDeleted: false,
-      OR: candidates.flatMap((c) => [
-        { barcode: c },
-        { sku: c },
-      ]),
+      OR: candidates.flatMap((c) => [{ barcode: c }, { sku: c }]),
     },
-    select: {
-      name: true,
-      price: true,
-      salePrice: true,
-      imageUrl: true,
-    },
+    select,
   });
+  if (product) return { ...product, matchedBarcode: null as string | null };
+
+  const pack = await prisma.productPackage.findFirst({
+    where: { barcode: { in: candidates } },
+    select: { barcode: true, product: { select: { ...select, isDeleted: true } } },
+  });
+  if (!pack || pack.product.isDeleted) return null;
+  const { isDeleted: _unused, ...rest } = pack.product;
+  return { ...rest, matchedBarcode: pack.barcode };
 }

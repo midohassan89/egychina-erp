@@ -10,6 +10,7 @@ export default async function PrintOrderPage({
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
+      deliveryZone: { select: { nameAr: true } },
       items: {
         include: { product: true },
       },
@@ -65,9 +66,29 @@ export default async function PrintOrderPage({
             <span className="font-semibold">التاريخ: </span>
             {printedAt}
           </p>
-          <p className="break-all">
+          <p className="break-all" dir="ltr">
             <span className="font-semibold">رقم الطلب: </span>
-            {order.id}
+            {order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`}
+          </p>
+          {order.deliveryZone?.nameAr && (
+            <p>
+              <span className="font-semibold">منطقة التوصيل: </span>
+              {order.deliveryZone.nameAr}
+            </p>
+          )}
+          <p>
+            <span className="font-semibold">موعد التوصيل: </span>
+            {order.deliveryTime
+              ? order.deliveryTime.toLocaleString("ar-EG", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : order.notes?.toUpperCase().includes("ASAP")
+                ? "في أقرب وقت"
+                : "—"}
           </p>
         </section>
 
@@ -82,18 +103,41 @@ export default async function PrintOrderPage({
               key={item.id}
               className="grid grid-cols-[1fr_auto_auto] gap-x-2 py-1.5 text-xs"
             >
-              <span>{item.product.name}</span>
+              <span>
+                {item.product.name}
+                {item.product.isWeighed ? " · وزن" : ""}
+                {item.product.purchasePackSize > 1 ? ` · عبوة ${item.product.purchasePackSize}` : ""}
+              </span>
               <span className="text-center">{item.quantity}</span>
               <span>{formatEGP(item.price * item.quantity)}</span>
             </div>
           ))}
         </div>
 
-        <div className="mt-3 border-t border-dashed border-black pt-2 text-sm font-bold">
-          <div className="flex items-center justify-between">
-            <span>الإجمالي</span>
+        <div className="mt-3 space-y-1 border-t border-dashed border-black pt-2 text-xs">
+          <div className="flex justify-between">
+            <span>المجموع الفرعي</span>
+            <span>{formatEGP(Math.max(0, order.totalAmount - order.shippingFee + order.couponDiscount + order.pointsDiscount))}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>رسوم التوصيل</span>
+            <span>{formatEGP(order.shippingFee)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>خصم الكوبون {order.couponCode ? `(${order.couponCode})` : ""}</span>
+            <span>{formatEGP(order.couponDiscount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>خصم النقاط</span>
+            <span>{formatEGP(order.pointsDiscount)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm font-bold">
+            <span>المطلوب تحصيله</span>
             <span>{formatEGP(order.totalAmount)}</span>
           </div>
+          {order.notes && !/^deliveryTime:/i.test(order.notes.trim()) && (
+            <p>ملاحظة بدائل الأصناف: {order.notes}</p>
+          )}
         </div>
 
         <footer className="mt-4 space-y-1 text-center text-xs">

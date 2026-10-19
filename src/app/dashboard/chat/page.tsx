@@ -10,6 +10,24 @@ interface Thread {
   unread: number;
 }
 
+interface CustomerCard {
+  phone: string;
+  pointsBalance: number;
+  orders: { id: string; orderNumber: string; status: string; createdAt: string }[];
+}
+
+const STATUS_AR: Record<string, string> = {
+  PENDING: "قيد الانتظار",
+  CONFIRMED: "مؤكد",
+  PREPARING: "جاري التجهيز",
+  SHIPPED: "في الطريق",
+  DELIVERED: "تم التسليم",
+  COMPLETED: "مكتمل",
+  CANCELLED: "ملغي",
+  RETURNED: "مرتجع",
+  PARTIALLY_RETURNED: "مرتجع جزئي",
+};
+
 interface ChatRow {
   id: string;
   senderRole: string;
@@ -25,6 +43,7 @@ export default function ChatPage() {
   const [unread, setUnread] = useState(0);
   const [active, setActive] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatRow[]>([]);
+  const [customer, setCustomer] = useState<CustomerCard | null>(null);
   const [text, setText] = useState("");
 
   const loadThreads = useCallback(async () => {
@@ -38,8 +57,9 @@ export default function ChatPage() {
   const loadMessages = useCallback(async (customerId: string) => {
     const res = await fetch(`/api/dashboard/chat?customerId=${customerId}`, { cache: "no-store" });
     if (!res.ok) return;
-    const body = (await res.json()) as { messages?: ChatRow[] };
+    const body = (await res.json()) as { messages?: ChatRow[]; customer?: CustomerCard | null };
     setMessages(body.messages ?? []);
+    setCustomer(body.customer ?? null);
   }, []);
 
   useEffect(() => {
@@ -68,7 +88,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]" dir="rtl">
+    <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_240px]" dir="rtl">
       <aside className="overflow-y-auto rounded-2xl border border-slate-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="border-b border-slate-200 px-4 py-3 dark:border-gray-800">
           <h1 className="font-bold text-slate-900 dark:text-gray-100">المحادثات</h1>
@@ -121,6 +141,29 @@ export default function ChatPage() {
           </button>
         </div>
       </section>
+      <aside className="overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="font-bold text-slate-900 dark:text-gray-100">بيانات العميل</h2>
+        {!customer ? (
+          <p className="mt-3 text-sm text-slate-400">اختر محادثة</p>
+        ) : (
+          <div className="mt-3 space-y-3 text-sm">
+            <p className="text-slate-700 dark:text-gray-200" dir="ltr">{customer.phone}</p>
+            <p className="text-slate-700 dark:text-gray-200">النقاط: {customer.pointsBalance.toLocaleString("ar-EG")}</p>
+            <div>
+              <p className="mb-1 font-semibold text-slate-900 dark:text-gray-100">آخر الطلبات</p>
+              {customer.orders.length === 0 ? (
+                <p className="text-slate-400">لا توجد طلبات</p>
+              ) : (
+                customer.orders.map((order) => (
+                  <p key={order.id} className="text-slate-600 dark:text-gray-300">
+                    {order.orderNumber} · {STATUS_AR[order.status] ?? order.status}
+                  </p>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </aside>
     </div>
   );
 }

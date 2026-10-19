@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 import { getLoyaltySettings } from "@/lib/loyalty/settings";
+import { orderStatusNotification } from "@/lib/notifications/orderStatusCopy";
+import { pushToCustomer } from "@/lib/notifications/pushCustomer";
 
 const RETURN_STATUSES = [
   "PENDING",
@@ -62,6 +64,7 @@ export async function PATCH(
 
   const loyalty = await getLoyaltySettings();
 
+  let restocked = false;
   const updated = await prisma.$transaction(async (tx) => {
     const current = await tx.returnRequest.findUnique({
       where: { id },
@@ -87,6 +90,7 @@ export async function PATCH(
       });
     }
 
+    restocked = true;
     for (const item of current.items) {
       const product = await tx.product.update({
         where: { id: item.orderItem.productId },
@@ -97,6 +101,23 @@ export async function PATCH(
         where: { id: item.orderItem.productId },
         data: {
           stockStatus: product.stockQuantity > 0 ? "instock" : "outofstock",
+        },
+      });
+    }
+
+    if (session.user.id) {
+      await tx.inventoryAdjustment.create({
+        data: {
+          type: "CUSTOMER_RETURN",
+          notes: `مرتجع عميل ${current.id}`,
+          userId: session.user.id,
+          items: {
+            create: current.items.map((item) => ({
+              productId: item.orderItem.productId,
+              quantityChange: Math.max(1, Math.round(item.quantity)),
+              unitCost: 0,
+            })),
+          },
         },
       });
     }
@@ -181,6 +202,33 @@ export async function PATCH(
 
   if (!updated) {
     return NextResponse.json({ error: "Return not found" }, { status: 404 });
+  }
+
+  if (restocked && updated.pointsDeducted) {
+    const row = await prisma.returnRequest.findUnique({
+      where: { id },
+      select: {
+        customer: { select: { id: true, expoPushToken: true, pushToken: true } },
+        order: { select: { id: true, orderNumber: true } },
+      },
+    });
+    if (row?.customer) {
+      const number = row.order.orderNumber || `#${row.order.id.slice(-6).toUpperCase()}`;
+      const copy = orderStatusNotification("RETURNED", number);
+      copy.bodyAr = `تم استلام مرتجع الطلب ${number} وإعادة الكمية للمخزون`;
+      await prisma.customerNotification.create({
+        data: {
+          customerId: row.customer.id,
+          ...copy,
+          type: "ORDER",
+          orderId: row.order.id,
+        },
+      });
+      await pushToCustomer(row.customer, copy.titleAr, copy.bodyAr, {
+        type: "return_received",
+        orderId: row.order.id,
+      });
+    }
   }
 
   return NextResponse.json(updated);

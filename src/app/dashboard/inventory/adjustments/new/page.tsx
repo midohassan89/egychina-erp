@@ -209,7 +209,7 @@ export default function NewInventoryAdjustmentPage() {
               onChange={(e) => setType(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
             >
-              {ADJUSTMENT_TYPES.map((t) => (
+              {ADJUSTMENT_TYPES.filter((t) => t.id !== "CUSTOMER_RETURN").map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.labelAr}
                 </option>

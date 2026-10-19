@@ -33,6 +33,7 @@ export async function PUT(
     nameZh?: string | null;
     slug?: string;
     description?: string | null;
+    image?: string | null;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -61,6 +62,7 @@ export async function PUT(
         nameZh: blankToNull(body.nameZh),
         slug,
         description: body.description?.trim() || null,
+        image: blankToNull(body.image),
       },
       include: { _count: { select: { products: true } } },
     });
@@ -72,6 +74,7 @@ export async function PUT(
         nameZh: category.nameZh,
         slug: category.slug,
         description: category.description,
+        image: category.image,
         productCount: category._count.products,
       },
     });

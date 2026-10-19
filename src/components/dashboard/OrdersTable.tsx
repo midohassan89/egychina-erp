@@ -51,6 +51,37 @@ function displayOrderNumber(order: { id: string; orderNumber?: string | null }) 
   return order.orderNumber || `#${order.id.slice(-6).toUpperCase()}`;
 }
 
+const STATUS_FILTERS: { id: string; label: string; statuses: string[] }[] = [
+  { id: "", label: "الكل", statuses: [] },
+  { id: "PENDING", label: "قيد الانتظار", statuses: ["PENDING"] },
+  { id: "CONFIRMED", label: "مؤكد", statuses: ["CONFIRMED"] },
+  { id: "PREPARING", label: "جاري التجهيز", statuses: ["PREPARING"] },
+  { id: "SHIPPED", label: "في الطريق", statuses: ["SHIPPED"] },
+  { id: "COMPLETED", label: "مكتمل", statuses: ["COMPLETED", "DELIVERED"] },
+  { id: "CANCELLED", label: "ملغي", statuses: ["CANCELLED"] },
+];
+
+function formatDelivery(order: { notes: string | null; deliveryTime: string | null }) {
+  const raw = order.notes?.trim() ?? "";
+  const prefixed = raw.match(/^deliveryTime:\s*(.*)$/i);
+  const token = (prefixed?.[1] ?? "").trim();
+  const asap = token.toUpperCase() === "ASAP" || raw.toUpperCase() === "ASAP";
+  if (asap && !order.deliveryTime) return "موعد التوصيل: في أقرب وقت";
+  const iso = order.deliveryTime || (token && token.toUpperCase() !== "ASAP" ? token : "");
+  const date = iso ? new Date(iso) : null;
+  if (date && !Number.isNaN(date.getTime())) {
+    return `موعد التوصيل: ${date.toLocaleString("ar-EG", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  }
+  if (asap) return "موعد التوصيل: في أقرب وقت";
+  return raw || null;
+}
+
 function displayStatus(status: string): OrderStatusCode {
   return normalizeOrderStatus(status) ?? "PENDING";
 }
@@ -85,16 +116,22 @@ function OrdersTableInner({
   const { toast } = useToast();
   const [rows, setRows] = useState(orders);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrderRow | null>(null);
   const needle = query.trim().toLowerCase();
-  const visible = needle
-    ? rows.filter((order) =>
-        [order.orderNumber, order.customerName, order.phone, order.id]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(needle)),
-      )
-    : rows;
+  const statusGroup = STATUS_FILTERS.find((item) => item.id === statusFilter);
+  const visible = rows.filter((order) => {
+    if (statusGroup && statusGroup.statuses.length > 0 && !statusGroup.statuses.includes(displayStatus(order.status))) {
+      return false;
+    }
+    if (dateFilter && !order.createdAt.startsWith(dateFilter)) return false;
+    if (!needle) return true;
+    return [order.orderNumber, order.customerName, order.phone, order.id]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(needle));
+  });
 
   async function updateStatus(id: string, status: string) {
     const previous = rows;
@@ -195,6 +232,33 @@ function OrdersTableInner({
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {STATUS_FILTERS.map((item) => {
+          const count = item.statuses.length
+            ? rows.filter((order) => item.statuses.includes(displayStatus(order.status))).length
+            : rows.length;
+          return (
+            <button
+              key={item.id || "all"}
+              type="button"
+              onClick={() => setStatusFilter(item.id)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                statusFilter === item.id
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-gray-100"
+              }`}
+            >
+              {item.label} ({count})
+            </button>
+          );
+        })}
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(event) => setDateFilter(event.target.value)}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+        />
+      </div>
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
@@ -243,12 +307,12 @@ function OrdersTableInner({
                 </td>
                 <td className="max-w-xs px-4 py-3 text-slate-700 dark:text-gray-200">
                   <p>{order.address}</p>
-                  {order.deliveryTime && (
+                  {formatDelivery(order) && (
                     <p className="mt-1 text-xs font-medium text-slate-800 dark:text-gray-200">
-                      وقت التوصيل المحدد: {formatOrderDate(order.deliveryTime)}
+                      {formatDelivery(order)}
                     </p>
                   )}
-                  {order.notes && (
+                  {order.notes && !/^deliveryTime:/i.test(order.notes.trim()) && (
                     <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{order.notes}</p>
                   )}
                 </td>
@@ -365,7 +429,8 @@ function OrderDetailsModal({
             <span className="text-slate-500 dark:text-gray-400">العنوان: </span>
             {order.address}
           </p>
-          {order.notes && (
+          {formatDelivery(order) && <p>{formatDelivery(order)}</p>}
+          {order.notes && !/^deliveryTime:/i.test(order.notes.trim()) && (
             <p>
               <span className="text-slate-500 dark:text-gray-400">ملاحظات العميل: </span>
               {order.notes}

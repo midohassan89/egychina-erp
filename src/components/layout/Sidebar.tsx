@@ -370,11 +370,33 @@ export function Sidebar({
   useEffect(() => {
     if (!navKeysForRole(role).includes("chat")) return;
     let stopped = false;
+    let previous = 0;
+    let ready = false;
     async function loadUnread() {
       const res = await fetch("/api/dashboard/chat", { cache: "no-store" });
       if (!res.ok || stopped) return;
       const body = (await res.json()) as { unread?: number };
-      if (!stopped) setChatUnread(body.unread ?? 0);
+      const unread = body.unread ?? 0;
+      if (ready && unread > previous) {
+        try {
+          const audio = new AudioContext();
+          const tone = audio.createOscillator();
+          const gain = audio.createGain();
+          tone.type = "sine";
+          tone.frequency.value = 660;
+          gain.gain.value = 0.03;
+          tone.connect(gain);
+          gain.connect(audio.destination);
+          tone.start();
+          tone.stop(audio.currentTime + 0.12);
+          window.setTimeout(() => void audio.close(), 300);
+        } catch {
+          // Autoplay can be blocked until the next click.
+        }
+      }
+      previous = unread;
+      ready = true;
+      if (!stopped) setChatUnread(unread);
     }
     void loadUnread();
     const timer = window.setInterval(() => void loadUnread(), 20000);

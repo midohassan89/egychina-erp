@@ -11,6 +11,7 @@ interface CategoryRow {
   nameZh: string | null;
   slug: string;
   description: string | null;
+  image: string | null;
   productCount: number;
 }
 
@@ -32,6 +33,7 @@ function CategoriesManagement() {
   const [nameEn, setNameEn] = useState("");
   const [nameZh, setNameZh] = useState("");
   const [slug, setSlug] = useState("");
+  const [image, setImage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -62,6 +64,7 @@ function CategoriesManagement() {
     setNameEn("");
     setNameZh("");
     setSlug("");
+    setImage("");
     setEditingId(null);
   }
 
@@ -71,6 +74,7 @@ function CategoriesManagement() {
     setNameEn(category.nameEn ?? "");
     setNameZh(category.nameZh ?? "");
     setSlug(category.slug);
+    setImage(category.image ?? "");
     setError(null);
   }
 
@@ -79,7 +83,7 @@ function CategoriesManagement() {
     setSaving(true);
     setError(null);
     try {
-      const payload = { name, nameEn, nameZh, slug };
+      const payload = { name, nameEn, nameZh, slug, image };
       const res = await fetch(
         editingId ? `/api/categories/${editingId}` : "/api/categories",
         {
@@ -152,6 +156,17 @@ function CategoriesManagement() {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="pastas"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+          />
+        </label>
+        <label className="block sm:col-span-2">
+          <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+            أيقونة / صورة القسم
+          </span>
+          <input
+            value={image}
+            onChange={(e) => setImage(e.target.value)}
+            placeholder="/uploads/categories/pasta.webp"
             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
           />
         </label>

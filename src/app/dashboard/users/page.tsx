@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Plus, X, Shield, ScrollText, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { clsx } from "clsx";
-import { ALL_ROLES } from "@/lib/auth/roles";
+import { ALL_ROLES, navKeysForRole, type NavAccess } from "@/lib/auth/roles";
 
 interface UserRow {
   id: string;
@@ -15,6 +15,14 @@ interface UserRow {
   hasPin: boolean;
   createdAt: string;
 }
+
+const MODULE_KEYS: { key: NavAccess | "couponsZones"; label: string }[] = [
+  { key: "orders", label: "إدارة طلبات المتجر" },
+  { key: "chat", label: "محادثات العملاء" },
+  { key: "notifications", label: "إشعارات العملاء" },
+  { key: "couponsZones", label: "أكواد الخصم ومناطق التوصيل" },
+  { key: "fleet", label: "أسطول السائقين" },
+];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
@@ -412,6 +420,24 @@ export default function UsersPage() {
                   ))}
                 </select>
               </label>
+              <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-gray-800">
+                <p className="mb-2 font-semibold text-slate-800 dark:text-gray-100">صلاحيات هذا الدور</p>
+                <ul className="space-y-1">
+                  {MODULE_KEYS.map((item) => {
+                    const keys = navKeysForRole(role);
+                    const enabled =
+                      item.key === "couponsZones"
+                        ? keys.includes("coupons") && keys.includes("deliveryZones")
+                        : keys.includes(item.key);
+                    return (
+                      <li key={item.label} className="flex items-center gap-2 text-slate-700 dark:text-gray-200">
+                        <input type="checkbox" checked={enabled} readOnly disabled />
+                        {item.label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
                   POS PIN (4 digits, optional)

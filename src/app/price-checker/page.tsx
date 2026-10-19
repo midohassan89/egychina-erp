@@ -7,9 +7,22 @@ type LookupResult =
   | {
       found: true;
       name: string;
+      nameEn?: string | null;
+      nameZh?: string | null;
       price: number;
+      regularPrice?: number;
+      salePrice?: number | null;
+      savingsPercent?: number;
       imageUrl: string | null;
       barcode: string;
+      pointsEarned?: number;
+      units?: {
+        name: string;
+        nameEn?: string | null;
+        nameZh?: string | null;
+        packSize: number;
+        price: number;
+      }[];
     }
   | {
       found: false;
@@ -358,7 +371,16 @@ export default function PriceCheckerKioskPage() {
                 color: "#cbd5e1",
               }}
             >
-              Scan the barcode to see the price
+              Scan barcode to check price
+            </p>
+            <p
+              style={{
+                marginTop: "0.75rem",
+                fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                color: "#cbd5e1",
+              }}
+            >
+              请扫描条形码查询价格
             </p>
           </div>
         )}
@@ -429,6 +451,12 @@ export default function PriceCheckerKioskPage() {
             >
               {result.name}
             </h2>
+            {result.nameEn && (
+              <p style={{ margin: 0, fontSize: "1.5rem", color: "#e2e8f0" }}>{result.nameEn}</p>
+            )}
+            {result.nameZh && (
+              <p style={{ margin: 0, fontSize: "1.5rem", color: "#e2e8f0" }}>{result.nameZh}</p>
+            )}
             <p
               style={{
                 margin: 0,
@@ -439,6 +467,34 @@ export default function PriceCheckerKioskPage() {
               }}
             >
               {formatPriceSafe(result.price)}
+            </p>
+            {result.salePrice != null && result.regularPrice != null && (
+              <p style={{ margin: 0, fontSize: "1.4rem", color: "#94a3b8" }}>
+                <span style={{ textDecoration: "line-through" }}>{formatPriceSafe(result.regularPrice)}</span>
+                {result.savingsPercent ? `  ·  وفر ${result.savingsPercent}%` : ""}
+              </p>
+            )}
+            {(result.units?.length ?? 0) > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "0.75rem" }}>
+                {result.units?.map((unit) => (
+                  <div
+                    key={`${unit.name}-${unit.packSize}`}
+                    style={{
+                      minWidth: "10rem",
+                      borderRadius: "1rem",
+                      border: "1px solid rgba(148,163,184,0.4)",
+                      padding: "0.75rem 1rem",
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    <div>{unit.name}</div>
+                    <div style={{ fontWeight: 800, color: "#34d399" }}>{formatPriceSafe(unit.price)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ margin: 0, fontSize: "1.25rem", color: "#fde68a" }}>
+              نقاط الولاء: {(result.pointsEarned ?? 0).toLocaleString("ar-EG")}
             </p>
             <p style={{ margin: 0, fontSize: "0.875rem", color: "#94a3b8" }}>
               يعود للشاشة الرئيسية خلال ٦ ثوانٍ

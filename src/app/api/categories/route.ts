@@ -18,6 +18,7 @@ function serializeCategory(
     nameZh: string | null;
     slug: string;
     description: string | null;
+    image?: string | null;
   },
   productCount = 0,
 ) {
@@ -28,6 +29,7 @@ function serializeCategory(
     nameZh: category.nameZh,
     slug: category.slug,
     description: category.description,
+    image: category.image ?? null,
     productCount,
   };
 }
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
     nameZh?: string;
     slug?: string;
     description?: string;
+    image?: string | null;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
         nameZh: blankToNull(body.nameZh),
         slug,
         description: body.description?.trim() || null,
+        image: blankToNull(body.image),
       },
     });
     return NextResponse.json({

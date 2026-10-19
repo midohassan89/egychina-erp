@@ -28,6 +28,7 @@ export default function BrandsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [translating, setTranslating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -239,6 +240,33 @@ export default function BrandsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
               />
+              <button
+                type="button"
+                disabled={translating || !form.name.trim()}
+                onClick={() => {
+                  void (async () => {
+                    setTranslating(true);
+                    try {
+                      const res = await fetch("/api/admin/translate-text", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: form.name }),
+                      });
+                      const body = (await res.json()) as { nameEn?: string; nameZh?: string; en?: string; zh?: string };
+                      setForm((current) => ({
+                        ...current,
+                        nameEn: body.nameEn || body.en || current.nameEn,
+                        nameZh: body.nameZh || body.zh || current.nameZh,
+                      }));
+                    } finally {
+                      setTranslating(false);
+                    }
+                  })();
+                }}
+                className="mt-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-gray-700 dark:text-gray-200"
+              >
+                {translating ? "جاري الترجمة…" : "ترجمة تلقائية"}
+              </button>
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">

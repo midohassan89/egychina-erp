@@ -47,7 +47,12 @@ interface ProductOption {
   salePrice: number | null;
   imageUrl?: string | null;
   purchasePackSize?: number;
-  packages?: { price: number | null }[];
+  packages?: {
+    id?: string;
+    name?: string;
+    packSize?: number;
+    price: number | null;
+  }[];
   /** Set when the search text is this product's carton barcode. */
   scannedPackage?: {
     barcode: string;
@@ -65,6 +70,9 @@ interface LineDraft {
   quantity: string;
   /** Pieces in one supplier carton. */
   packSize: string;
+  /** Registered package chosen as the purchase unit, or "piece". */
+  unitKey?: string;
+  purchaseUnits?: { id: string; name: string; packSize: number }[];
   /** Cost of one carton. */
   unitCost: string;
   lineTotal: string;
@@ -106,6 +114,18 @@ function formatSaleInput(salePrice: number | null | undefined): string {
   return salePrice != null && salePrice > 0 ? String(salePrice) : "";
 }
 
+
+function purchaseUnitsOf(product: {
+  packages?: { id?: string; name?: string; packSize?: number; price: number | null }[];
+}) {
+  return (product.packages ?? [])
+    .filter((row) => row.id && Math.floor(Number(row.packSize)) > 1)
+    .map((row) => ({
+      id: row.id as string,
+      name: row.name?.trim() || "عبوة",
+      packSize: Math.floor(Number(row.packSize)),
+    }));
+}
 
 function piecesPerPack(packSize: string): number {
   const n = Math.floor(Number(packSize));
@@ -512,6 +532,11 @@ function PurchaseFormInner({
               imageUrl: line.imageKnown ? line.imageUrl : (product.imageUrl ?? null),
               imageKnown: true,
               packagesKnown: true,
+              purchaseUnits: purchaseUnitsOf(product),
+              unitKey:
+                line.unitKey ??
+                (purchaseUnitsOf(product).find((unit) => String(unit.packSize) === line.packSize)?.id ??
+                  "piece"),
               hasCustomPackagePrice: line.packagesKnown
                 ? line.hasCustomPackagePrice
                 : hasCustomPackagePrice(product.packages),
@@ -675,6 +700,9 @@ function PurchaseFormInner({
           imageKnown: true,
           quantity: "1",
           packSize: String(packSize),
+          unitKey:
+            purchaseUnitsOf(product).find((unit) => unit.packSize === packSize)?.id ?? "piece",
+          purchaseUnits: purchaseUnitsOf(product),
           unitCost: String(packCost),
           lineTotal: String(roundMoney(qty * packCost)),
           regularPrice: String(product.price ?? 0),
@@ -806,6 +834,27 @@ function PurchaseFormInner({
           ...line,
           quantity,
           lineTotal: String(roundMoney(qty * cost)),
+        };
+      }),
+    );
+  }
+
+  function selectPurchaseUnit(line: LineDraft, unitKey: string) {
+    const unit = line.purchaseUnits?.find((row) => row.id === unitKey);
+    const packSize = unit ? unit.packSize : 1;
+    setLines((prev) =>
+      prev.map((current) => {
+        if (current.key !== line.key) return current;
+        const oldPack = piecesPerPack(current.packSize);
+        const piece = oldPack > 0 ? (Number(current.unitCost) || 0) / oldPack : 0;
+        const nextCost = roundMoney(piece * packSize);
+        const qty = Math.floor(Number(current.quantity)) || 0;
+        return {
+          ...current,
+          unitKey,
+          packSize: String(packSize),
+          unitCost: String(nextCost),
+          lineTotal: String(roundMoney(qty * nextCost)),
         };
       }),
     );
@@ -1395,13 +1444,13 @@ function PurchaseFormInner({
                     المنتج
                   </th>
                   <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
-                    كراتين
+                    الكمية
                   </th>
                   <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
-                    حجم الكرتونة
+                    وحدة الشراء
                   </th>
                   <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
-                    تكلفة الكرتونة
+                    تكلفة الوحدة
                   </th>
                   <th className="text-center align-middle whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-100">
                     إجمالي البند
@@ -1484,7 +1533,25 @@ function PurchaseFormInner({
                         />
                       </td>
                       <td className="px-2 py-2 text-center align-middle">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {(line.purchaseUnits?.length ?? 0) > 0 && (
+                            <select
+                              aria-label="وحدة الشراء"
+                              value={line.unitKey ?? "piece"}
+                              disabled={isSubmitting}
+                              onChange={(event) =>
+                                selectPurchaseUnit(line, event.target.value)
+                              }
+                              className="w-full max-w-[7.5rem] rounded-lg border border-slate-300 bg-white px-1 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
+                            >
+                              <option value="piece">قطعة</option>
+                              {line.purchaseUnits?.map((unit) => (
+                                <option key={unit.id} value={unit.id}>
+                                  {unit.name} × {unit.packSize}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                           <input
                             id={`purchase-pack-size-${line.key}`}
                             type="number"

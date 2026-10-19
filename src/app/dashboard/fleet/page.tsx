@@ -41,6 +41,7 @@ const CATEGORY_AR: Record<string, string> = {
 
 function FleetPageInner() {
   const { toast } = useToast();
+  const [tab, setTab] = useState<"custody" | "expenses">("custody");
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
   const [rows, setRows] = useState<FleetExpense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,9 +122,36 @@ function FleetPageInner() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">أسطول السائقين</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-            مراجعة مصروفات السائقين وإضافتها للمحاسبة عند الموافقة
+            عهدة التوصيل ومصاريف الطريق
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("custody")}
+            className={clsx(
+              "rounded-lg px-3 py-1.5 text-sm font-semibold",
+              tab === "custody" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200",
+            )}
+          >
+            طلبات وعهدة السائقين
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("expenses")}
+            className={clsx(
+              "rounded-lg px-3 py-1.5 text-sm font-semibold",
+              tab === "expenses" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200",
+            )}
+          >
+            مصاريف السائقين
+          </button>
+        </div>
+      </div>
+      {tab === "custody" ? (
+        <DriverCustody />
+      ) : (
+      <>
         <div className="flex flex-wrap gap-2">
           {STATUS_FILTERS.map((s) => (
             <button
@@ -141,7 +169,6 @@ function FleetPageInner() {
             </button>
           ))}
         </div>
-      </div>
 
       {loading ? (
         <p className="text-slate-500 dark:text-gray-400">جاري التحميل…</p>
@@ -350,6 +377,78 @@ function FleetPageInner() {
             </div>
           </div>
         </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
+function DriverCustody() {
+  const [rows, setRows] = useState<{ id: string; name: string; ordersToday: number; cashToCollect: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/admin/fleet/custody", { cache: "no-store" });
+    const body = (await res.json()) as { drivers?: typeof rows; error?: string };
+    setRows(body.drivers ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function settle(id: string) {
+    setBusyId(id);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/fleet/custody", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverId: id }),
+      });
+      const body = (await res.json()) as { error?: string; amount?: number };
+      if (!res.ok) throw new Error(body.error ?? "تعذر التصفية");
+      setMessage(`تم توريد ${formatEGP(body.amount ?? 0)} إلى الخزينة`);
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "تعذر التصفية");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (loading) return <p className="text-slate-500 dark:text-gray-400">جاري التحميل…</p>;
+  return (
+    <div className="space-y-3">
+      {message && <p className="text-sm text-slate-700 dark:text-gray-200">{message}</p>}
+      {rows.length === 0 ? (
+        <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-gray-800 dark:bg-gray-900">
+          لا يوجد سائقون نشطون
+        </p>
+      ) : (
+        rows.map((row) => (
+          <article key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div>
+              <p className="text-lg font-bold text-slate-900 dark:text-gray-100">{row.name}</p>
+              <p className="text-sm text-slate-600 dark:text-gray-300">
+                طلبات اليوم: {row.ordersToday.toLocaleString("ar-EG")} · المطلوب تحصيله: {formatEGP(row.cashToCollect)}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={busyId === row.id || row.cashToCollect <= 0}
+              onClick={() => void settle(row.id)}
+              className="rounded-xl bg-emerald-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {busyId === row.id ? "جاري التوريد…" : "تصفية العهدة وتوريد للخزينة"}
+            </button>
+          </article>
+        ))
       )}
     </div>
   );

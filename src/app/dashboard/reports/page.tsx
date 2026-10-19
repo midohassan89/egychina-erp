@@ -20,6 +20,8 @@ import { CostAnomaliesPanel } from "@/components/reports/CostAnomaliesPanel";
 
 interface Kpis {
   totalRevenue: number;
+  posRevenue?: number;
+  onlineRevenue?: number;
   cogs: number;
   grossProfit: number;
   operationalGrossProfit?: number;
@@ -191,6 +193,37 @@ export default function ReportsPage() {
           >
             تحديث
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              const lines = [
+                ["البند", "القيمة"],
+                ["مبيعات الكاشير (POS)", String(kpis?.posRevenue ?? 0)],
+                ["مبيعات المتجر والتطبيق (Online)", String(kpis?.onlineRevenue ?? 0)],
+                ["إجمالي الإيرادات", String(kpis?.totalRevenue ?? 0)],
+                ["صافي الربح", String(kpis?.netProfit ?? 0)],
+                ["صافي الربح التشغيلي", String(kpis?.operationalNetProfit ?? 0)],
+              ];
+              const csv = `\uFEFF${lines.map((row) => row.join(",")).join("\n")}`;
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "report.csv";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          >
+            تصدير Excel
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          >
+            طباعة التقرير
+          </button>
           <Link
             href="/dashboard/reports/supplier-statement"
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -206,6 +239,10 @@ export default function ReportsPage() {
         </p>
       )}
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <KpiCard label="مبيعات الكاشير (POS)" value={kpis?.posRevenue} loading={isLoading} tone="neutral" />
+        <KpiCard label="مبيعات المتجر والتطبيق (Online)" value={kpis?.onlineRevenue} loading={isLoading} tone="neutral" />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label="إجمالي الإيرادات"
