@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { isManagerOrAdmin } from "@/lib/auth/roles";
+import { canUsePos } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
+import { isChatAttachmentPath } from "@/lib/chat/saveAttachment";
 import { translateTrio } from "@/lib/i18n/translateText";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 async function requireManager() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManagerOrAdmin(session.user.role)) {
+  if (!canUsePos(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;
@@ -102,6 +103,8 @@ export async function GET(request: Request) {
       textAr: row.textAr,
       textEn: row.textEn,
       textZh: row.textZh,
+      attachmentUrl: row.attachmentUrl,
+      attachmentType: row.attachmentType,
       createdAt: row.createdAt.toISOString(),
     })),
   });
@@ -110,7 +113,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = await requireManager();
   if (denied) return denied;
-  let body: { customerId?: unknown; text?: unknown };
+  let body: { customerId?: unknown; text?: unknown; attachmentUrl?: unknown; attachmentType?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -118,8 +121,13 @@ export async function POST(request: Request) {
   }
   const customerId = String(body.customerId ?? "").trim();
   const text = String(body.text ?? "").trim();
-  if (!customerId || !text) {
+  const attachmentUrl = String(body.attachmentUrl ?? "").trim();
+  const attachmentType = body.attachmentType === "IMAGE" ? "IMAGE" : body.attachmentType === "FILE" ? "FILE" : null;
+  if (!customerId || (!text && !attachmentUrl)) {
     return NextResponse.json({ error: "customerId and text are required" }, { status: 400 });
+  }
+  if (attachmentUrl && !isChatAttachmentPath(attachmentUrl)) {
+    return NextResponse.json({ error: "Invalid attachment" }, { status: 400 });
   }
   const customer = await prisma.customer.findFirst({
     where: { id: customerId, deletedAt: null },
@@ -127,7 +135,7 @@ export async function POST(request: Request) {
   });
   if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
-  const translated = await translateTrio(text, "ar");
+  const translated = text ? await translateTrio(text, "ar") : { textAr: "", textEn: "", textZh: "" };
   const message = await prisma.chatMessage.create({
     data: {
       customerId,
@@ -137,6 +145,8 @@ export async function POST(request: Request) {
       textAr: translated.textAr || text,
       textEn: translated.textEn,
       textZh: translated.textZh,
+      attachmentUrl: attachmentUrl || null,
+      attachmentType: attachmentUrl ? attachmentType ?? "FILE" : null,
       isReadByAdmin: true,
       isReadByCustomer: false,
     },

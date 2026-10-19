@@ -207,6 +207,7 @@ export async function POST(request: Request) {
 
   let updatedShift = shift;
   let saleId: string | null = null;
+  let orderNumber: string | null = null;
   let updatedCustomer: {
     id: string;
     name: string | null;
@@ -337,6 +338,7 @@ export async function POST(request: Request) {
       return { sale, customer: updatedLoyalty };
     });
     saleId = saved.sale.id;
+    orderNumber = saved.sale.orderNumber ?? null;
     savedRequiresAudit = saved.sale.requiresAudit;
     savedAuditReason = saved.sale.auditReason;
     updatedCustomer = saved.customer;
@@ -364,6 +366,7 @@ export async function POST(request: Request) {
     salesField,
     salesDelta: delta,
     saleId,
+    orderNumber,
     requiresAudit: savedRequiresAudit,
     auditReason: savedAuditReason,
     stockUpdated: stockResult?.updated.length ?? 0,

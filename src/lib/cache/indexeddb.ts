@@ -9,11 +9,11 @@ import type {
 } from "@/types/woocommerce";
 
 const DB_NAME = "supermarket-pos";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 interface POSDatabase extends DBSchema {
   products: {
-    key: number;
+    key: string;
     value: CachedProduct;
     indexes: { "by-name": string; "by-sku": string };
   };
@@ -60,9 +60,12 @@ function getDB(): Promise<IDBPDatabase<POSDatabase>> {
   if (!dbPromise) {
     dbPromise = openDB<POSDatabase>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
+        if (oldVersion < 4 && db.objectStoreNames.contains("products")) {
+          db.deleteObjectStore("products");
+        }
         if (!db.objectStoreNames.contains("products")) {
           const productStore = db.createObjectStore("products", {
-            keyPath: "id",
+            keyPath: "posKey",
           });
           productStore.createIndex("by-name", "name", { unique: false });
           productStore.createIndex("by-sku", "sku", { unique: false });
@@ -102,11 +105,19 @@ export async function getCachedProducts(): Promise<CachedProduct[]> {
   return db.getAll("products");
 }
 
+function withPosKey(product: CachedProduct): CachedProduct {
+  const posKey =
+    product.posKey?.trim() ||
+    product.prismaId ||
+    `wc-${product.id}-${product.sku || "item"}`;
+  return posKey === product.posKey ? product : { ...product, posKey };
+}
+
 export async function getCachedProductById(
   id: number,
 ): Promise<CachedProduct | undefined> {
-  const db = await getDB();
-  return db.get("products", id);
+  const all = await getCachedProducts();
+  return all.find((product) => product.id === id && !product.isPackage);
 }
 
 export async function getCachedProductBySku(
@@ -177,6 +188,7 @@ export async function saveCatalogToCache(
   products: CachedProduct[],
   categories: CachedCategory[],
   customers: CachedCustomer[] = [],
+  syncedAt?: string,
 ): Promise<SyncMetadata> {
   const db = await getDB();
   const tx = db.transaction(
@@ -189,7 +201,7 @@ export async function saveCatalogToCache(
   await tx.objectStore("customers").clear();
 
   for (const product of products) {
-    await tx.objectStore("products").put(product);
+    await tx.objectStore("products").put(withPosKey(product));
   }
   for (const category of categories) {
     await tx.objectStore("categories").put(category);
@@ -199,7 +211,7 @@ export async function saveCatalogToCache(
   }
 
   const metadata: SyncMetadata = {
-    lastSyncedAt: new Date().toISOString(),
+    lastSyncedAt: syncedAt ?? new Date().toISOString(),
     productCount: products.length,
     categoryCount: categories.length,
     customerCount: customers.length,
@@ -209,6 +221,52 @@ export async function saveCatalogToCache(
   await tx.done;
 
   return metadata;
+}
+
+/** Apply a delta sync without rewriting the rest of the catalog. */
+export async function mergeCatalogDelta(input: {
+  upserts: CachedProduct[];
+  removedPrismaIds: string[];
+  syncedAt: string;
+}): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(["products", "metadata"], "readwrite");
+  const store = tx.objectStore("products");
+  const existing = await store.getAll();
+  const removeOwners = new Set(input.removedPrismaIds.filter(Boolean));
+  const replaceOwners = new Set(
+    input.upserts
+      .map((product) => product.parentId || product.prismaId || "")
+      .filter(Boolean),
+  );
+
+  for (const row of existing) {
+    const owner = row.parentId || row.prismaId || "";
+    if (!row.posKey) continue;
+    if (
+      (owner && (removeOwners.has(owner) || replaceOwners.has(owner))) ||
+      replaceOwners.has(row.posKey)
+    ) {
+      await store.delete(row.posKey);
+    }
+  }
+
+  for (const product of input.upserts) {
+    await store.put(withPosKey(product));
+  }
+
+  const previous = (await tx.objectStore("metadata").get("sync")) as
+    | SyncMetadata
+    | undefined;
+  const remaining = await store.getAll();
+  const metadata: SyncMetadata = {
+    lastSyncedAt: input.syncedAt,
+    productCount: remaining.filter((product) => !product.isPackage).length,
+    categoryCount: previous?.categoryCount ?? 0,
+    customerCount: previous?.customerCount ?? 0,
+  };
+  await tx.objectStore("metadata").put(metadata, "sync");
+  await tx.done;
 }
 
 export async function saveSale(sale: LocalSale): Promise<void> {

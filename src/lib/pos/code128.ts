@@ -90,14 +90,19 @@ export function buildCode128Svg(
   ].join("");
 }
 
-/** Prefer WooCommerce order number; fall back to a compact local sale id. */
+/**
+ * Human-readable ticket code. The barcode must be this exact string —
+ * never a longer slice of the local id (that printed extra characters).
+ */
 export function receiptBarcodeValue(sale: {
   id: string;
   wooOrderId: number | null;
+  orderNumber?: string | null;
 }): string {
-  if (sale.wooOrderId != null) {
+  const number = sale.orderNumber?.trim();
+  if (number) return number.toUpperCase();
+  if (sale.wooOrderId != null && sale.wooOrderId > 0) {
     return String(sale.wooOrderId);
   }
-  // Compact local id for offline receipts
-  return sale.id.replace(/-/g, "").slice(0, 12).toUpperCase();
+  return `POS-${sale.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 }

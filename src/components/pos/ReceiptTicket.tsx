@@ -36,17 +36,14 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
   const barcodeSvg = useMemo(() => {
     if (!sale) return "";
     return buildCode128Svg(receiptBarcodeValue(sale), {
-      height: 40,
-      moduleWidth: 1.1,
+      height: 52,
+      moduleWidth: 1.8,
     });
   }, [sale]);
 
   if (!sale) return null;
 
-  const orderLabel =
-    sale.wooOrderId != null
-      ? `#${sale.wooOrderId}`
-      : sale.id.slice(0, 8).toUpperCase();
+  const orderLabel = receiptBarcodeValue(sale);
 
   const printedAt = new Date(sale.createdAt);
   const dateStr = printedAt.toLocaleDateString("ar-EG", {

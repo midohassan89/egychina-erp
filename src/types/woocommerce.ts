@@ -176,6 +176,8 @@ export interface LocalSale {
   tendered: number;
   change: number;
   wooOrderId: number | null;
+  /** Printed ticket code, e.g. POS-1001. The receipt barcode uses this value. */
+  orderNumber?: string | null;
   syncStatus: SaleSyncStatus;
   syncError?: string;
   /** Cashier shift this sale belongs to */

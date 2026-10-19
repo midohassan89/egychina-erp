@@ -49,7 +49,7 @@ export function Header() {
         )}
         <button
           type="button"
-          onClick={() => refreshCatalog()}
+          onClick={() => refreshCatalog("full")}
           disabled={isRefreshing}
           className={clsx(
             "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",

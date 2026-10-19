@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { formatEGP } from "@/lib/pos/money";
+import { AutoPrint } from "@/components/print/AutoPrint";
 
 export default async function PrintOrderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ autoprint?: string }>;
 }) {
   const { id } = await params;
+  const { autoprint } = await searchParams;
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
@@ -33,6 +37,7 @@ export default async function PrintOrderPage({
 
   return (
     <div className="min-h-screen bg-white text-black">
+      {autoprint === "1" ? <AutoPrint /> : null}
       <style>{`
         @media print {
           @page { size: 80mm auto; margin: 0; }

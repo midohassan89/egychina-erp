@@ -25,11 +25,11 @@ const MODULE_KEYS: { key: NavAccess | "couponsZones"; label: string }[] = [
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN: "Admin",
-  MANAGER: "Manager",
-  ACCOUNTANT: "Accountant",
-  CASHIER: "Cashier",
-  DRIVER: "Driver",
+  ADMIN: "مالك / المدير العام",
+  MANAGER: "مدير فرع",
+  ACCOUNTANT: "محاسب مالي",
+  CASHIER: "كاشير",
+  DRIVER: "سائق",
 };
 
 export default function UsersPage() {
@@ -366,7 +366,7 @@ export default function UsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">New User</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">إضافة مستخدم جديد</h2>
               <button
                 type="button"
                 onClick={() => setCreateOpen(false)}
@@ -382,7 +382,7 @@ export default function UsersPage() {
             >
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  Username
+                  اسم المستخدم
                 </span>
                 <input
                   required
@@ -393,7 +393,7 @@ export default function UsersPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  Password
+                  كلمة المرور
                 </span>
                 <input
                   required
@@ -406,7 +406,7 @@ export default function UsersPage() {
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  Role
+                  الدور الوظيفي
                 </span>
                 <select
                   value={role}
@@ -440,7 +440,7 @@ export default function UsersPage() {
               </div>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  POS PIN (4 digits, optional)
+                  رمز PIN للكاشير (4 أرقام للمدير/الأدمن)
                 </span>
                 <input
                   inputMode="numeric"
@@ -448,7 +448,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setPinCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
                   }
-                  placeholder="Required for Manager/Admin overrides"
+                  placeholder="اختياري — 4 أرقام"
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>

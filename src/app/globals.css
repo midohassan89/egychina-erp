@@ -553,3 +553,61 @@
 .pos-numpad-kb .hg-row {
   justify-content: center;
 }
+
+/* POS keeps its own theme. Dashboard `dark` on <html> must not wash out cashier inputs. */
+.pos-shell {
+  color-scheme: light;
+}
+
+.pos-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pos-shell textarea,
+.pos-shell select {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #64748b;
+  caret-color: #0f172a;
+}
+
+.pos-shell input::placeholder,
+.pos-shell textarea::placeholder {
+  color: #64748b;
+}
+
+.pos-shell.pos-dark {
+  color-scheme: dark;
+  background-color: #0b1220;
+}
+
+.pos-shell.pos-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.pos-shell.pos-dark textarea,
+.pos-shell.pos-dark select {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #94a3b8;
+  caret-color: #f8fafc;
+}
+
+.pos-shell.pos-dark input::placeholder,
+.pos-shell.pos-dark textarea::placeholder {
+  color: #cbd5e1;
+}
+
+.pos-shell.pos-dark .pos-stage .bg-white { background-color: #1e293b; }
+.pos-shell.pos-dark .pos-stage .bg-slate-50 { background-color: #1e293b; }
+.pos-shell.pos-dark .pos-stage .bg-slate-100 { background-color: #0f172a; }
+.pos-shell.pos-dark .pos-stage .bg-slate-200 { background-color: #0b1220; }
+.pos-shell.pos-dark .pos-stage .text-slate-900 { color: #f8fafc; }
+.pos-shell.pos-dark .pos-stage .text-slate-800 { color: #e2e8f0; }
+.pos-shell.pos-dark .pos-stage .text-slate-700 { color: #cbd5e1; }
+.pos-shell.pos-dark .pos-stage .text-slate-600 { color: #cbd5e1; }
+.pos-shell.pos-dark .pos-stage .text-slate-500 { color: #94a3b8; }
+.pos-shell.pos-dark .pos-stage .text-slate-400 { color: #94a3b8; }
+.pos-shell.pos-dark .pos-stage .border-slate-200 { border-color: #334155; }
+.pos-shell.pos-dark .pos-stage .border-slate-100 { border-color: #1e293b; }
+.pos-shell.pos-dark .pos-stage .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155;
+}
+.pos-shell.pos-dark .pos-stage .bg-emerald-50 { background-color: #064e3b; }
+.pos-shell.pos-dark .pos-stage .text-emerald-950,
+.pos-shell.pos-dark .pos-stage .text-emerald-900,
+.pos-shell.pos-dark .pos-stage .text-emerald-800 { color: #d1fae5; }

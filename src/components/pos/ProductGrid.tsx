@@ -2,6 +2,8 @@
 
 import {
   forwardRef,
+  memo,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -55,10 +57,16 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
   ) {
     const [activeTab, setActiveTab] = useState<PosTab>("all");
     const [query, setQuery] = useState("");
+    const [debouncedQuery, setDebouncedQuery] = useState("");
     const queryRef = useRef(query);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const kb = usePosKeyboardOptional();
     queryRef.current = query;
+
+    useEffect(() => {
+      const timer = window.setTimeout(() => setDebouncedQuery(query), 200);
+      return () => window.clearTimeout(timer);
+    }, [query]);
 
     useImperativeHandle(ref, () => ({
       focusSearch: () => {
@@ -75,27 +83,10 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
     }));
 
     const nameFilter = useMemo(() => {
-      const q = query.trim();
+      const q = debouncedQuery.trim();
       if (!q || /^\d+$/.test(q)) return "";
       return q.toLowerCase();
-    }, [query]);
-
-    const visible = useMemo(() => {
-      return products.filter((product) => {
-        if (activeTab === "favorites" && product.isFavorite !== true) {
-          return false;
-        }
-
-        if (nameFilter) {
-          const barcodes = getOpBarcodes(product).join(" ").toLowerCase();
-          const hay =
-            `${product.name} ${product.nameEn ?? ""} ${product.nameZh ?? ""} ${product.unit ?? ""} ${product.sku} ${barcodes}`.toLowerCase();
-          if (!hay.includes(nameFilter)) return false;
-        }
-
-        return true;
-      });
-    }, [products, nameFilter, activeTab]);
+    }, [debouncedQuery]);
 
     function submitBarcode(raw: string) {
       if (scanLocked) return;
@@ -195,7 +186,7 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                 disabled={scanLocked}
                 placeholder="ابحث بالاسم أو امسح الباركود..."
                 autoComplete="off"
-                className="w-full rounded-xl border border-slate-300 py-3 pe-4 ps-11 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+                className="pos-input w-full rounded-xl border border-slate-400 bg-white py-3 pe-4 ps-11 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:bg-slate-100"
               />
             </form>
             {onOpenPriceCheck && (
@@ -252,62 +243,100 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {isLoading ? (
-            <p className="py-12 text-center text-slate-400">
-              جاري تحميل المنتجات…
-            </p>
-          ) : visible.length === 0 ? (
-            <p className="py-12 text-center text-slate-400">
-              {activeTab === "favorites"
-                ? "No favorites yet — star products in the dashboard"
-                : "لا توجد منتجات مطابقة"}
-            </p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-              {visible.map((product) => {
-                const price = getCatalogSellingPrice(product);
-                return (
-                  <button
-                    key={posItemKey(product)}
-                    type="button"
-                    onClick={() => onAdd(product)}
-                    className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand-400 hover:shadow-md active:scale-[0.98]"
-                  >
-                    <div className="relative h-16 w-full shrink-0 bg-slate-100 sm:h-20">
-                      {product.images[0]?.src ? (
-                        <SafeImage
-                          src={product.images[0].src}
-                          alt=""
-                          fill
-                          sizes="80px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-slate-300">
-                          —
-                        </div>
-                      )}
-                      {product.isFavorite && (
-                        <span className="absolute right-1 top-1 rounded-full bg-amber-400 p-0.5 text-white shadow">
-                          <Star className="h-2.5 w-2.5 fill-white" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-0.5 p-2">
-                      <p className="line-clamp-2 text-xs font-semibold leading-tight text-slate-900">
-                        {product.name}
-                      </p>
-                      <p className="mt-auto text-sm font-bold tabular-nums text-brand-700">
-                        {formatEGP(price)}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <ProductCards
+            products={products}
+            nameFilter={nameFilter}
+            activeTab={activeTab}
+            isLoading={isLoading}
+            onAdd={onAdd}
+          />
         </div>
       </section>
     );
   },
 );
+
+const ProductCards = memo(function ProductCards({
+  products,
+  nameFilter,
+  activeTab,
+  isLoading,
+  onAdd,
+}: {
+  products: CachedProduct[];
+  nameFilter: string;
+  activeTab: PosTab;
+  isLoading: boolean;
+  onAdd: (product: CachedProduct) => void;
+}) {
+  const visible = useMemo(() => {
+    return products.filter((product) => {
+      if (activeTab === "favorites" && product.isFavorite !== true) return false;
+      if (!nameFilter) return true;
+      const barcodes = getOpBarcodes(product).join(" ").toLowerCase();
+      const hay =
+        `${product.name} ${product.nameEn ?? ""} ${product.nameZh ?? ""} ${product.unit ?? ""} ${product.sku} ${barcodes}`.toLowerCase();
+      return hay.includes(nameFilter);
+    });
+  }, [products, nameFilter, activeTab]);
+
+  if (isLoading) {
+    return (
+      <p className="py-12 text-center text-slate-400">جاري تحميل المنتجات…</p>
+    );
+  }
+  if (visible.length === 0) {
+    return (
+      <p className="py-12 text-center text-slate-400">
+        {activeTab === "favorites"
+          ? "لا توجد أصناف مفضلة بعد"
+          : "لا توجد منتجات مطابقة"}
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+      {visible.map((product) => {
+        const price = getCatalogSellingPrice(product);
+        return (
+          <button
+            key={posItemKey(product)}
+            type="button"
+            onClick={() => onAdd(product)}
+            className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition hover:border-brand-400 hover:shadow-md active:scale-[0.98]"
+          >
+            <div className="relative h-16 w-full shrink-0 bg-slate-100 sm:h-20">
+              {product.images[0]?.src ? (
+                <SafeImage
+                  src={product.images[0].src}
+                  alt=""
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-slate-300">
+                  —
+                </div>
+              )}
+              {product.isFavorite && (
+                <span className="absolute right-1 top-1 rounded-full bg-amber-400 p-0.5 text-white shadow">
+                  <Star className="h-2.5 w-2.5 fill-white" />
+                </span>
+              )}
+            </div>
+            <div className="flex flex-1 flex-col gap-0.5 p-2">
+              <p className="line-clamp-2 text-xs font-semibold leading-tight text-slate-900">
+                {product.name}
+              </p>
+              <p className="mt-auto text-sm font-bold tabular-nums text-brand-700">
+                {formatEGP(price)}
+              </p>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+});

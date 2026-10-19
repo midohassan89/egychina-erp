@@ -20,6 +20,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  if (
+    pathname === "/sw.js" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname.startsWith("/icons/")
+  ) {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }

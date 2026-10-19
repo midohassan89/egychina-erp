@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { isManagerOrAdmin } from "@/lib/auth/roles";
+import { canUsePos } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
 import { orderStatusNotification } from "@/lib/notifications/orderStatusCopy";
 import { pushToCustomer } from "@/lib/notifications/pushCustomer";
@@ -16,7 +16,7 @@ export async function PATCH(
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isManagerOrAdmin(session.user.role)) {
+  if (!canUsePos(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

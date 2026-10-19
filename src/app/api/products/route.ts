@@ -125,27 +125,37 @@ export async function GET(request: Request) {
       });
     }
 
-    // POS / full catalog (CachedProduct shape) — never include trash
+    // POS / full catalog (CachedProduct shape).
+    // `updatedSince` returns only rows changed after that instant (delta sync).
     if (!pageParam) {
+      const sinceRaw = searchParams.get("updatedSince")?.trim() ?? "";
+      const sinceDate = sinceRaw ? new Date(sinceRaw) : null;
+      const hasSince =
+        sinceDate != null && !Number.isNaN(sinceDate.getTime());
+      const serverTime = new Date();
+      const textFilter: Prisma.ProductWhereInput | null = q
+        ? {
+            OR: [
+              { name: { contains: q } },
+              { barcode: { contains: q } },
+              { sku: { contains: q } },
+              { packages: { some: { barcode: { contains: q } } } },
+              { packages: { some: { name: { contains: q } } } },
+            ],
+          }
+        : null;
       const products = await prisma.product.findMany({
         where: {
-          isDeleted: false,
-          ...(q
-            ? {
-                OR: [
-                  { name: { contains: q } },
-                  { barcode: { contains: q } },
-                  { sku: { contains: q } },
-                  { packages: { some: { barcode: { contains: q } } } },
-                  { packages: { some: { name: { contains: q } } } },
-                ],
-              }
-            : {}),
+          AND: [
+            hasSince
+              ? { updatedAt: { gt: sinceDate!, lte: serverTime } }
+              : { isDeleted: false },
+            ...(textFilter ? [textFilter] : []),
+          ],
         },
-        orderBy: [
-          { saleLines: { _count: "desc" } },
-          { name: "asc" },
-        ],
+        orderBy: hasSince
+          ? [{ updatedAt: "asc" }, { id: "asc" }]
+          : [{ saleLines: { _count: "desc" } }, { name: "asc" }],
         select: {
           ...productSelect,
           packages: {
@@ -163,12 +173,18 @@ export async function GET(request: Request) {
           },
         },
       });
-      const cached = products.flatMap((product) =>
-        expandPosCatalog(product, product.packages),
-      );
+      const removedPrismaIds = hasSince
+        ? products.filter((product) => product.isDeleted).map((product) => product.id)
+        : [];
+      const cached = products
+        .filter((product) => !product.isDeleted)
+        .flatMap((product) => expandPosCatalog(product, product.packages));
       return NextResponse.json({
         products: cached,
+        removedPrismaIds,
         count: cached.length,
+        delta: hasSince,
+        serverTime: serverTime.toISOString(),
         source: "prisma",
       });
     }

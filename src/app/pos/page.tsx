@@ -35,6 +35,11 @@ import { PosKeyboardProvider, usePosKeyboard } from "@/components/pos/PosKeyboar
 import { PosTouchKeyboardHost } from "@/components/pos/PosTouchKeyboard";
 import { isManagerOrAdmin } from "@/lib/auth/roles";
 import { playErrorBeep, playSuccessBeep } from "@/lib/pos/errorBeep";
+import { findReceiptLines, looksLikeReceiptCode, type ReceiptLine } from "@/lib/pos/findReceipt";
+import type { CartLine } from "@/types/pos";
+import { usePosDesk } from "@/hooks/usePosDesk";
+import { PosOnlineDrawer } from "@/components/pos/PosOnlineDrawer";
+import { PosChatDrawer } from "@/components/pos/PosChatDrawer";
 import {
   createHeldCart,
   loadHeldCarts,
@@ -49,9 +54,14 @@ import type {
 } from "@/types/woocommerce";
 
 type PendingPinAction =
-  | { type: "return_mode" }
+  | { type: "return_mode"; receiptCode?: string }
   | { type: "delete_item"; lineId: string }
   | { type: "open_drawer" };
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
 
 export default function POSPage() {
   return (
@@ -100,6 +110,12 @@ function POSPageInner() {
   const [heldReady, setHeldReady] = useState(false);
   const [heldModalOpen, setHeldModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const desk = usePosDesk((message) => setToast(message));
+  const [posDark, setPosDark] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(false);
   const [recentSales, setRecentSales] = useState<LocalSale[]>([]);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(
     null,
@@ -108,6 +124,11 @@ function POSPageInner() {
   const productGridRef = useRef<ProductGridHandle | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const scrollTimerRef = useRef<number | null>(null);
+  const pendingReceiptLines = useRef<CartLine[] | null>(null);
+  const scanBufferRef = useRef("");
+  const lastScanAtRef = useRef(0);
+  const scanHandlerRef = useRef<(raw: string) => boolean>(() => false);
+  const scanBlockedRef = useRef(false);
 
   const focusBarcodeSearch = useCallback(() => {
     window.setTimeout(() => {
@@ -131,6 +152,23 @@ function POSPageInner() {
     const t = window.setTimeout(() => setToast(null), 2800);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    setPosDark(window.localStorage.getItem("pos-theme") === "dark");
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    setInstalled(standalone);
+    const onPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallEvent(event as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    }
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
 
   useEffect(() => {
     void getSales().then((sales) => setRecentSales(sales.slice(0, 6)));
@@ -277,37 +315,9 @@ function POSPageInner() {
     return () => window.clearTimeout(timer);
   }, [scanMessage, scanError]);
 
-  const handleBarcodeEnter = useCallback(
-    (rawInput: string): boolean => {
-      if (shiftLocked || notFoundBarcode || priceCheckOpen) return false;
-
-      try {
-        return scanBarcode(rawInput);
-      } catch (error) {
-        console.error("[pos] barcode scan failed", error);
-        playErrorBeep();
-        closeKeyboard();
-        setNotFoundBarcode(rawInput.trim() || "—");
-        setScanError("المنتج غير متوفر");
-        setScanMessage(null);
-        return false;
-      }
-    },
-    // scanBarcode is recreated with this callback; deps are listed below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      catalog,
-      cart.lines,
-      cart.addProduct,
-      cart.addScaleLine,
-      shiftLocked,
-      returnMode,
-      flashCartItem,
-      notFoundBarcode,
-      priceCheckOpen,
-      closeKeyboard,
-    ],
-  );
+  const handleBarcodeEnter = useCallback((rawInput: string): boolean => {
+    return scanHandlerRef.current(rawInput);
+  }, []);
 
   function scanBarcode(rawInput: string): boolean {
       const scanned = rawInput.trim();
@@ -356,6 +366,10 @@ function POSPageInner() {
       const result = resolveScannedBarcode(rawInput, catalog);
 
       if ("error" in result || !result.product) {
+        if (looksLikeReceiptCode(rawInput)) {
+          void openReceiptReturn(rawInput.trim());
+          return true;
+        }
         const code = rawInput.trim().replace(/\D/g, "") || rawInput.trim();
         playErrorBeep();
         closeKeyboard();
@@ -402,58 +416,100 @@ function POSPageInner() {
       return true;
   }
 
+  scanHandlerRef.current = (rawInput: string): boolean => {
+    if (shiftLocked || notFoundBarcode || priceCheckOpen) return false;
+    try {
+      return scanBarcode(rawInput);
+    } catch (error) {
+      console.error("[pos] barcode scan failed", error);
+      playErrorBeep();
+      closeKeyboard();
+      setNotFoundBarcode(rawInput.trim() || "—");
+      setScanError("المنتج غير متوفر");
+      setScanMessage(null);
+      return false;
+    }
+  };
+
+  scanBlockedRef.current =
+    shiftLocked ||
+    !!notFoundBarcode ||
+    priceCheckOpen ||
+    checkoutOpen ||
+    zReportOpen ||
+    !!pendingPin;
+
+  async function openReceiptReturn(code: string) {
+    const lines = await findReceiptLines(code);
+    if (!lines) {
+      const explicit = /^POS-|^WC-/i.test(code);
+      playErrorBeep();
+      if (explicit) {
+        setScanError("فاتورة غير موجودة");
+        setScanMessage(null);
+        return;
+      }
+      closeKeyboard();
+      setNotFoundBarcode(code);
+      setScanError("المنتج غير متوفر");
+      setScanMessage(null);
+      return;
+    }
+    const cartLines = toReturnLines(lines, catalog);
+    if (returnMode && (managerAuth || canBypassPin)) {
+      cart.replaceLines(cartLines);
+      setScanError(null);
+      setScanMessage(`تم تحميل فاتورة ${code}`);
+      playSuccessBeep();
+      return;
+    }
+    pendingReceiptLines.current = cartLines;
+    if (canBypassPin) {
+      setManagerAuth({
+        managerId: session?.user?.id ?? "self",
+        managerName: session?.user?.name ?? "Manager",
+      });
+      setReturnMode(true);
+      cart.replaceLines(cartLines);
+      pendingReceiptLines.current = null;
+      setScanError(null);
+      setScanMessage(`وضع الاسترجاع · ${code}`);
+      playSuccessBeep();
+      return;
+    }
+    setPendingPin({ type: "return_mode", receiptCode: code });
+    setScanMessage("أدخل الرقم السري لتحميل الفاتورة");
+  }
+
   useEffect(() => {
-    let scanBuffer = "";
-    let lastKeyAt = 0;
+    function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+      const prototype =
+        el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+      setter?.call(el, value);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
 
     function onKey(event: KeyboardEvent) {
       if (event.key === "F4") return;
-      if (
-        shiftLocked ||
-        notFoundBarcode ||
-        priceCheckOpen ||
-        checkoutOpen ||
-        zReportOpen ||
-        pendingPin
-      ) {
-        return;
-      }
+      if (scanBlockedRef.current) return;
 
-      const now = Date.now();
+      const now = performance.now();
       if (event.key === "Enter") {
-        const code = scanBuffer.trim();
-        const gap = lastKeyAt > 0 ? now - lastKeyAt : Number.POSITIVE_INFINITY;
-        const digits = code.replace(/\D/g, "");
-        const fromScanner =
-          code.length > 0 &&
-          lastKeyAt > 0 &&
-          (gap < 80 || (digits.length >= 8 && gap < 500));
-        if (!fromScanner) {
-          scanBuffer = "";
-          lastKeyAt = 0;
-          return;
-        }
+        const code = scanBufferRef.current.trim();
+        const gap = lastScanAtRef.current > 0 ? now - lastScanAtRef.current : Number.POSITIVE_INFINITY;
+        const fromScanner = code.length >= 4 && gap < 80;
+        scanBufferRef.current = "";
+        lastScanAtRef.current = 0;
+        if (!fromScanner) return;
 
         event.preventDefault();
         event.stopPropagation();
-
-        const target = event.target;
-        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-          const prototype =
-            target instanceof HTMLTextAreaElement
-              ? HTMLTextAreaElement.prototype
-              : HTMLInputElement.prototype;
-          const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-          setter?.call(target, "");
-          target.dispatchEvent(new Event("input", { bubbles: true }));
-          target.blur();
-        }
         productGridRef.current?.clearSearch();
-
-        scanBuffer = "";
-        lastKeyAt = 0;
         try {
-          handleBarcodeEnter(code);
+          scanHandlerRef.current(code);
         } catch (error) {
           console.error("[pos] barcode scan failed", error);
           setNotFoundBarcode(code);
@@ -466,25 +522,30 @@ function POSPageInner() {
         return;
       }
 
-      if (!lastKeyAt || now - lastKeyAt >= 50) {
-        scanBuffer = event.key;
+      const gap = lastScanAtRef.current > 0 ? now - lastScanAtRef.current : Number.POSITIVE_INFINITY;
+      if (gap < 40) {
+        event.preventDefault();
+        event.stopPropagation();
+        const target = event.target;
+        if (
+          scanBufferRef.current.length === 1 &&
+          (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)
+        ) {
+          const leaked = scanBufferRef.current;
+          if (target.value.endsWith(leaked)) {
+            setNativeValue(target, target.value.slice(0, -leaked.length));
+          }
+        }
+        scanBufferRef.current += event.key;
       } else {
-        scanBuffer += event.key;
+        scanBufferRef.current = event.key;
       }
-      lastKeyAt = now;
+      lastScanAtRef.current = now;
     }
 
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [
-    handleBarcodeEnter,
-    shiftLocked,
-    notFoundBarcode,
-    priceCheckOpen,
-    checkoutOpen,
-    zReportOpen,
-    pendingPin,
-  ]);
+  }, []);
 
   const dismissNotFound = useCallback(() => {
     setNotFoundBarcode(null);
@@ -615,7 +676,7 @@ function POSPageInner() {
 
       <div
         dir="rtl"
-        className="pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none"
+        className={`pos-shell pos-no-print flex h-full min-h-0 flex-col overflow-hidden bg-slate-200 select-none ${posDark ? "pos-dark" : ""}`}
       >
         {overPendingLimit && (
           <div
@@ -635,8 +696,8 @@ function POSPageInner() {
         <header
           className={
             returnMode
-              ? "flex shrink-0 items-center justify-between gap-3 border-b border-red-800 bg-red-950 px-4 py-3 text-white"
-              : "flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 text-white"
+              ? "flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-red-800 bg-red-950 px-4 py-3 text-white"
+              : "flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 text-white"
           }
         >
           <div className="min-w-0 text-right">
@@ -656,7 +717,51 @@ function POSPageInner() {
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !posDark;
+                setPosDark(next);
+                window.localStorage.setItem("pos-theme", next ? "dark" : "light");
+              }}
+              className="rounded-xl bg-slate-700 px-3 py-2 text-sm font-bold text-white hover:bg-slate-600"
+              aria-label={posDark ? "الوضع الفاتح" : "الوضع الداكن"}
+            >
+              {posDark ? "☀️" : "🌙"}
+            </button>
+            {!installed && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!installEvent) {
+                    setToast("من متصفح كروم: قائمة ⋮ ثم تثبيت برنامج الكاشير");
+                    return;
+                  }
+                  void installEvent.prompt().then(() => {
+                    setInstallEvent(null);
+                    setInstalled(true);
+                  });
+                }}
+                className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-bold text-white hover:bg-sky-500"
+              >
+                💻 تثبيت برنامج الكاشير على الجهاز
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setOrdersOpen(true)}
+              className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-orange-400"
+            >
+              🛵 طلبات الأونلاين ({desk.openOrderCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setChatOpen(true)}
+              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-500"
+            >
+              💬 شات العملاء ({desk.chatUnread})
+            </button>
             <div className="hidden max-w-xs text-right text-sm sm:block">
               {scanError ? (
                 <p className="font-medium text-red-300">{scanError}</p>
@@ -721,7 +826,7 @@ function POSPageInner() {
           </div>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="pos-stage flex min-h-0 flex-1 flex-col md:flex-row">
           <CartPanel
             lines={cart.lines}
             total={payableTotal}
@@ -868,9 +973,14 @@ function POSPageInner() {
         <PinAuthorizationModal
           open={!!pendingPin}
           action={pinAction}
-          onClose={() => setPendingPin(null)}
+          onClose={() => {
+            pendingReceiptLines.current = null;
+            setPendingPin(null);
+          }}
           onVerified={(result) => {
             const action = pendingPin;
+            const loaded = pendingReceiptLines.current;
+            pendingReceiptLines.current = null;
             setPendingPin(null);
             if (!action) return;
 
@@ -878,9 +988,16 @@ function POSPageInner() {
               cart.clear();
               setManagerAuth(result);
               setReturnMode(true);
-              setScanMessage(
-                `Return mode · authorized by ${result.managerName}`,
-              );
+              if (loaded && loaded.length > 0) {
+                cart.replaceLines(loaded);
+                setScanMessage(
+                  `وضع الاسترجاع · ${action.receiptCode ?? ""} · ${result.managerName}`,
+                );
+              } else {
+                setScanMessage(
+                  `Return mode · authorized by ${result.managerName}`,
+                );
+              }
             } else if (action.type === "delete_item") {
               cart.removeLine(action.lineId);
               setScanMessage(
@@ -913,6 +1030,20 @@ function POSPageInner() {
           open={priceCheckOpen}
           products={catalog}
           onClose={closePriceCheck}
+        />
+
+        <PosOnlineDrawer
+          open={ordersOpen}
+          orders={desk.orders}
+          drivers={desk.drivers}
+          onClose={() => setOrdersOpen(false)}
+          onChanged={() => void desk.refresh()}
+        />
+        <PosChatDrawer
+          open={chatOpen}
+          threads={desk.threads}
+          onClose={() => setChatOpen(false)}
+          onSent={() => void desk.refresh()}
         />
 
         {toast && (
@@ -954,4 +1085,62 @@ function mergeCatalog(products: CachedProduct[]): CachedProduct[] {
 
   const extras = builtIn.filter((p) => !knownCodes.has(p.sku));
   return [...extras, ...products];
+}
+
+function toReturnLines(lines: ReceiptLine[], catalog: CachedProduct[]): CartLine[] {
+  return lines.map((line) => {
+    const absQty = Math.max(0.001, Math.abs(line.qty));
+    const absPrice = Math.abs(line.unitPrice);
+    const absTotal = Math.abs(line.lineTotal) || absQty * absPrice;
+    const known =
+      line.wcProductId != null
+        ? catalog.find((product) => product.id === line.wcProductId && !product.isPackage)
+        : undefined;
+    const product: CachedProduct = known
+      ? {
+          ...known,
+          name: line.name,
+          nameZh: line.nameZh ?? known.nameZh,
+          price: String(absPrice),
+          regular_price: String(absPrice),
+          sale_price: "",
+          on_sale: false,
+        }
+      : {
+          id: line.wcProductId ?? 0,
+          name: line.name,
+          nameZh: line.nameZh,
+          slug: "return-item",
+          sku: line.sku,
+          price: String(absPrice),
+          regular_price: String(absPrice),
+          sale_price: "",
+          on_sale: false,
+          stock_quantity: null,
+          stock_status: "instock",
+          manage_stock: false,
+          categories: [],
+          images: [],
+          description: "",
+          short_description: "",
+          status: "publish",
+          type: "simple",
+          meta_data: [],
+          cachedAt: new Date().toISOString(),
+          posKey: `return-${line.wcProductId ?? line.name}`,
+          isLocal: line.wcProductId == null,
+        };
+    return {
+      lineId:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `return-${Date.now()}-${line.name}`,
+      product,
+      qty: -absQty,
+      unitPrice: -absPrice,
+      lineTotal: -absTotal,
+      isScalePriced: false,
+      isWeighted: false,
+    };
+  });
 }

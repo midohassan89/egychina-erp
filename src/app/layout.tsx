@@ -28,6 +28,15 @@ const notoSc = Noto_Sans_SC({
 export const metadata: Metadata = {
   title: "Souq El Obour - POS",
   description: "Point of Sale and accounting system for Souq El Obour",
+  manifest: "/manifest.webmanifest",
+  applicationName: "كاشير سوق العبور",
+  icons: {
+    icon: [
+      { url: "/icons/pos-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/pos-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/pos-192.png", sizes: "192x192" }],
+  },
 };
 
 export default function RootLayout({

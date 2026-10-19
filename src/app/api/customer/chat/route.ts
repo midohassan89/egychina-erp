@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isChatAttachmentPath } from "@/lib/chat/saveAttachment";
 import { translateTrio, type LangCode } from "@/lib/i18n/translateText";
 import {
   requireStoreApiKey,
@@ -63,6 +64,8 @@ export async function GET(request: Request) {
       textZh: row.textZh,
       originalText: row.originalText,
       originalLang: row.originalLang,
+      attachmentUrl: row.attachmentUrl,
+      attachmentType: row.attachmentType,
       createdAt: row.createdAt.toISOString(),
     })),
   }, { headers: corsHeaders });
@@ -72,15 +75,27 @@ export async function POST(request: Request) {
   if (!requireStoreApiKey(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
   }
-  let body: { text?: unknown; lang?: unknown; customerId?: unknown; phone?: unknown } = {};
+  let body: {
+    text?: unknown;
+    lang?: unknown;
+    customerId?: unknown;
+    phone?: unknown;
+    attachmentUrl?: unknown;
+    attachmentType?: unknown;
+  } = {};
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400, headers: corsHeaders });
   }
   const text = String(body.text ?? "").trim();
-  if (!text) {
+  const attachmentUrl = String(body.attachmentUrl ?? "").trim();
+  const attachmentType = body.attachmentType === "FILE" ? "FILE" : body.attachmentType === "IMAGE" ? "IMAGE" : null;
+  if (!text && !attachmentUrl) {
     return NextResponse.json({ error: "text is required" }, { status: 400, headers: corsHeaders });
+  }
+  if (attachmentUrl && !isChatAttachmentPath(attachmentUrl)) {
+    return NextResponse.json({ error: "Invalid attachment" }, { status: 400, headers: corsHeaders });
   }
   const customer = await resolveStoreCustomer(prisma, {
     customerId: resolveCustomerIdFromRequest(request, body.customerId),
@@ -91,7 +106,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404, headers: corsHeaders });
   }
   const lang = preferredLang(request, body.lang);
-  const translated = await translateTrio(text, lang);
+  const translated = text ? await translateTrio(text, lang) : { textAr: "", textEn: "", textZh: "" };
   const message = await prisma.chatMessage.create({
     data: {
       customerId: customer.id,
@@ -101,6 +116,8 @@ export async function POST(request: Request) {
       textAr: translated.textAr,
       textEn: translated.textEn,
       textZh: translated.textZh,
+      attachmentUrl: attachmentUrl || null,
+      attachmentType: attachmentUrl ? attachmentType ?? "FILE" : null,
       isReadByCustomer: true,
       isReadByAdmin: false,
     },
@@ -113,6 +130,8 @@ export async function POST(request: Request) {
       textAr: message.textAr,
       textEn: message.textEn,
       textZh: message.textZh,
+      attachmentUrl: message.attachmentUrl,
+      attachmentType: message.attachmentType,
       createdAt: message.createdAt.toISOString(),
     },
   }, { status: 201, headers: corsHeaders });

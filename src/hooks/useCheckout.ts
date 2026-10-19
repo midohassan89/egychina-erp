@@ -223,11 +223,13 @@ export function useCheckout() {
           return queued;
         }
         const saved = (await checkoutRes.json()) as {
+          orderNumber?: string | null;
           customer?: {
             phone?: string;
             pointsBalance?: number;
           } | null;
         };
+        if (saved.orderNumber) sale.orderNumber = saved.orderNumber;
         if (loyaltyCustomerId && loyaltyPhone) {
           sale.loyalty = {
             phone: saved.customer?.phone || loyaltyPhone,

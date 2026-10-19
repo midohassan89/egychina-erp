@@ -13,7 +13,11 @@ export type AppRole =
  */
 export const authConfig = {
   trustHost: true,
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 12 * 60 * 60,
+    updateAge: 12 * 60 * 60,
+  },
   pages: {
     signIn: "/login",
   },
@@ -38,10 +42,15 @@ export const authConfig = {
       return !!auth?.user;
     },
     jwt({ token, user }) {
+      const now = Date.now();
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.loginAt = now;
+        return token;
       }
+      const loginAt = typeof token.loginAt === "number" ? token.loginAt : 0;
+      if (!loginAt || now - loginAt > 12 * 60 * 60 * 1000) return null;
       return token;
     },
     session({ session, token }) {

@@ -900,6 +900,10 @@ model ChatMessage {
   textAr           String
   textEn           String
   textZh           String
+  /** Public path under /uploads/chat, served by the existing uploads route. */
+  attachmentUrl    String?
+  /** IMAGE | FILE */
+  attachmentType   String?
   isReadByAdmin    Boolean  @default(false)
   isReadByCustomer Boolean  @default(false)
   createdAt        DateTime @default(now())

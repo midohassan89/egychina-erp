@@ -8,6 +8,7 @@ import {
   Check,
   Loader2,
   Plus,
+  Barcode,
   Search,
   Trash2,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
   sellingPricesDiffer,
 } from "@/components/purchases/PackagePriceSyncHint";
 import { PriceYieldBadges } from "@/components/purchases/PriceYield";
+import { QuickBarcodePrint } from "@/components/purchases/QuickBarcodePrint";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import {
@@ -84,6 +86,7 @@ interface LineDraft {
   hasCustomPackagePrice: boolean;
   resetPackages: boolean;
   packagesKnown: boolean;
+  barcode?: string | null;
   /** False until selling prices are loaded from the product record. */
   priceSeeded: boolean;
 }
@@ -187,6 +190,10 @@ function newKey() {
 
 const DRAFT_STORAGE_KEY = "draft_purchase_order";
 
+function editDraftKey(invoiceId: number) {
+  return `purchase_edit_draft_${invoiceId}`;
+}
+
 interface PurchaseDraftPayload {
   supplierId: string;
   invoiceNumber: string;
@@ -195,9 +202,9 @@ interface PurchaseDraftPayload {
   lines: LineDraft[];
 }
 
-function readPurchaseDraft(): PurchaseDraftPayload | null {
+function readPurchaseDraft(storageKey = DRAFT_STORAGE_KEY): PurchaseDraftPayload | null {
   try {
-    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PurchaseDraftPayload>;
     if (!parsed || typeof parsed !== "object") return null;
@@ -253,6 +260,9 @@ function readPurchaseDraft(): PurchaseDraftPayload | null {
             hasCustomPackagePrice: line.hasCustomPackagePrice === true,
             resetPackages: line.resetPackages === true,
             packagesKnown: line.packagesKnown === true,
+            barcode: typeof line.barcode === "string" ? line.barcode : null,
+            unitKey: typeof line.unitKey === "string" ? line.unitKey : undefined,
+            purchaseUnits: Array.isArray(line.purchaseUnits) ? line.purchaseUnits : undefined,
             priceSeeded: typeof line.regularPrice === "string",
           }))
       : [];
@@ -310,8 +320,28 @@ function lineFromStoredItem(item: PurchaseInvoiceItemInitial): LineDraft {
     hasCustomPackagePrice: false,
     resetPackages: false,
     packagesKnown: false,
+    barcode: null,
     priceSeeded: true,
   };
+}
+
+function formSignature(payload: PurchaseDraftPayload) {
+  return JSON.stringify({
+    supplierId: payload.supplierId,
+    invoiceNumber: payload.invoiceNumber,
+    date: payload.date,
+    paidAmount: payload.paidAmount,
+    lines: payload.lines.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      packSize: line.packSize,
+      unitKey: line.unitKey ?? "",
+      unitCost: line.unitCost,
+      lineTotal: line.lineTotal,
+      regularPrice: line.regularPrice,
+      salePrice: line.salePrice,
+    })),
+  });
 }
 
 function cartonSizeFor(product: ProductOption): number {
@@ -395,7 +425,15 @@ function PurchaseFormInner({
   const [paidAmount, setPaidAmount] = useState(() =>
     initialData ? String(initialData.paidAmount) : "0",
   );
-  const [globalMargin, setGlobalMargin] = useState<number | null>(20);
+  const [globalMargin, setGlobalMargin] = useState<number | null>(25);
+  const [restoreNote, setRestoreNote] = useState(false);
+  const [labelJob, setLabelJob] = useState<{
+    name: string;
+    barcode: string;
+    price: number;
+    copies: number;
+  } | null>(null);
+  const serverSignatureRef = useRef("");
   const { toast } = useToast();
   const [lines, setLines] = useState<LineDraft[]>(() =>
     initialData ? initialData.items.map(lineFromStoredItem) : [],
@@ -449,9 +487,26 @@ function PurchaseFormInner({
     }
   }, [editing, lines]);
 
-  // Restore a new-invoice draft. An existing invoice is already in state.
+  // Restore a new-invoice draft, or an unsaved edit draft for this invoice.
   useEffect(() => {
-    if (editing) {
+    if (editing && initialData) {
+      const current = {
+        supplierId,
+        invoiceNumber,
+        date,
+        paidAmount,
+        lines,
+      };
+      serverSignatureRef.current = formSignature(current);
+      const draft = readPurchaseDraft(editDraftKey(initialData.id));
+      if (draft && formSignature(draft) !== serverSignatureRef.current) {
+        setSupplierId(draft.supplierId);
+        setInvoiceNumber(draft.invoiceNumber);
+        setDate(draft.date);
+        setPaidAmount(draft.paidAmount);
+        setLines(draft.lines);
+        setRestoreNote(true);
+      }
       setDraftReady(true);
       return;
     }
@@ -470,22 +525,27 @@ function PurchaseFormInner({
     setDraftReady(true);
   }, [editing]);
 
-  // Persist a new-invoice draft whenever form fields change.
+  // Persist the draft whenever form fields change.
   useEffect(() => {
-    if (!draftReady || editing) return;
+    if (!draftReady) return;
+    const payload: PurchaseDraftPayload = {
+      supplierId,
+      invoiceNumber,
+      date,
+      paidAmount,
+      lines,
+    };
+    const key = editing && initialData ? editDraftKey(initialData.id) : DRAFT_STORAGE_KEY;
     try {
-      const payload: PurchaseDraftPayload = {
-        supplierId,
-        invoiceNumber,
-        date,
-        paidAmount,
-        lines,
-      };
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      if (editing && formSignature(payload) === serverSignatureRef.current) {
+        localStorage.removeItem(key);
+        return;
+      }
+      localStorage.setItem(key, JSON.stringify(payload));
     } catch {
       // ignore quota / private-mode errors
     }
-  }, [draftReady, editing, supplierId, invoiceNumber, date, paidAmount, lines]);
+  }, [draftReady, editing, initialData, supplierId, invoiceNumber, date, paidAmount, lines]);
 
   // Warn before refresh/close when there are line items
   useEffect(() => {
@@ -533,6 +593,7 @@ function PurchaseFormInner({
               imageKnown: true,
               packagesKnown: true,
               purchaseUnits: purchaseUnitsOf(product),
+              barcode: product.barcode ?? line.barcode ?? null,
               unitKey:
                 line.unitKey ??
                 (purchaseUnitsOf(product).find((unit) => String(unit.packSize) === line.packSize)?.id ??
@@ -703,6 +764,7 @@ function PurchaseFormInner({
           unitKey:
             purchaseUnitsOf(product).find((unit) => unit.packSize === packSize)?.id ?? "piece",
           purchaseUnits: purchaseUnitsOf(product),
+          barcode: product.barcode ?? null,
           unitCost: String(packCost),
           lineTotal: String(roundMoney(qty * packCost)),
           regularPrice: String(product.price ?? 0),
@@ -1270,7 +1332,11 @@ function PurchaseFormInner({
         );
       }
 
-      if (!editing) clearPurchaseDraft();
+      if (editing && initialData) {
+        localStorage.removeItem(editDraftKey(initialData.id));
+      } else {
+        clearPurchaseDraft();
+      }
       allowUnloadRef.current = true;
 
       const note = editing
@@ -1291,6 +1357,43 @@ function PurchaseFormInner({
     }
   }
 
+  function discardEditDraft() {
+    if (!initialData) return;
+    setSupplierId(String(initialData.supplierId));
+    setInvoiceNumber(initialData.invoiceNumber ?? "");
+    setDate(new Date(initialData.date).toISOString().slice(0, 10));
+    setPaidAmount(String(initialData.paidAmount));
+    setLines(initialData.items.map(lineFromStoredItem));
+    setRestoreNote(false);
+    try {
+      localStorage.removeItem(editDraftKey(initialData.id));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function openBarcodePrint(line: LineDraft) {
+    let code = line.barcode?.trim() ?? "";
+    if (!code) {
+      try {
+        const res = await fetch(`/api/products/${encodeURIComponent(line.productId)}`);
+        const body = (await res.json()) as { barcode?: string | null };
+        code = body.barcode?.trim() ?? "";
+      } catch {
+        code = "";
+      }
+    }
+    const sale = Number(line.salePrice);
+    const regular = Number(line.regularPrice);
+    const price = sale > 0 ? sale : regular;
+    setLabelJob({
+      name: line.productName,
+      barcode: code,
+      price: Number.isFinite(price) ? price : 0,
+      copies: Math.max(1, Math.floor(Number(line.quantity)) || 1),
+    });
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -1307,6 +1410,18 @@ function PurchaseFormInner({
         <h1 className="text-2xl font-bold text-slate-900 dark:text-gray-100">
           {editing ? "تعديل فاتورة مشتريات" : "فاتورة مشتريات جديدة"}
         </h1>
+        {restoreNote && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+            تمت استعادة التعديلات غير المحفوظة على هذه الفاتورة.
+            <button
+              type="button"
+              onClick={discardEditDraft}
+              className="ms-2 font-semibold underline"
+            >
+              تجاهل المسودة
+            </button>
+          </p>
+        )}
         <p className="mt-1 text-slate-500 dark:text-gray-300">
           {editing
             ? `تعديل فاتورة المشتريات رقم ${initialData!.id}. يتم تعديل المخزون بفرق الكميات.`
@@ -1749,6 +1864,15 @@ function PurchaseFormInner({
                       <td className="py-2 text-center align-middle">
                         <button
                           type="button"
+                          onClick={() => void openBarcodePrint(line)}
+                          className="mb-1 inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-slate-700"
+                          aria-label="طباعة باركود"
+                        >
+                          <Barcode className="h-3.5 w-3.5" />
+                          طباعة باركود
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => removeLine(line.key)}
                           className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                           aria-label="Remove line"
@@ -1857,6 +1981,15 @@ function PurchaseFormInner({
           regularPrice={linkedPrompt.regularPrice}
           salePrice={linkedPrompt.salePrice}
           onClose={() => setLinkedPrompt(null)}
+        />
+      )}
+      {labelJob && (
+        <QuickBarcodePrint
+          name={labelJob.name}
+          barcode={labelJob.barcode}
+          price={labelJob.price}
+          defaultCopies={labelJob.copies}
+          onClose={() => setLabelJob(null)}
         />
       )}
     </div>

@@ -26,7 +26,7 @@ export default function ProductsPage() {
         </div>
         <button
           type="button"
-          onClick={() => refreshCatalog()}
+          onClick={() => refreshCatalog("full")}
           disabled={isRefreshing}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
         >

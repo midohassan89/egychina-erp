@@ -11,6 +11,7 @@ export type SaleWithRelations = {
   isReturn: boolean;
   status: string;
   wooOrderId: number | null;
+  orderNumber?: string | null;
   customerName: string | null;
   createdAt: Date;
   user: { id: string; username: string } | null;
@@ -100,6 +101,7 @@ export function mapSaleToLocalSale(sale: SaleWithRelations): LocalSale {
     tendered: absTotal,
     change: 0,
     wooOrderId: sale.wooOrderId,
+    orderNumber: sale.orderNumber ?? null,
     syncStatus: "synced",
     shiftId: sale.shiftId != null ? String(sale.shiftId) : null,
     isReturn: sale.isReturn,
