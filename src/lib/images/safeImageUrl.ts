@@ -8,7 +8,7 @@ const LOCALHOST_ORIGIN = /^https?:\/\/(?:localhost|127\.0\.0\.1):\d+/i;
  */
 function productionBackendUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  return (configured || "https://elobour.store").replace(/\/$/, "");
+  return (configured || "https://erp.echinamart.com").replace(/\/$/, "");
 }
 
 /**

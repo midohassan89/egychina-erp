@@ -786,7 +786,9 @@ export function Sidebar({
         <button
           type="button"
           title="تسجيل الخروج"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() =>
+            signOut({ callbackUrl: `${window.location.origin}/login` })
+          }
           className={clsx(
             "flex w-full items-center rounded-lg py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-950/50 hover:text-red-200",
             showLabels ? "gap-2.5 px-2.5" : "justify-center px-2",

@@ -37,12 +37,13 @@ function SessionWatch() {
     if (typeof loginAt !== "number" || loginAt <= 0) return;
 
     const remaining = DASHBOARD_SESSION_MS - (Date.now() - loginAt);
+    const loginUrl = `${window.location.origin}/login`;
     if (remaining <= 0) {
-      void signOut({ callbackUrl: "/login" });
+      void signOut({ callbackUrl: loginUrl });
       return;
     }
     const timer = window.setTimeout(() => {
-      void signOut({ callbackUrl: "/login" });
+      void signOut({ callbackUrl: loginUrl });
     }, remaining);
     return () => window.clearTimeout(timer);
   }, [
