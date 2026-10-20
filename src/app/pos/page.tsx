@@ -12,6 +12,7 @@ import { useShift } from "@/hooks/useShift";
 import { builtInQuickTapProducts } from "@/lib/pos/scaleCatalog";
 import { getOpBarcodes } from "@/lib/pos/opBarcode";
 import { posItemKey } from "@/lib/pos/posItemKey";
+import { buildBarcodeMap } from "@/lib/pos/barcodeMap";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
 import { isCustomerLoyaltyScan, normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { formatEGP, formatQty } from "@/lib/pos/money";
@@ -184,6 +185,7 @@ function POSPageInner() {
   }, [overPendingLimit]);
 
   const catalog = useMemo(() => mergeCatalog(products), [products]);
+  const barcodeMap = useMemo(() => buildBarcodeMap(catalog), [catalog]);
   const shiftLocked = !shiftApi.isLoading && !shiftApi.isOpen;
 
   const openPriceCheck = useCallback(() => {
@@ -291,6 +293,19 @@ function POSPageInner() {
     }, 50);
   }, []);
 
+  const handleAddProduct = useCallback(
+    (product: CachedProduct) => {
+      const existingItem = cart.lines.find(
+        (item) =>
+          posItemKey(item.product) === posItemKey(product) &&
+          !item.isScalePriced,
+      );
+      cart.addProduct(product);
+      flashCartItem(posItemKey(product), !existingItem);
+    },
+    [cart.lines, cart.addProduct, flashCartItem],
+  );
+
   useEffect(() => {
     getCachedCustomers().then(setCustomers);
   }, []);
@@ -363,7 +378,7 @@ function POSPageInner() {
         return true;
       }
 
-      const result = resolveScannedBarcode(rawInput, catalog);
+      const result = resolveScannedBarcode(rawInput, catalog, barcodeMap);
 
       if ("error" in result || !result.product) {
         if (looksLikeReceiptCode(rawInput)) {
@@ -500,7 +515,7 @@ function POSPageInner() {
       if (event.key === "Enter") {
         const code = scanBufferRef.current.trim();
         const gap = lastScanAtRef.current > 0 ? now - lastScanAtRef.current : Number.POSITIVE_INFINITY;
-        const fromScanner = code.length >= 4 && gap < 80;
+        const fromScanner = code.length >= 4 && gap < 35;
         scanBufferRef.current = "";
         lastScanAtRef.current = 0;
         if (!fromScanner) return;
@@ -523,7 +538,7 @@ function POSPageInner() {
       }
 
       const gap = lastScanAtRef.current > 0 ? now - lastScanAtRef.current : Number.POSITIVE_INFINITY;
-      if (gap < 40) {
+      if (gap < 35) {
         event.preventDefault();
         event.stopPropagation();
         const target = event.target;
@@ -867,15 +882,7 @@ function POSPageInner() {
               isLoading={isLoading || shiftApi.isLoading}
               scanLocked={!!notFoundBarcode || priceCheckOpen}
               onOpenPriceCheck={openPriceCheck}
-              onAdd={(product) => {
-                const existingItem = cart.lines.find(
-                  (item) =>
-                    posItemKey(item.product) === posItemKey(product) &&
-                    !item.isScalePriced,
-                );
-                cart.addProduct(product);
-                flashCartItem(posItemKey(product), !existingItem);
-              }}
+              onAdd={handleAddProduct}
               onBarcodeEnter={handleBarcodeEnter}
             />
             <PosTouchKeyboardHost />

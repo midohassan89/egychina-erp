@@ -1,37 +1,50 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-import { formatEGP } from "@/lib/pos/money";
-
-const Barcode = dynamic(() => import("react-barcode"), { ssr: false });
-
-const STORE_NAME = "ايجي شاينا ماركت";
+import {
+  LabelPreviewCard,
+  ThermalLabelSticker,
+} from "@/components/labels/BarcodeLabel";
+import {
+  getLabelTemplate,
+  LABEL_TEMPLATES,
+  parseLabelCopies,
+  type LabelTemplateId,
+} from "@/lib/labels/templates";
 
 export function QuickBarcodePrint({
   name,
+  nameZh,
   barcode,
   price,
   defaultCopies,
   onClose,
 }: {
   name: string;
+  nameZh?: string | null;
   barcode: string;
   price: number;
   defaultCopies: number;
   onClose: () => void;
 }) {
-  const [copies, setCopies] = useState(String(Math.max(1, defaultCopies)));
-  const count = Math.max(1, Math.min(200, Math.trunc(Number(copies)) || 1));
-  const labels = useMemo(
+  const initial = parseLabelCopies(defaultCopies, 1);
+  const [copies, setCopies] = useState(String(initial));
+  const [templateId, setTemplateId] = useState<LabelTemplateId>("standard-38x25");
+  const template = getLabelTemplate(templateId);
+  const count = parseLabelCopies(copies, 1);
+  const stickers = useMemo(
     () => Array.from({ length: count }, (_, index) => index),
     [count],
   );
+  const data = { name, nameZh: nameZh ?? null, barcode, price };
 
   function printLabels() {
+    if (!barcode || count < 1) return;
     document.documentElement.classList.add("printing-labels");
+    document.documentElement.dataset.labelTemplate = template.id;
     const cleanup = () => {
       document.documentElement.classList.remove("printing-labels");
+      delete document.documentElement.dataset.labelTemplate;
       window.removeEventListener("afterprint", cleanup);
     };
     window.addEventListener("afterprint", cleanup);
@@ -39,63 +52,86 @@ export function QuickBarcodePrint({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="dashboard-print-hide w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-800">
+    <>
+    <div className="dashboard-print-hide fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-800">
         <h2 className="text-lg font-bold text-slate-900 dark:text-gray-100">طباعة باركود</h2>
         <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">{name}</p>
+        {nameZh ? (
+          <p className="text-xs text-slate-500 dark:text-gray-400" lang="zh-CN" dir="ltr">
+            {nameZh}
+          </p>
+        ) : null}
         {!barcode ? (
           <p className="mt-4 text-sm text-red-600">لا يوجد باركود لهذا الصنف</p>
         ) : (
           <>
             <label className="mt-4 block text-sm font-medium text-slate-700 dark:text-gray-200">
-              عدد الملصقات
+              قالب الملصق
+              <select
+                value={templateId}
+                onChange={(event) => setTemplateId(event.target.value as LabelTemplateId)}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
+              >
+                {LABEL_TEMPLATES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-gray-200">
+              عدد الاستيكرات (سيطبع {count} بالضبط
+              {template.facesPerSticker > 1
+                ? ` = ${count * template.facesPerSticker} وجه`
+                : ""}
+              )
               <input
                 type="number"
                 min={1}
                 max={200}
+                step={1}
                 value={copies}
                 onChange={(event) => setCopies(event.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-gray-100"
               />
             </label>
             <div className="mt-4 flex justify-center">
-              <div className="thermal-label-preview w-[50mm] rounded border border-dashed border-slate-300 bg-white px-1 py-1 text-center" dir="rtl">
-                <p className="text-[9px] font-bold">{STORE_NAME}</p>
-                <p className="line-clamp-2 text-[8px]">{name}</p>
-                <p className="text-[10px] font-bold">{formatEGP(price)}</p>
-                <Barcode value={barcode} width={1.2} height={28} fontSize={10} margin={0} displayValue />
-              </div>
+              <LabelPreviewCard data={data} template={template} />
             </div>
           </>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-gray-300">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-gray-300"
+          >
             إغلاق
           </button>
           <button
             type="button"
-            disabled={!barcode}
+            disabled={!barcode || count < 1}
             onClick={printLabels}
             className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
-            طباعة
+            طباعة {count} استيكر
           </button>
         </div>
       </div>
-      <div className="thermal-label-sheet" aria-hidden>
-        {barcode
-          ? labels.map((index) => (
-              <div key={index} className="thermal-label" dir="rtl">
-                <p className="label-store">{STORE_NAME}</p>
-                <p className="label-name">{name}</p>
-                <p className="label-price">{formatEGP(price)}</p>
-                <div className="label-barcode">
-                  <Barcode value={barcode} width={1.4} height={36} fontSize={11} margin={2} displayValue />
-                </div>
-              </div>
-            ))
-          : null}
-      </div>
     </div>
+    <div className="thermal-label-sheet" aria-hidden>
+      {barcode
+        ? stickers.map((index) => (
+            <ThermalLabelSticker
+              key={`quick-${index}`}
+              stickerKey={`quick-${index}`}
+              data={data}
+              template={template}
+            />
+          ))
+        : null}
+    </div>
+    </>
   );
 }

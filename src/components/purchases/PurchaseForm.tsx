@@ -429,6 +429,7 @@ function PurchaseFormInner({
   const [restoreNote, setRestoreNote] = useState(false);
   const [labelJob, setLabelJob] = useState<{
     name: string;
+    nameZh: string | null;
     barcode: string;
     price: number;
     copies: number;
@@ -1374,23 +1375,28 @@ function PurchaseFormInner({
 
   async function openBarcodePrint(line: LineDraft) {
     let code = line.barcode?.trim() ?? "";
-    if (!code) {
-      try {
-        const res = await fetch(`/api/products/${encodeURIComponent(line.productId)}`);
-        const body = (await res.json()) as { barcode?: string | null };
-        code = body.barcode?.trim() ?? "";
-      } catch {
-        code = "";
-      }
+    let nameZh: string | null = null;
+    try {
+      const res = await fetch(`/api/products/${encodeURIComponent(line.productId)}`);
+      const body = (await res.json()) as {
+        barcode?: string | null;
+        nameZh?: string | null;
+      };
+      if (!code) code = body.barcode?.trim() ?? "";
+      nameZh = body.nameZh?.trim() || null;
+    } catch {
+      // Keep whatever barcode we already have on the line.
     }
     const sale = Number(line.salePrice);
     const regular = Number(line.regularPrice);
     const price = sale > 0 ? sale : regular;
+    const qty = Math.trunc(Number(line.quantity));
     setLabelJob({
       name: line.productName,
+      nameZh,
       barcode: code,
       price: Number.isFinite(price) ? price : 0,
-      copies: Math.max(1, Math.floor(Number(line.quantity)) || 1),
+      copies: Number.isFinite(qty) && qty >= 1 ? Math.min(200, qty) : 1,
     });
   }
 
@@ -1986,6 +1992,7 @@ function PurchaseFormInner({
       {labelJob && (
         <QuickBarcodePrint
           name={labelJob.name}
+          nameZh={labelJob.nameZh}
           barcode={labelJob.barcode}
           price={labelJob.price}
           defaultCopies={labelJob.copies}

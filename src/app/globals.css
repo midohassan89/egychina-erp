@@ -46,7 +46,7 @@
   }
 
   @page product-label {
-    size: 50mm 30mm;
+    size: 38mm 25mm;
     margin: 0;
   }
 
@@ -84,8 +84,8 @@
   html.printing-labels body,
   html.printing-labels .flex.h-screen,
   html.printing-labels main {
-    width: 50mm !important;
-    max-width: 50mm !important;
+    width: 38mm !important;
+    max-width: 38mm !important;
   }
 
   /* ── Receipts (POS) ── */
@@ -354,12 +354,12 @@
   html.printing-labels .thermal-label {
     page: product-label;
     box-sizing: border-box;
-    width: 50mm;
-    height: 30mm;
-    max-width: 50mm;
-    max-height: 30mm;
+    width: 38mm;
+    height: 25mm;
+    max-width: 38mm;
+    max-height: 25mm;
     margin: 0;
-    padding: 1.2mm 1.5mm;
+    padding: 0.8mm 1mm;
     overflow: hidden;
     break-after: page;
     page-break-after: always;
@@ -367,7 +367,7 @@
     page-break-inside: avoid;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     text-align: center;
     font-family: "Segoe UI", Tahoma, Arial, sans-serif;
@@ -375,44 +375,128 @@
     background: #fff;
   }
 
+  html.printing-labels .thermal-label--stack {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  html.printing-labels .thermal-label--side {
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+  }
+
+  html.printing-labels .thermal-label-half {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 50%;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0.4mm 0.6mm;
+  }
+
+  html.printing-labels .thermal-label--stack .thermal-label-half {
+    width: 38mm;
+    height: 12.5mm;
+    max-height: 12.5mm;
+    border-bottom: 0.3mm dashed #999;
+  }
+
+  html.printing-labels .thermal-label--stack .thermal-label-half:last-child {
+    border-bottom: 0;
+  }
+
+  html.printing-labels .thermal-label--side .thermal-label-half {
+    width: 19mm;
+    height: 25mm;
+    max-width: 19mm;
+    border-left: 0.3mm dashed #999;
+  }
+
+  html.printing-labels .thermal-label--side .thermal-label-half:first-child {
+    border-left: 0;
+  }
+
   html.printing-labels .thermal-label:last-child {
     break-after: auto;
     page-break-after: auto;
   }
 
-  html.printing-labels .label-store {
-    margin: 0;
-    font-size: 8px;
-    font-weight: 800;
-    line-height: 1.15;
+  html.printing-labels .label-face {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
 
   html.printing-labels .label-name {
-    margin: 0.4mm 0 0;
-    max-height: 7mm;
+    margin: 0;
+    max-height: 5.5mm;
     overflow: hidden;
-    font-size: 7.5px;
+    font-size: 7px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  html.printing-labels .label-name-zh {
+    margin: 0.2mm 0 0;
+    max-height: 3.2mm;
+    overflow: hidden;
+    font-size: 6px;
     font-weight: 600;
-    line-height: 1.15;
+    line-height: 1.05;
+    direction: ltr;
   }
 
   html.printing-labels .label-price {
     margin: 0.4mm 0 0;
-    font-size: 10px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
     direction: ltr;
+  }
+
+  html.printing-labels .label-price-badge {
+    display: inline-block;
+    padding: 0.35mm 1.2mm;
+    border: 2px solid #000;
+    background: #000;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+  }
+
+  html.printing-labels .thermal-label-half .label-price-badge {
+    font-size: 7px;
+    padding: 0.2mm 0.7mm;
+    border-width: 1.5px;
   }
 
   html.printing-labels .label-barcode {
     margin-top: 0.4mm;
+    padding: 0 2.5mm;
     direction: ltr;
     line-height: 0;
   }
 
   html.printing-labels .label-barcode svg {
-    max-width: 46mm;
+    max-width: 100%;
     height: auto;
+    shape-rendering: crispEdges;
+  }
+
+  html.printing-labels .thermal-label-half .label-name {
+    font-size: 5.5px;
+    max-height: 3.8mm;
+  }
+
+  html.printing-labels .thermal-label-half .label-name-zh {
+    font-size: 5px;
+    max-height: 2.4mm;
   }
 
   /* ── A4 supplier statement / reports ── */
@@ -552,6 +636,82 @@
 
 .pos-numpad-kb .hg-row {
   justify-content: center;
+}
+
+/* On-screen barcode label preview (dashboard + quick print). */
+.thermal-label-preview {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px dashed #94a3b8;
+  background: #fff;
+  padding: 2px 3px;
+  color: #000;
+  text-align: center;
+}
+
+.thermal-label-preview--stack {
+  padding: 0;
+}
+
+.thermal-label-preview--side {
+  flex-direction: row;
+  padding: 0;
+}
+
+.thermal-label-preview .label-face {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.thermal-label-preview .label-name {
+  margin: 0;
+  max-height: 2.2em;
+  overflow: hidden;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.thermal-label-preview .label-name-zh {
+  margin: 0;
+  font-size: 7px;
+  font-weight: 600;
+  direction: ltr;
+}
+
+.thermal-label-preview .label-price-badge {
+  display: inline-block;
+  margin-top: 1px;
+  padding: 1px 4px;
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.thermal-label-preview .label-barcode {
+  padding: 0 2.5mm;
+  direction: ltr;
+}
+
+.thermal-label-preview .label-barcode svg {
+  shape-rendering: crispEdges;
+}
+
+.thermal-label-preview .thermal-label-half {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: 0.5px dashed #cbd5e1;
 }
 
 /* POS keeps its own theme. Dashboard `dark` on <html> must not wash out cashier inputs. */

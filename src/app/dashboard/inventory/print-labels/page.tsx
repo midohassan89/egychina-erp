@@ -2,17 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { ArrowLeft, Printer, Search, Trash2 } from "lucide-react";
+import {
+  LabelPreviewCard,
+  ThermalLabelSticker,
+  type LabelFaceData,
+} from "@/components/labels/BarcodeLabel";
+import {
+  getLabelTemplate,
+  LABEL_TEMPLATES,
+  parseLabelCopies,
+  type LabelTemplateId,
+} from "@/lib/labels/templates";
 import { formatEGP } from "@/lib/pos/money";
-
-const Barcode = dynamic(() => import("react-barcode"), { ssr: false });
-
-const STORE_NAME = "ايجي شاينا ماركت";
 
 interface ProductOption {
   id: string;
   name: string;
+  nameZh: string | null;
   sku: string | null;
   barcode: string | null;
   price: number;
@@ -23,8 +30,10 @@ interface LabelJob {
   key: string;
   productId: string;
   name: string;
+  nameZh: string | null;
   barcode: string;
   price: number;
+  /** Exact number of physical stickers — never inflated. */
   copies: number;
 }
 
@@ -37,8 +46,10 @@ export default function PrintLabelsPage() {
   const [hits, setHits] = useState<ProductOption[]>([]);
   const [searching, setSearching] = useState(false);
   const [copiesInput, setCopiesInput] = useState("1");
+  const [templateId, setTemplateId] = useState<LabelTemplateId>("standard-38x25");
   const [jobs, setJobs] = useState<LabelJob[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const template = getLabelTemplate(templateId);
 
   useEffect(() => {
     const q = query.trim();
@@ -57,6 +68,7 @@ export default function PrintLabelsPage() {
             products?: {
               id: string;
               name: string;
+              nameZh?: string | null;
               sku: string | null;
               barcode: string | null;
               price: number;
@@ -67,6 +79,7 @@ export default function PrintLabelsPage() {
             (body.products ?? []).map((p) => ({
               id: p.id,
               name: p.name,
+              nameZh: p.nameZh ?? null,
               sku: p.sku,
               barcode: p.barcode,
               price: p.price,
@@ -83,42 +96,45 @@ export default function PrintLabelsPage() {
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  const labels = useMemo(() => {
-    const out: {
-      key: string;
-      name: string;
-      barcode: string;
-      price: number;
-    }[] = [];
+  const stickers = useMemo(() => {
+    const out: { key: string; data: LabelFaceData }[] = [];
     for (const job of jobs) {
-      for (let i = 0; i < job.copies; i += 1) {
+      const copies = parseLabelCopies(job.copies, 1);
+      for (let i = 0; i < copies; i += 1) {
         out.push({
           key: `${job.key}-${i}`,
-          name: job.name,
-          barcode: job.barcode,
-          price: job.price,
+          data: {
+            name: job.name,
+            nameZh: job.nameZh,
+            barcode: job.barcode,
+            price: job.price,
+          },
         });
       }
     }
     return out;
   }, [jobs]);
 
+  const faceCount = stickers.length * template.facesPerSticker;
+
   function addProduct(product: ProductOption) {
     setError(null);
     const code = (product.barcode || product.sku || "").trim();
     if (!code) {
-      setError("This product has no barcode or SKU to print");
+      setError("هذا الصنف ليس له باركود أو كود للطباعة");
       return;
     }
-    const copies = Math.max(1, Math.min(200, Math.trunc(Number(copiesInput)) || 1));
-    const price = product.salePrice ?? product.price;
+    const copies = parseLabelCopies(copiesInput, 1);
+    const price = product.salePrice != null && product.salePrice > 0
+      ? product.salePrice
+      : product.price;
 
     setJobs((prev) => {
       const existing = prev.find((j) => j.productId === product.id);
       if (existing) {
         return prev.map((j) =>
           j.productId === product.id
-            ? { ...j, copies: Math.min(200, j.copies + copies) }
+            ? { ...j, copies: Math.min(200, parseLabelCopies(j.copies) + copies) }
             : j,
         );
       }
@@ -128,6 +144,7 @@ export default function PrintLabelsPage() {
           key: newKey(),
           productId: product.id,
           name: product.name,
+          nameZh: product.nameZh,
           barcode: code,
           price,
           copies,
@@ -136,17 +153,20 @@ export default function PrintLabelsPage() {
     });
     setQuery("");
     setHits([]);
+    setCopiesInput("1");
   }
 
   function handlePrint() {
-    if (labels.length === 0) {
-      setError("Add at least one label to print");
+    if (stickers.length === 0) {
+      setError("أضف ملصقاً واحداً على الأقل قبل الطباعة");
       return;
     }
     setError(null);
     document.documentElement.classList.add("printing-labels");
+    document.documentElement.dataset.labelTemplate = template.id;
     const cleanup = () => {
       document.documentElement.classList.remove("printing-labels");
+      delete document.documentElement.dataset.labelTemplate;
       window.removeEventListener("afterprint", cleanup);
     };
     window.addEventListener("afterprint", cleanup);
@@ -169,17 +189,18 @@ export default function PrintLabelsPage() {
               طباعة باركود
             </h1>
             <p className="text-sm text-slate-500 dark:text-gray-400">
-              ملصقات حرارية للطابعة — اسم المتجر والمنتج والسعر والباركود
+              اسم المنتج عربي + صيني، سعر بارز، بدون اسم الماركت — عدد الملصقات
+              يطابق اختيارك حرفياً
             </p>
           </div>
           <button
             type="button"
             onClick={handlePrint}
-            disabled={labels.length === 0}
+            disabled={stickers.length === 0}
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
           >
             <Printer className="h-4 w-4" />
-            طباعة الملصقات ({labels.length})
+            طباعة ({stickers.length} استيكر / {faceCount} وجه)
           </button>
         </div>
 
@@ -190,12 +211,29 @@ export default function PrintLabelsPage() {
             </h2>
             <label className="mt-3 block">
               <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
-                عدد النسخ
+                قالب الملصق
+              </span>
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value as LabelTemplateId)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+              >
+                {LABEL_TEMPLATES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
+                عدد الاستيكرات (الكمية الفعلية للطباعة)
               </span>
               <input
                 type="number"
                 min={1}
                 max={200}
+                step={1}
                 value={copiesInput}
                 onChange={(e) => setCopiesInput(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
@@ -263,16 +301,32 @@ export default function PrintLabelsPage() {
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-gray-100">
                         {job.name}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-gray-400">
-                        {job.copies}× · {job.barcode}
-                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400">
+                        <label className="inline-flex items-center gap-1">
+                          الكمية
+                          <input
+                            type="number"
+                            min={1}
+                            max={200}
+                            value={job.copies}
+                            onChange={(e) => {
+                              const next = parseLabelCopies(e.target.value, 1);
+                              setJobs((prev) =>
+                                prev.map((row) =>
+                                  row.key === job.key ? { ...row, copies: next } : row,
+                                ),
+                              );
+                            }}
+                            className="w-14 rounded border border-slate-300 px-1 py-0.5 text-center dark:border-slate-600 dark:bg-slate-900"
+                          />
+                        </label>
+                        <span>· {job.barcode}</span>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() =>
-                        setJobs((prev) =>
-                          prev.filter((j) => j.key !== job.key),
-                        )
+                        setJobs((prev) => prev.filter((j) => j.key !== job.key))
                       }
                       className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-950/40"
                     >
@@ -286,45 +340,28 @@ export default function PrintLabelsPage() {
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2 dark:border-gray-800 dark:bg-gray-900">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-gray-200">
-              معاينة على الشاشة
+              معاينة على الشاشة — {stickers.length} استيكر
+              {template.facesPerSticker > 1
+                ? ` (${faceCount} وجه لأن القالب مقسوم)`
+                : ""}
             </h2>
             <div className="mt-4 flex flex-wrap gap-3">
-              {labels.length === 0 ? (
+              {stickers.length === 0 ? (
                 <p className="text-sm text-slate-400 dark:text-gray-500">
-                  ستظهر الملصقات هنا قبل الطباعة.
+                  ستظهر الملصقات هنا قبل الطباعة بنفس العدد الذي اخترته.
                 </p>
               ) : (
-                labels.slice(0, 12).map((label) => (
-                  <div
-                    key={label.key}
-                    className="thermal-label-preview flex w-[50mm] flex-col items-center rounded border border-dashed border-slate-300 bg-white px-1 py-1 text-center dark:border-gray-700 dark:bg-gray-900"
-                    dir="rtl"
-                  >
-                    <p className="text-[9px] font-bold leading-tight">
-                      {STORE_NAME}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-[8px] leading-tight text-slate-800 dark:text-gray-200">
-                      {label.name}
-                    </p>
-                    <p className="mt-0.5 text-[10px] font-bold tabular-nums">
-                      {formatEGP(label.price)}
-                    </p>
-                    <div className="mt-0.5 scale-90">
-                      <Barcode
-                        value={label.barcode}
-                        width={1.2}
-                        height={28}
-                        fontSize={10}
-                        margin={0}
-                        displayValue
-                      />
-                    </div>
-                  </div>
+                stickers.slice(0, 12).map((sticker) => (
+                  <LabelPreviewCard
+                    key={sticker.key}
+                    data={sticker.data}
+                    template={template}
+                  />
                 ))
               )}
-              {labels.length > 12 && (
+              {stickers.length > 12 && (
                 <p className="w-full text-xs text-slate-500 dark:text-gray-400">
-                  +{labels.length - 12} ملصق إضافي في قائمة الطباعة
+                  +{stickers.length - 12} استيكر إضافي في قائمة الطباعة
                 </p>
               )}
             </div>
@@ -332,24 +369,14 @@ export default function PrintLabelsPage() {
         </div>
       </div>
 
-      {/* Print-only sheet — hidden on screen via CSS */}
       <div className="thermal-label-sheet" aria-hidden>
-        {labels.map((label) => (
-          <div key={label.key} className="thermal-label" dir="rtl">
-            <p className="label-store">{STORE_NAME}</p>
-            <p className="label-name">{label.name}</p>
-            <p className="label-price">{formatEGP(label.price)}</p>
-            <div className="label-barcode">
-              <Barcode
-                value={label.barcode}
-                width={1.4}
-                height={36}
-                fontSize={11}
-                margin={2}
-                displayValue
-              />
-            </div>
-          </div>
+        {stickers.map((sticker) => (
+          <ThermalLabelSticker
+            key={sticker.key}
+            stickerKey={sticker.key}
+            data={sticker.data}
+            template={template}
+          />
         ))}
       </div>
     </>

@@ -73,51 +73,20 @@ type NavGroup = {
 const OVERVIEW: NavLink = {
   key: "overview",
   href: "/dashboard",
-  label: "لوحة المؤشرات العامة",
+  label: "لوحة المؤشرات",
   icon: LayoutDashboard,
 };
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: "pos",
-    label: "الكاشير ونقاط البيع",
-    icon: ShoppingCart,
-    items: [
-      {
-        key: "sales",
-        href: "/dashboard/sales",
-        label: "فواتير مبيعات الكاشير",
-        icon: Receipt,
-      },
-      {
-        key: "shifts",
-        href: "/dashboard/shifts",
-        label: "الورديات وتقارير Z",
-        icon: ClipboardList,
-      },
-      {
-        key: "audit",
-        href: "/dashboard/audit",
-        label: "مراجعة وتدقيق الكاشير",
-        icon: ShieldCheck,
-      },
-      {
-        key: "priceChecker",
-        href: "/price-checker",
-        label: "شاشة فاحص الأسعار",
-        icon: ScanBarcode,
-      },
-    ],
-  },
-  {
-    id: "store",
-    label: "المتجر الإلكتروني والتوصيل",
+    id: "delivery",
+    label: "🛵 طلبات التوصيل والأونلاين",
     icon: ShoppingBag,
     items: [
       {
         key: "orders",
         href: "/admin/orders",
-        label: "طلبات المتجر والتطبيق",
+        label: "الطلبات الحالية",
         icon: ShoppingBag,
       },
       {
@@ -127,21 +96,21 @@ const NAV_GROUPS: NavGroup[] = [
         icon: RotateCcw,
       },
       {
-        key: "customers",
-        href: "/dashboard/customers",
-        label: "العملاء ونقاط الولاء",
-        icon: Users,
+        key: "chat",
+        href: "/dashboard/chat",
+        label: "شات العملاء",
+        icon: MessageCircle,
       },
       {
         key: "fleet",
         href: "/dashboard/fleet",
-        label: "أسطول السائقين ومصاريفهم",
+        label: "السائقين وعهد التوصيل",
         icon: Truck,
       },
       {
         key: "deliveryZones",
         href: "/admin/delivery-zones",
-        label: "مناطق وأسعار التوصيل",
+        label: "مناطق التوصيل والكوبونات",
         icon: MapPin,
       },
       {
@@ -153,32 +122,26 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "notifications",
         href: "/dashboard/notifications",
-        label: "إشعارات العملاء",
+        label: "إشعارات التطبيق",
         icon: Bell,
-      },
-      {
-        key: "chat",
-        href: "/dashboard/chat",
-        label: "محادثات العملاء",
-        icon: MessageCircle,
       },
     ],
   },
   {
     id: "catalog",
-    label: "الكتالوج والتسعير",
+    label: "🏷️ المنتجات والأسعار",
     icon: Package,
     items: [
       {
         key: "products",
         href: "/dashboard/products",
-        label: "دليل الأصناف والمنتجات",
+        label: "كل المنتجات والأسعار",
         icon: Package,
       },
       {
         key: "categories",
         href: "/dashboard/categories",
-        label: "الأقسام والتصنيفات",
+        label: "الأقسام والماركات",
         icon: FolderTree,
       },
       {
@@ -190,38 +153,69 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "inventory",
         href: "/dashboard/inventory/print-labels",
-        label: "طباعة ملصقات الباركود",
+        label: "طباعة الباركود",
         icon: Printer,
+      },
+      {
+        key: "autoImages",
+        href: "/dashboard/tools/auto-fetch",
+        label: "جلب الصور والترجمة",
+        icon: ImageDown,
+      },
+      {
+        key: "autoTranslate",
+        href: "/admin/auto-translate",
+        label: "الترجمة الآلية",
+        icon: Languages,
+      },
+      {
+        key: "priceChecker",
+        href: "/price-checker",
+        label: "فاحص الأسعار",
+        icon: ScanBarcode,
       },
     ],
   },
   {
     id: "warehouse",
-    label: "المخازن والمشتريات",
+    label: "📦 المخزن والجرد",
     icon: Warehouse,
     items: [
       {
         key: "inventory",
         href: "/dashboard/inventory",
-        label: "أرصدة وحركة المخزون",
+        label: "أرصدة المخزن",
         icon: Warehouse,
       },
       {
         key: "inventory",
         href: "/dashboard/inventory/stock-take",
-        label: "الجرد الفعلي للمخزن",
+        label: "الجرد الفعلي",
         icon: ClipboardCheck,
       },
       {
         key: "inventory",
         href: "/dashboard/inventory/adjustments",
-        label: "التسويات المخزنية والهالك",
+        label: "الهالك والتسويات",
         icon: SlidersHorizontal,
       },
       {
         key: "inventory",
         href: "/dashboard/inventory/opening-balance",
-        label: "الأرصدة الافتتاحية",
+        label: "أرصدة أول المدة",
+        icon: PackagePlus,
+      },
+    ],
+  },
+  {
+    id: "purchases",
+    label: "🚚 المشتريات والموردين",
+    icon: Truck,
+    items: [
+      {
+        key: "purchases",
+        href: "/dashboard/purchases/new",
+        label: "فاتورة شراء جديدة",
         icon: PackagePlus,
       },
       {
@@ -239,27 +233,51 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "suppliers",
         href: "/dashboard/suppliers",
-        label: "سجل وحسابات الموردين",
+        label: "حسابات الموردين",
         icon: Building2,
       },
     ],
   },
   {
     id: "finance",
-    label: "المالية والحسابات",
+    label: "💰 الخزينة والحسابات",
     icon: Wallet,
     items: [
       {
         key: "treasury",
         href: "/dashboard/treasury",
-        label: "الخزينة والحسابات البنكية",
+        label: "الخزينة والبنوك",
         icon: Wallet,
       },
       {
         key: "expenses",
         href: "/dashboard/expenses",
-        label: "المصروفات التشغيلية",
+        label: "المصروفات",
         icon: Receipt,
+      },
+      {
+        key: "sales",
+        href: "/dashboard/sales",
+        label: "فواتير وورديات الكاشير",
+        icon: Receipt,
+      },
+      {
+        key: "shifts",
+        href: "/dashboard/shifts",
+        label: "الورديات وتقارير Z",
+        icon: ClipboardList,
+      },
+      {
+        key: "audit",
+        href: "/dashboard/audit",
+        label: "مراجعة الكاشير",
+        icon: ShieldCheck,
+      },
+      {
+        key: "reports",
+        href: "/dashboard/reports",
+        label: "التقارير والأرباح",
+        icon: BarChart3,
       },
       {
         key: "reports",
@@ -267,23 +285,23 @@ const NAV_GROUPS: NavGroup[] = [
         label: "كشف حساب مورد",
         icon: FileText,
       },
-      {
-        key: "reports",
-        href: "/dashboard/reports",
-        label: "التقارير المالية والأرباح",
-        icon: BarChart3,
-      },
     ],
   },
   {
-    id: "hr",
-    label: "الموارد البشرية والرقابة",
-    icon: UserCheck,
+    id: "people",
+    label: "👥 العملاء والموظفين",
+    icon: Users,
     items: [
+      {
+        key: "customers",
+        href: "/dashboard/customers",
+        label: "العملاء ونقاط الولاء",
+        icon: Users,
+      },
       {
         key: "employees",
         href: "/dashboard/employees",
-        label: "شؤون الموظفين والرواتب",
+        label: "الموظفين والرواتب",
         icon: UserCheck,
       },
       {
@@ -295,34 +313,15 @@ const NAV_GROUPS: NavGroup[] = [
       {
         key: "users",
         href: "/dashboard/users/logs",
-        label: "سجل الرقابة والعمليات",
+        label: "سجل الرقابة",
         icon: History,
         adminOnly: true,
       },
-    ],
-  },
-  {
-    id: "system",
-    label: "الإعدادات وأدوات النظام",
-    icon: Settings,
-    items: [
       {
         key: "settings",
         href: "/dashboard/settings",
-        label: "إعدادات النظام والمتجر",
+        label: "الإعدادات",
         icon: Settings,
-      },
-      {
-        key: "autoImages",
-        href: "/dashboard/tools/auto-fetch",
-        label: "أداة جلب الصور الذكية",
-        icon: ImageDown,
-      },
-      {
-        key: "autoTranslate",
-        href: "/admin/auto-translate",
-        label: "أداة الترجمة الآلية",
-        icon: Languages,
       },
       {
         key: "profile",
@@ -334,8 +333,8 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-function linkAllowed(key: NavLink["key"], allowed: Set<NavAccess>) {
-  if (key === "priceChecker") return true;
+function linkAllowed(key: NavLink["key"], allowed: Set<NavAccess>, role: string) {
+  if (key === "priceChecker") return role === "ADMIN" || role === "MANAGER";
   return allowed.has(key);
 }
 
@@ -450,7 +449,7 @@ export function Sidebar({
         ...group,
         items: group.items.filter((item) => {
           if (item.adminOnly && role !== "ADMIN") return false;
-          return linkAllowed(item.key, allowed);
+          return linkAllowed(item.key, allowed, role);
         }),
       })).filter((group) => group.items.length > 0),
     [allowed, role],
@@ -481,13 +480,42 @@ export function Sidebar({
     return ids;
   }, [groups, currentHref]);
 
-  const [openGroups, setOpenGroups] = useState<Set<string>>(
-    () => new Set(activeGroupIds),
-  );
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [groupsReady, setGroupsReady] = useState(false);
 
   useEffect(() => {
-    setOpenGroups(new Set(activeGroupIds));
-  }, [pathname, activeGroupIds]);
+    try {
+      const raw = window.localStorage.getItem("erp_sidebar_groups");
+      const saved = raw ? (JSON.parse(raw) as string[]) : [];
+      const initial = new Set(
+        Array.isArray(saved) && saved.length > 0 ? saved : [...activeGroupIds],
+      );
+      for (const id of activeGroupIds) initial.add(id);
+      setOpenGroups(initial);
+    } catch {
+      setOpenGroups(new Set(activeGroupIds));
+    }
+    setGroupsReady(true);
+    // Only hydrate once on mount; path changes open the active group below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!groupsReady) return;
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      for (const id of activeGroupIds) next.add(id);
+      return next;
+    });
+  }, [pathname, activeGroupIds, groupsReady]);
+
+  useEffect(() => {
+    if (!groupsReady) return;
+    window.localStorage.setItem(
+      "erp_sidebar_groups",
+      JSON.stringify([...openGroups]),
+    );
+  }, [openGroups, groupsReady]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -584,7 +612,7 @@ export function Sidebar({
         {showPos && (
           <Link
             href="/pos"
-            title="فتح شاشة الكاشير (POS)"
+            title="🖥️ نقطة البيع (الكاشير)"
             className={clsx(
               "bg-orange-500 text-white shadow-sm hover:bg-orange-600",
               "flex items-center justify-center gap-2 rounded-lg py-2 font-bold",
@@ -594,7 +622,7 @@ export function Sidebar({
           >
             <ShoppingCart className="h-4 w-4 shrink-0" />
             {showLabels && (
-              <span className="truncate text-sm">فتح شاشة الكاشير (POS)</span>
+              <span className="truncate text-sm">🖥️ نقطة البيع (الكاشير)</span>
             )}
           </Link>
         )}
@@ -605,7 +633,7 @@ export function Sidebar({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="بحث سريع في القوائم..."
+              placeholder="🔍 ابحث عن صفحة..."
               className="w-full rounded-lg border border-slate-700 bg-slate-800 py-2 pe-8 ps-8 text-sm text-white outline-none placeholder:text-slate-500 focus:border-orange-500"
             />
             {query && (

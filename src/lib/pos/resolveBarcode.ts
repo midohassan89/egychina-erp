@@ -1,6 +1,7 @@
 import type { CachedProduct } from "@/types/woocommerce";
 import type { BarcodeScanResult } from "@/types/pos";
 import { getOpBarcodes } from "./opBarcode";
+import { buildBarcodeMap, lookupBarcodeMap } from "./barcodeMap";
 import { getCatalogSellingPrice, parsePrice, roundMoney, roundQty } from "./money";
 
 /** In-store scale labels: 20 + 5-digit PLU + 5-digit price (cents) + check digit. */
@@ -47,6 +48,7 @@ function findProductByCode(
 export function resolveScannedBarcode(
   rawInput: string,
   products: CachedProduct[],
+  barcodeMap?: Map<string, CachedProduct>,
 ): BarcodeScanResult | { error: string } {
   try {
     const code = rawInput.trim();
@@ -55,13 +57,16 @@ export function resolveScannedBarcode(
     }
 
     const catalog = Array.isArray(products) ? products : [];
+    const index = barcodeMap ?? buildBarcodeMap(catalog);
     const digits = code.replace(/\D/g, "");
 
     if (isScaleBarcode(digits)) {
-      return resolveScaleBarcode(digits, catalog);
+      return resolveScaleBarcode(digits, catalog, index);
     }
 
-    const product = findProductByCode(catalog, digits.length >= 8 ? digits : code);
+    const product =
+      lookupBarcodeMap(index, digits.length >= 8 ? digits : code) ??
+      findProductByCode(catalog, digits.length >= 8 ? digits : code);
     if (!product) {
       return { error: NOT_FOUND };
     }
@@ -91,6 +96,7 @@ export function resolveScannedBarcode(
 function resolveScaleBarcode(
   code: string,
   products: CachedProduct[],
+  barcodeMap?: Map<string, CachedProduct>,
 ): BarcodeScanResult | { error: string } {
   const itemCode = code.substring(2, 7);
   const totalPrice = roundMoney(parseFloat(code.substring(7, 12)) / 100);
@@ -99,7 +105,9 @@ function resolveScaleBarcode(
     return { error: NOT_FOUND };
   }
 
-  const product = findProductByCode(products, itemCode);
+  const product =
+    (barcodeMap && lookupBarcodeMap(barcodeMap, itemCode)) ||
+    findProductByCode(products, itemCode);
   if (!product) {
     return { error: NOT_FOUND };
   }

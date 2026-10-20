@@ -6,14 +6,14 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useState,
   useRef,
+  useState,
   type FormEvent,
 } from "react";
 import { Search, Star, Tag } from "lucide-react";
 import { clsx } from "clsx";
 import type { CachedCategory, CachedProduct } from "@/types/woocommerce";
-import { getOpBarcodes, productHasOpBarcode } from "@/lib/pos/opBarcode";
+import { getOpBarcodes } from "@/lib/pos/opBarcode";
 import { isScaleBarcode } from "@/lib/pos/resolveBarcode";
 import {
   isCustomerLoyaltyScan,
@@ -21,6 +21,11 @@ import {
 } from "@/lib/pos/loyaltyScan";
 import { formatEGP, getCatalogSellingPrice } from "@/lib/pos/money";
 import { posItemKey } from "@/lib/pos/posItemKey";
+import {
+  buildBarcodeMap,
+  lookupBarcodeMap,
+} from "@/lib/pos/barcodeMap";
+import { looksLikeReceiptCode } from "@/lib/pos/findReceipt";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { usePosKeyboardOptional } from "@/components/pos/PosKeyboardContext";
@@ -56,17 +61,24 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
     ref,
   ) {
     const [activeTab, setActiveTab] = useState<PosTab>("all");
+    /** Controlled display value — not updated during fast scanner bursts. */
     const [query, setQuery] = useState("");
-    const [debouncedQuery, setDebouncedQuery] = useState("");
+    const [nameFilter, setNameFilter] = useState("");
     const queryRef = useRef(query);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const lastKeyAtRef = useRef(0);
+    const scanningRef = useRef(false);
+    const debounceRef = useRef<number | null>(null);
     const kb = usePosKeyboardOptional();
     queryRef.current = query;
 
+    const barcodeMap = useMemo(() => buildBarcodeMap(products), [products]);
+
     useEffect(() => {
-      const timer = window.setTimeout(() => setDebouncedQuery(query), 200);
-      return () => window.clearTimeout(timer);
-    }, [query]);
+      return () => {
+        if (debounceRef.current != null) window.clearTimeout(debounceRef.current);
+      };
+    }, []);
 
     useImperativeHandle(ref, () => ({
       focusSearch: () => {
@@ -77,16 +89,49 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
       },
       clearSearch: () => {
         setQuery("");
+        setNameFilter("");
+        scanningRef.current = false;
         const input = searchInputRef.current;
         if (input) input.value = "";
       },
     }));
 
-    const nameFilter = useMemo(() => {
-      const q = debouncedQuery.trim();
-      if (!q || /^\d+$/.test(q)) return "";
-      return q.toLowerCase();
-    }, [debouncedQuery]);
+    function scheduleNameFilter(raw: string) {
+      if (debounceRef.current != null) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        debounceRef.current = null;
+        if (scanningRef.current) return;
+        const q = raw.trim();
+        if (!q || /^\d+$/.test(q) || looksLikeReceiptCode(q)) {
+          setNameFilter("");
+          return;
+        }
+        setNameFilter(q.toLowerCase());
+      }, 250);
+    }
+
+    function handleQueryChange(next: string) {
+      const now = performance.now();
+      const gap = lastKeyAtRef.current > 0 ? now - lastKeyAtRef.current : Number.POSITIVE_INFINITY;
+      lastKeyAtRef.current = now;
+
+      // Hardware scanner: letters arrive < 35ms apart — do not refilter the grid.
+      if (gap < 35 && next.length > 1) {
+        scanningRef.current = true;
+        queryRef.current = next;
+        setQuery(next);
+        if (debounceRef.current != null) {
+          window.clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        return;
+      }
+
+      scanningRef.current = false;
+      queryRef.current = next;
+      setQuery(next);
+      scheduleNameFilter(next);
+    }
 
     function submitBarcode(raw: string) {
       if (scanLocked) return;
@@ -100,7 +145,10 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
         ok = false;
       }
       setQuery("");
-      // On not-found, parent shows a blocking modal — do NOT refocus yet.
+      setNameFilter("");
+      scanningRef.current = false;
+      queryRef.current = "";
+      if (searchInputRef.current) searchInputRef.current.value = "";
       if (ok) {
         window.requestAnimationFrame(() => {
           searchInputRef.current?.focus();
@@ -112,20 +160,28 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
     }
 
     /**
-     * Enter / form submit: blur for partial search (keep live filter).
-     * Exact add-to-cart only when barcode matches exactly one product
-     * (or loyalty card scan).
+     * Enter only: receipt → loyalty → product/scale. Never while typing.
+     * Prefer the live DOM value so a fast scan is not truncated by React state.
      */
-    function handleSearchCommit(raw: string) {
+    function handleSearchCommit(rawFromState?: string) {
       if (scanLocked) {
         searchInputRef.current?.blur();
         kb?.close();
         return;
       }
-      const value = raw.trim();
+      const value = (
+        searchInputRef.current?.value ??
+        rawFromState ??
+        queryRef.current
+      ).trim();
       if (!value) {
         searchInputRef.current?.blur();
         kb?.close();
+        return;
+      }
+
+      if (looksLikeReceiptCode(value)) {
+        submitBarcode(value);
         return;
       }
 
@@ -136,16 +192,13 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
       }
 
       const digits = value.replace(/\D/g, "");
-      // Scale labels embed the price. Look up the PLU, not the full 13 digits.
       if (isScaleBarcode(digits)) {
         submitBarcode(digits);
         return;
       }
 
-      const exactMatches = products.filter(
-        (p) => productHasOpBarcode(p, value) || (p.sku ?? "").trim() === value,
-      );
-      if (exactMatches.length === 1) {
+      const mapped = lookupBarcodeMap(barcodeMap, value);
+      if (mapped) {
         submitBarcode(value);
         return;
       }
@@ -160,7 +213,7 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
 
     function handleSubmit(event: FormEvent) {
       event.preventDefault();
-      handleSearchCommit(query);
+      handleSearchCommit();
     }
 
     return (
@@ -174,8 +227,8 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                 inputName="pos-search"
                 mode="text"
                 value={query}
-                onChange={setQuery}
-                onEnter={() => handleSearchCommit(queryRef.current)}
+                onChange={handleQueryChange}
+                onEnter={() => handleSearchCommit()}
                 onFocus={(e) => {
                   if (scanLocked) {
                     e.target.blur();
@@ -201,9 +254,7 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                   <Tag className="h-4 w-4" />
                   استعلام السعر
                 </span>
-                <span className="text-[10px] font-semibold text-sky-100">
-                  F4
-                </span>
+                <span className="text-[10px] font-semibold text-sky-100">F4</span>
               </button>
             )}
           </div>
