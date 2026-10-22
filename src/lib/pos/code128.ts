@@ -83,7 +83,7 @@ export function buildCode128Svg(
 
   const label = text.replace(/[<>&"]/g, "");
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height + 14}" viewBox="0 0 ${width} ${height + 14}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" width="${width}" height="${height + 14}" viewBox="0 0 ${width} ${height + 14}">`,
     ...rects,
     `<text x="${width / 2}" y="${height + 11}" text-anchor="middle" font-size="9" font-family="monospace" fill="#000">${label}</text>`,
     `</svg>`,

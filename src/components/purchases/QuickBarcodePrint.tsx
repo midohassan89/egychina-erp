@@ -1,10 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  LabelPreviewCard,
-  ThermalLabelSticker,
-} from "@/components/labels/BarcodeLabel";
+import { useState } from "react";
+import { LabelPreviewCard } from "@/components/labels/BarcodeLabel";
+import { printIsolatedLabels } from "@/lib/labels/printIsolatedLabels";
 import {
   getLabelTemplate,
   LABEL_TEMPLATES,
@@ -32,23 +30,14 @@ export function QuickBarcodePrint({
   const [templateId, setTemplateId] = useState<LabelTemplateId>("standard-38x25");
   const template = getLabelTemplate(templateId);
   const count = parseLabelCopies(copies, 1);
-  const stickers = useMemo(
-    () => Array.from({ length: count }, (_, index) => index),
-    [count],
-  );
   const data = { name, nameZh: nameZh ?? null, barcode, price };
 
   function printLabels() {
     if (!barcode || count < 1) return;
-    document.documentElement.classList.add("printing-labels");
-    document.documentElement.dataset.labelTemplate = template.id;
-    const cleanup = () => {
-      document.documentElement.classList.remove("printing-labels");
-      delete document.documentElement.dataset.labelTemplate;
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.setTimeout(() => window.print(), 50);
+    printIsolatedLabels(
+      Array.from({ length: count }, () => data),
+      template,
+    );
   }
 
   return (
@@ -119,18 +108,6 @@ export function QuickBarcodePrint({
           </button>
         </div>
       </div>
-    </div>
-    <div className="thermal-label-sheet" aria-hidden>
-      {barcode
-        ? stickers.map((index) => (
-            <ThermalLabelSticker
-              key={`quick-${index}`}
-              stickerKey={`quick-${index}`}
-              data={data}
-              template={template}
-            />
-          ))
-        : null}
     </div>
     </>
   );

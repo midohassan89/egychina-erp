@@ -5,9 +5,9 @@ import Link from "next/link";
 import { ArrowLeft, Printer, Search, Trash2 } from "lucide-react";
 import {
   LabelPreviewCard,
-  ThermalLabelSticker,
   type LabelFaceData,
 } from "@/components/labels/BarcodeLabel";
+import { printIsolatedLabels } from "@/lib/labels/printIsolatedLabels";
 import {
   getLabelTemplate,
   LABEL_TEMPLATES,
@@ -162,15 +162,10 @@ export default function PrintLabelsPage() {
       return;
     }
     setError(null);
-    document.documentElement.classList.add("printing-labels");
-    document.documentElement.dataset.labelTemplate = template.id;
-    const cleanup = () => {
-      document.documentElement.classList.remove("printing-labels");
-      delete document.documentElement.dataset.labelTemplate;
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.setTimeout(() => window.print(), 50);
+    printIsolatedLabels(
+      stickers.map((sticker) => sticker.data),
+      template,
+    );
   }
 
   return (
@@ -369,16 +364,6 @@ export default function PrintLabelsPage() {
         </div>
       </div>
 
-      <div className="thermal-label-sheet" aria-hidden>
-        {stickers.map((sticker) => (
-          <ThermalLabelSticker
-            key={sticker.key}
-            stickerKey={sticker.key}
-            data={sticker.data}
-            template={template}
-          />
-        ))}
-      </div>
     </>
   );
 }
