@@ -715,7 +715,13 @@ function POSPageInner() {
               : "flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 text-white"
           }
         >
-          <div className="min-w-0 text-right">
+          <div className="flex min-w-0 items-center gap-3 text-right">
+            <img
+              src="/logos/logo-ar.svg"
+              alt="ايجي شاينا ماركت"
+              className="h-10 w-auto shrink-0 rounded-md bg-white object-contain px-1.5 sm:h-12"
+            />
+            <div className="min-w-0">
             <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
               سوق العبور - الكاشير
               {returnMode ? " · وضع الاسترجاع" : ""}
@@ -730,6 +736,7 @@ function POSPageInner() {
                 ? ` · تفويض ${managerAuth.managerName}`
                 : ""}
             </p>
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">

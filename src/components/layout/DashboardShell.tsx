@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, Search } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -19,11 +20,14 @@ export function DashboardShell({
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="dashboard-no-print flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandLogo className="h-10 w-auto max-w-[9rem] object-contain lg:hidden dark:rounded-md dark:bg-white dark:px-1.5" />
+            <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-gray-100">
               مرحباً، {username}
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-gray-400">{role}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative hidden sm:block">

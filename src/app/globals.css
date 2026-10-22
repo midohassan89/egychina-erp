@@ -134,6 +134,16 @@
     padding-bottom: 2mm;
   }
 
+  .receipt-logo {
+    display: block;
+    height: 16mm;
+    width: auto;
+    max-width: 68mm;
+    margin: 0 auto 1.5mm;
+    object-fit: contain;
+    filter: grayscale(1) contrast(2);
+  }
+
   .receipt-store-name {
     font-size: 13px;
     font-weight: 700;

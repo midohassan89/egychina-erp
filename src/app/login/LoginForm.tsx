@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { homeForRole } from "@/lib/auth/roles";
 
 const STORAGE_KEY = "erp_quick_users";
@@ -118,11 +119,8 @@ export default function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10">
       <div className="w-full max-w-3xl rounded-3xl border border-white/10 bg-white p-8 shadow-2xl">
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white">
-            SO
-          </div>
-          <h1 className="mt-4 text-3xl font-bold text-slate-900">سوق العبور</h1>
-          <p className="mt-1 text-sm text-slate-500">اختر حسابك للدخول السريع إلى المنظومة</p>
+          <BrandLogo className="mx-auto h-24 w-auto max-w-full object-contain sm:h-32" />
+          <p className="mt-3 text-sm text-slate-500">اختر حسابك للدخول السريع إلى المنظومة</p>
         </div>
 
         {saved.length > 0 && (

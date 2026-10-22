@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { signOut } from "next-auth/react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import {
   canUsePos,
   navKeysForRole,
@@ -594,9 +595,7 @@ export function Sidebar({
             showLabels ? "max-w-[14rem] opacity-100" : "max-w-0 opacity-0",
           )}
         >
-          <p className="truncate text-sm font-bold whitespace-nowrap text-white">
-            سوق العبور — نظام الإدارة
-          </p>
+          <BrandLogo className="h-10 w-auto max-w-full rounded-md bg-white object-contain px-1.5 sm:h-12" />
           <p className="mt-1 truncate text-xs whitespace-nowrap text-slate-400">
             {username} · {role}
           </p>

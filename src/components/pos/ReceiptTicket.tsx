@@ -67,6 +67,11 @@ export function ReceiptTicket({ sale }: ReceiptTicketProps) {
       lang="ar"
     >
       <header className="receipt-header">
+        <img
+          src="/logos/logo-ar.svg"
+          alt="ايجي شاينا ماركت"
+          className="receipt-logo grayscale contrast-200"
+        />
         <h1 className="receipt-store-name">{STORE_NAME_AR}</h1>
         <h2 className="receipt-store-name-zh" lang="zh-CN" dir="ltr">
           {STORE_NAME_ZH}

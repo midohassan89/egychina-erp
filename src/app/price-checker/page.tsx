@@ -276,7 +276,13 @@ export default function PriceCheckerKioskPage() {
           color: "#ffffff",
         }}
       >
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <img
+            src="/logos/logo-ar.svg"
+            alt="ايجي شاينا ماركت"
+            className="h-10 w-auto shrink-0 rounded-md bg-white object-contain px-1.5 sm:h-12"
+          />
+          <div>
           <p
             style={{
               margin: 0,
@@ -297,6 +303,7 @@ export default function PriceCheckerKioskPage() {
           >
             استعلام السعر · Price Checker
           </h1>
+          </div>
         </div>
         {status !== "idle" && (
           <button
