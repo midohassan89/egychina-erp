@@ -15,39 +15,57 @@ export type LabelFaceData = {
   price: number;
 };
 
-function FaceContent({
-  data,
-  compact,
-}: {
-  data: LabelFaceData;
-  compact?: boolean;
-}) {
-  const barcodeHeight = compact ? 22 : 28;
-  const barcodeWidth = compact ? 1.5 : 1.5;
+function Bars({ value, tall }: { value: string; tall?: boolean }) {
   return (
-    <div className="label-face" dir="rtl">
-      <p className="label-name">{data.name}</p>
-      {data.nameZh ? (
-        <p className="label-name-zh" lang="zh-CN" dir="ltr">
-          {data.nameZh}
+    <div className={tall ? "label-bars label-bars--single" : "label-bars"}>
+      <Barcode
+        value={value}
+        format="CODE128"
+        width={tall ? 1.6 : 1.4}
+        height={tall ? 28 : 18}
+        margin={0}
+        displayValue={false}
+        background="#ffffff"
+        lineColor="#000000"
+      />
+    </div>
+  );
+}
+
+function SingleFace({ data }: { data: LabelFaceData }) {
+  return (
+    <div className="label-single">
+      <p className="label-single-name">{data.name}</p>
+      {data.nameZh?.trim() ? (
+        <p className="label-single-zh" lang="zh-CN" dir="ltr">
+          {data.nameZh.trim()}
         </p>
       ) : null}
-      <p className="label-price">
-        <span className="label-price-badge">{formatLabelPrice(data.price)}</span>
+      <p className="label-single-price">
+        <span>{formatLabelPrice(data.price)}</span>
       </p>
-      <div className="label-barcode">
-        <Barcode
-          value={data.barcode}
-          format="CODE128"
-          width={barcodeWidth}
-          height={barcodeHeight}
-          fontSize={compact ? 8 : 9}
-          margin={0}
-          displayValue
-          background="#ffffff"
-          lineColor="#000000"
-        />
+      <Bars value={data.barcode} tall />
+      <p className="label-single-code">{data.barcode}</p>
+    </div>
+  );
+}
+
+function SplitHalf({ data }: { data: LabelFaceData }) {
+  const title = data.nameZh?.trim() || data.name;
+  return (
+    <div className="label-half">
+      <div className="label-half-row">
+        <span
+          className="label-half-name"
+          lang={data.nameZh?.trim() ? "zh-CN" : undefined}
+          dir="ltr"
+        >
+          {title}
+        </span>
+        <span className="label-half-price">{formatLabelPrice(data.price)}</span>
       </div>
+      <Bars value={data.barcode} />
+      <p className="label-half-code">{data.barcode}</p>
     </div>
   );
 }
@@ -62,36 +80,28 @@ export function ThermalLabelSticker({
   template: LabelTemplate;
   stickerKey: string;
 }) {
-  if (template.layout === "single") {
-    return (
-      <div
-        key={stickerKey}
-        className="thermal-label thermal-label--single"
-        data-template={template.id}
-        dir="rtl"
-      >
-        <FaceContent data={data} />
-      </div>
-    );
-  }
-
-  const faces = [0, 1];
   return (
     <div
       key={stickerKey}
       className={
-        template.layout === "stack"
-          ? "thermal-label thermal-label--stack"
-          : "thermal-label thermal-label--side"
+        template.layout === "single"
+          ? "thermal-label-preview"
+          : template.layout === "stack"
+            ? "thermal-label-preview thermal-label-preview--stack"
+            : "thermal-label-preview thermal-label-preview--side"
       }
       data-template={template.id}
       dir="rtl"
     >
-      {faces.map((index) => (
-        <div key={`${stickerKey}-face-${index}`} className="thermal-label-half">
-          <FaceContent data={data} compact />
-        </div>
-      ))}
+      {template.layout === "single" ? (
+        <SingleFace data={data} />
+      ) : (
+        <>
+          <SplitHalf data={data} />
+          <div className="label-split-gap" />
+          <SplitHalf data={data} />
+        </>
+      )}
     </div>
   );
 }
@@ -104,29 +114,6 @@ export function LabelPreviewCard({
   template: LabelTemplate;
 }) {
   return (
-    <div
-      className={
-        template.layout === "side"
-          ? "thermal-label-preview thermal-label-preview--side"
-          : template.layout === "stack"
-            ? "thermal-label-preview thermal-label-preview--stack"
-            : "thermal-label-preview"
-      }
-      style={{ width: `${template.widthMm}mm`, minHeight: `${template.heightMm}mm` }}
-      dir="rtl"
-    >
-      {template.layout === "single" ? (
-        <FaceContent data={data} />
-      ) : (
-        <>
-          <div className="thermal-label-half">
-            <FaceContent data={data} compact />
-          </div>
-          <div className="thermal-label-half">
-            <FaceContent data={data} compact />
-          </div>
-        </>
-      )}
-    </div>
+    <ThermalLabelSticker data={data} template={template} stickerKey="preview" />
   );
 }

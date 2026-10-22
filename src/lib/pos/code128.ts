@@ -56,13 +56,22 @@ function encode(text: string): number[] {
 
 export function buildCode128Svg(
   text: string,
-  options: { height?: number; moduleWidth?: number } = {},
+  options: {
+    height?: number;
+    moduleWidth?: number;
+    /** Human-readable digits under the bars. Labels draw those in HTML instead. */
+    displayValue?: boolean;
+    /** Quiet-zone modules on each side. Labels use CSS padding instead. */
+    quietModules?: number;
+  } = {},
 ): string {
   const height = options.height ?? 36;
   const mw = options.moduleWidth ?? 1.15;
+  const displayValue = options.displayValue !== false;
+  const quiet = options.quietModules ?? 10;
   const values = encode(text || "0");
 
-  let x = mw * 10; // quiet zone
+  let x = mw * quiet;
   const rects: string[] = [];
 
   for (const value of values) {
@@ -78,14 +87,18 @@ export function buildCode128Svg(
     }
   }
 
-  x += mw * 10;
-  const width = Math.ceil(x);
-
+  x += mw * quiet;
+  const width = Math.max(1, Math.ceil(x));
+  const svgHeight = displayValue ? height + 14 : height;
   const label = text.replace(/[<>&"]/g, "");
+  const valueText = displayValue
+    ? `<text x="${width / 2}" y="${height + 11}" text-anchor="middle" font-size="9" font-family="monospace" fill="#000000">${label}</text>`
+    : "";
+
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" width="${width}" height="${height + 14}" viewBox="0 0 ${width} ${height + 14}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" width="${width}" height="${svgHeight}" viewBox="0 0 ${width} ${svgHeight}" preserveAspectRatio="xMidYMid meet">`,
     ...rects,
-    `<text x="${width / 2}" y="${height + 11}" text-anchor="middle" font-size="9" font-family="monospace" fill="#000">${label}</text>`,
+    valueText,
     `</svg>`,
   ].join("");
 }

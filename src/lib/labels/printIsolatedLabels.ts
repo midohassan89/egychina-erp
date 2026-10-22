@@ -19,27 +19,49 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function faceHtml(label: IsolatedLabel, compact: boolean): string {
+function barsSvg(barcode: string, moduleWidth: number): string {
+  return buildCode128Svg(barcode, {
+    height: 40,
+    moduleWidth,
+    displayValue: false,
+    quietModules: 0,
+  });
+}
+
+function singleHtml(label: IsolatedLabel): string {
   const name = escapeHtml(label.name);
   const zh = label.nameZh?.trim() ? escapeHtml(label.nameZh.trim()) : "";
-  const svg = buildCode128Svg(label.barcode, {
-    height: compact ? 22 : 32,
-    moduleWidth: compact ? 1.5 : 2,
-  });
-  return `<div class="face">
-    <p class="name">${name}</p>
+  const price = escapeHtml(formatLabelPrice(label.price));
+  const code = escapeHtml(label.barcode);
+  return `<section class="sticker single">
+    <p class="name-ar">${name}</p>
     ${zh ? `<p class="name-zh" lang="zh-CN">${zh}</p>` : ""}
-    <p class="price"><span>${escapeHtml(formatLabelPrice(label.price))}</span></p>
-    <div class="barcode">${svg}</div>
+    <p class="price"><span>${price}</span></p>
+    <div class="bars">${barsSvg(label.barcode, 2)}</div>
+    <p class="digits">${code}</p>
+  </section>`;
+}
+
+function splitHalfHtml(label: IsolatedLabel): string {
+  const title = escapeHtml(label.nameZh?.trim() || label.name);
+  const price = escapeHtml(formatLabelPrice(label.price));
+  const code = escapeHtml(label.barcode);
+  const lang = label.nameZh?.trim() ? ` lang="zh-CN"` : "";
+  return `<div class="half">
+    <div class="row">
+      <span class="half-name"${lang}>${title}</span>
+      <span class="half-price">${price}</span>
+    </div>
+    <div class="bars">${barsSvg(label.barcode, 1.5)}</div>
+    <p class="digits">${code}</p>
   </div>`;
 }
 
 function stickerHtml(label: IsolatedLabel, template: LabelTemplate): string {
-  if (template.layout === "single") {
-    return `<section class="sticker">${faceHtml(label, false)}</section>`;
-  }
-  const klass = template.layout === "stack" ? "sticker stack" : "sticker side";
-  return `<section class="${klass}">${faceHtml(label, true)}${faceHtml(label, true)}</section>`;
+  if (template.layout === "single") return singleHtml(label);
+  const klass = template.layout === "stack" ? "sticker split" : "sticker split side";
+  const half = splitHalfHtml(label);
+  return `<section class="${klass}">${half}<div class="gap"></div>${half}</section>`;
 }
 
 function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string {
@@ -51,76 +73,144 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
 <title>Barcode labels</title>
 <style>
   @page { size: 38mm 25mm; margin: 0; }
-  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #000000; }
   body { width: 38mm; }
   .sticker {
     box-sizing: border-box;
     width: 38mm;
     height: 25mm;
     margin: 0;
-    padding: 0.8mm 1mm;
+    padding: 0;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: #fff;
+    color: #000000;
     break-after: page;
     page-break-after: always;
-    background: #fff;
+    font-family: "Segoe UI", Tahoma, "Microsoft YaHei", "Noto Sans SC", sans-serif;
   }
   .sticker:last-child { break-after: auto; page-break-after: auto; }
-  .stack, .side { padding: 0; align-items: stretch; }
-  .stack { flex-direction: column; }
-  .side { flex-direction: row; }
-  .face {
-    box-sizing: border-box;
+  .single {
     display: flex;
-    width: 100%;
-    height: 100%;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-family: "Segoe UI", "Noto Sans Arabic", Tahoma, "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    align-items: stretch;
+    padding: 0.6mm 1.2mm 0;
   }
-  .stack .face, .side .face { flex: 1 1 50%; height: auto; overflow: hidden; }
-  .stack .face { width: 38mm; height: 12.5mm; max-height: 12.5mm; border-bottom: 0.2mm dashed #bbb; }
-  .stack .face:last-child { border-bottom: 0; }
-  .side .face { width: 19mm; height: 25mm; max-width: 19mm; border-left: 0.2mm dashed #bbb; }
-  .side .face:first-child { border-left: 0; }
-  .name {
+  .name-ar {
     margin: 0;
-    max-height: 5.2mm;
+    color: #000000;
+    font-size: 8pt;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
     overflow: hidden;
-    font-size: 7px;
-    font-weight: 700;
-    line-height: 1.1;
+    text-overflow: ellipsis;
   }
-  .name-zh {
-    margin: 0.2mm 0 0;
-    max-height: 3mm;
-    overflow: hidden;
-    font-size: 6px;
-    font-weight: 600;
-    line-height: 1.05;
+  .single .name-zh {
+    margin: 0.5mm 0 0;
+    color: #000000;
+    font-size: 7.5pt;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
     direction: ltr;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .price { margin: 0.35mm 0 0; }
-  .price span {
+  .single .price { margin: 1mm auto; text-align: center; }
+  .single .price span {
     display: inline-block;
-    padding: 0.3mm 1.2mm;
-    border: 2px solid #000;
-    background: #000;
-    color: #fff;
-    font-size: 9px;
+    border: 1.8px solid #000000;
+    border-radius: 2px;
+    padding: 0.5mm 2.5mm;
+    background: #fff;
+    color: #000000;
+    font-size: 10.5pt;
     font-weight: 900;
     line-height: 1.1;
+    white-space: nowrap;
+  }
+  .single .bars { height: 7.5mm; padding: 0 2.5mm; }
+  .single .digits {
+    margin: 0.3mm 0 0;
+    color: #000000;
+    font-size: 7.5pt;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    text-align: center;
+  }
+  .split { display: flex; flex-direction: column; }
+  .split.side { flex-direction: row; }
+  .half {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 11.5mm;
+    max-height: 11.5mm;
+    overflow: hidden;
+    padding: 0.5mm 1.5mm 0 1.5mm;
+  }
+  .split.side .half {
+    width: 18mm;
+    height: 25mm;
+    max-height: 25mm;
+    padding: 0.6mm 0.8mm 0;
+  }
+  .gap { height: 2mm; width: 100%; }
+  .split.side .gap { width: 2mm; height: 25mm; }
+  .row {
+    display: flex;
+    flex: 0 0 3.8mm;
+    justify-content: space-between;
+    align-items: center;
+    height: 3.8mm;
+    gap: 0.6mm;
+  }
+  .half-name {
+    max-width: 62%;
+    color: #000000;
+    font-size: 7.5pt;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     direction: ltr;
   }
-  .barcode { margin-top: 0.3mm; padding: 0 2.5mm; line-height: 0; direction: ltr; }
-  .barcode svg { max-width: 100%; height: auto; shape-rendering: crispEdges; }
-  .stack .name, .side .name { font-size: 5.5px; max-height: 3.6mm; }
-  .stack .name-zh, .side .name-zh { font-size: 5px; }
-  .stack .price span, .side .price span { font-size: 7px; padding: 0.15mm 0.6mm; border-width: 1.5px; }
+  .half-price {
+    border: 1.5px solid #000000;
+    padding: 0 3px;
+    background: #fff;
+    color: #000000;
+    font-size: 8pt;
+    font-weight: 900;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .bars {
+    box-sizing: border-box;
+    flex: 1 1 5.2mm;
+    width: 100%;
+    height: 5.2mm;
+    max-height: 5.2mm;
+    min-height: 0;
+    padding: 0 2mm;
+    line-height: 0;
+  }
+  .bars svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+  .half .digits {
+    flex: 0 0 auto;
+    margin: 0.2mm 0 0;
+    color: #000000;
+    font-size: 6.5pt;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+  }
 </style>
 </head>
 <body>${pages}</body>
