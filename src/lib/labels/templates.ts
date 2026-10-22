@@ -60,6 +60,6 @@ export function parseLabelCopies(raw: unknown, fallback = 1): number {
 }
 
 export function formatLabelPrice(price: number): string {
-  if (!Number.isFinite(price)) return "0.00 ج.م";
-  return `${price.toFixed(2)} ج.م`;
+  if (!Number.isFinite(price)) return "0.00";
+  return price.toFixed(2);
 }

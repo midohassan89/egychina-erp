@@ -701,11 +701,11 @@
 
 .label-single-price span {
   display: inline-block;
-  border: 1.8px solid #000000;
+  border: 0;
   border-radius: 2px;
-  padding: 0.5mm 2.5mm;
-  background: #fff;
-  color: #000000;
+  padding: 1mm 3mm;
+  background-color: #000000;
+  color: #ffffff;
   font-size: 10.5pt;
   font-weight: 900;
   line-height: 1.1;
@@ -751,6 +751,7 @@
 .label-half-row {
   display: flex;
   flex: 0 0 3.8mm;
+  direction: rtl;
   height: 3.8mm;
   align-items: center;
   justify-content: space-between;
@@ -769,14 +770,16 @@
 }
 
 .label-half-price {
-  border: 1.5px solid #000000;
-  padding: 0 3px;
-  background: #fff;
-  color: #000000;
+  border: 0;
+  border-radius: 2px;
+  padding: 0.5mm 1.5mm;
+  background-color: #000000;
+  color: #ffffff;
   font-size: 8pt;
   font-weight: 900;
   line-height: 1.1;
   white-space: nowrap;
+  direction: ltr;
 }
 
 .label-bars {

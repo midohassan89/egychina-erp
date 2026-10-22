@@ -73,7 +73,14 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
 <title>Barcode labels</title>
 <style>
   @page { size: 38mm 25mm; margin: 0; }
-  html, body { margin: 0; padding: 0; background: #fff; color: #000000; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   body { width: 38mm; }
   .sticker {
     box-sizing: border-box;
@@ -121,15 +128,17 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
   .single .price { margin: 1mm auto; text-align: center; }
   .single .price span {
     display: inline-block;
-    border: 1.8px solid #000000;
+    border: 0;
     border-radius: 2px;
-    padding: 0.5mm 2.5mm;
-    background: #fff;
-    color: #000000;
+    padding: 1mm 3mm;
+    background-color: #000000;
+    color: #ffffff;
     font-size: 10.5pt;
     font-weight: 900;
     line-height: 1.1;
     white-space: nowrap;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .single .bars { height: 7.5mm; padding: 0 2.5mm; }
   .single .digits {
@@ -163,6 +172,7 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
   .row {
     display: flex;
     flex: 0 0 3.8mm;
+    direction: rtl;
     justify-content: space-between;
     align-items: center;
     height: 3.8mm;
@@ -180,14 +190,18 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
     direction: ltr;
   }
   .half-price {
-    border: 1.5px solid #000000;
-    padding: 0 3px;
-    background: #fff;
-    color: #000000;
+    border: 0;
+    border-radius: 2px;
+    padding: 0.5mm 1.5mm;
+    background-color: #000000;
+    color: #ffffff;
     font-size: 8pt;
     font-weight: 900;
     line-height: 1.1;
     white-space: nowrap;
+    direction: ltr;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .bars {
     box-sizing: border-box;
