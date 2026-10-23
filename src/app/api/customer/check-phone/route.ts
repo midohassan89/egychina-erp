@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
+import {
+  customerAccountState,
+  findCustomerAccount,
+  normalizeCustomerPhone,
+} from "@/lib/customers/password";
 import { requireStoreApiKey } from "@/lib/store/storeAuth";
 
 export const dynamic = "force-dynamic";
@@ -24,30 +28,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400, headers: corsHeaders });
   }
 
-  const raw = String(body.phone ?? "").trim();
-  const phone = normalizeLoyaltyPhone(raw) || raw;
+  const phone = normalizeCustomerPhone(body.phone);
   if (!phone) {
     return NextResponse.json({ error: "phone is required" }, { status: 400, headers: corsHeaders });
   }
 
-  const customer = await prisma.customer.findFirst({
-    where: {
-      deletedAt: null,
-      OR: [
-        { phone },
-        { phone: raw },
-        ...(phone.length >= 10 ? [{ phone: { contains: phone.slice(-10) } }] : []),
-      ],
-    },
-    select: { name: true, pinHash: true },
-  });
-
-  const name = customer?.name?.trim() || null;
+  const customer = await findCustomerAccount(prisma, phone);
+  const state = customerAccountState(customer);
   return NextResponse.json(
     {
-      exists: Boolean(customer),
-      hasName: Boolean(name),
-      name,
+      exists: state.exists,
+      hasPassword: state.hasPassword,
+      hasName: state.hasName,
+      name: state.name,
       hasPin: Boolean(customer?.pinHash),
     },
     { headers: corsHeaders },

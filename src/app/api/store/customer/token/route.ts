@@ -41,7 +41,7 @@ function apiKeyMatches(provided: string, expected: string): boolean {
  * Mobile app saves Expo push token on the Customer profile.
  * Auth: x-api-key (STORE_API_KEY)
  * Body: { phone, token } or { phone, expoPushToken }
- * Creates the customer if phone is new.
+ * Updates an existing customer only. Accounts are created by register.
  */
 async function saveCustomerToken(request: Request) {
   const expectedKey = cleanEnvSecret(process.env.STORE_API_KEY);
@@ -73,7 +73,6 @@ async function saveCustomerToken(request: Request) {
       body.token ?? body.expoPushToken ?? body.pushToken ?? "",
     ).trim();
     const phone = normalizeLoyaltyPhone(phoneRaw);
-    const name = String(body.fullName ?? body.name ?? "").trim() || null;
 
     if (!phone) {
       return NextResponse.json(
@@ -90,6 +89,7 @@ async function saveCustomerToken(request: Request) {
 
     const existing = await prisma.customer.findFirst({
       where: {
+        deletedAt: null,
         OR: [
           { phone },
           { phone: phoneRaw },
@@ -99,23 +99,18 @@ async function saveCustomerToken(request: Request) {
       select: { id: true, phone: true },
     });
 
-    const customer = existing
-      ? await prisma.customer.update({
-          where: { id: existing.id },
-          data: {
-            expoPushToken: token,
-            ...(name ? { name } : {}),
-          },
-          select: { id: true, phone: true, expoPushToken: true },
-        })
-      : await prisma.customer.create({
-          data: {
-            phone,
-            name,
-            expoPushToken: token,
-          },
-          select: { id: true, phone: true, expoPushToken: true },
-        });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Account not found" },
+        { status: 404, headers: corsHeaders },
+      );
+    }
+
+    const customer = await prisma.customer.update({
+      where: { id: existing.id },
+      data: { expoPushToken: token },
+      select: { id: true, phone: true, expoPushToken: true },
+    });
 
     return NextResponse.json(
       {

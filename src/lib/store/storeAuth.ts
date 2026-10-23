@@ -154,9 +154,9 @@ export async function findCustomerByIdOrPhone(
 
 /**
  * Resolve storefront customer by phone (preferred) or customerId.
- * - Looks up by phone first when provided (mobile auth is phone-based).
- * - If missing and createIfMissing: creates with phone + fullName.
- * - If exists but name is empty and fullName provided: updates the name.
+ * Store and mobile account creation goes through /api/customer/register,
+ * which requires a password. createIfMissing stays available for internal
+ * callers and must not be used to open a store session.
  */
 export async function resolveStoreCustomer(
   db: DbClient,

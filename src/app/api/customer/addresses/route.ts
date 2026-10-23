@@ -103,7 +103,7 @@ export async function GET(request: Request) {
  * POST /api/customer/addresses
  * Body: { phone, fullName, title, fullAddress, isDefault?, customerId? }
  * Auth: x-api-key
- * Lookup by phone → create with phone+fullName, or fill missing name, then attach address.
+ * Attaches an address to an existing customer. Does not create an account.
  */
 export async function POST(request: Request) {
   if (!requireStoreApiKey(request)) {
@@ -139,8 +139,6 @@ export async function POST(request: Request) {
       request,
       body.phone ?? body.phoneNumber ?? body.mobile,
     );
-    const fullName =
-      String(body.fullName ?? body.name ?? "").trim() || null;
 
     if (!phone && !customerId) {
       return NextResponse.json(
@@ -174,12 +172,10 @@ export async function POST(request: Request) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Phone-first: create with phone + fullName if new; fill name if blank
       const customer = await resolveStoreCustomer(tx, {
         customerId,
         phone,
-        name: fullName,
-        createIfMissing: Boolean(phone),
+        createIfMissing: false,
       });
 
       if (!customer) {

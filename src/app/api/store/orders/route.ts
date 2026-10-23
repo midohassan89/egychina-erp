@@ -622,9 +622,8 @@ export async function POST(request: Request) {
         const resolved = await resolveStoreCustomer(tx, {
           customerId: linkedCustomerId ?? undefined,
           phone: normalizedPhone || finalPhone,
-          // Only persist a real provided name — not the "عميل المتجر" fallback
           name: providedFullName || null,
-          createIfMissing: Boolean(normalizedPhone || finalPhone),
+          createIfMissing: false,
         });
 
         const customer = resolved

@@ -82,7 +82,6 @@ export async function POST(request: Request) {
     phone?: unknown;
     attachmentUrl?: unknown;
     attachmentType?: unknown;
-    name?: unknown;
   } = {};
   try {
     body = (await request.json()) as typeof body;
@@ -101,8 +100,7 @@ export async function POST(request: Request) {
   const customer = await resolveStoreCustomer(prisma, {
     customerId: resolveCustomerIdFromRequest(request, body.customerId),
     phone: resolvePhoneFromRequest(request, body.phone),
-    name: typeof body.name === "string" ? body.name : null,
-    createIfMissing: true,
+    createIfMissing: false,
   });
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404, headers: corsHeaders });

@@ -21,7 +21,7 @@ const corsHeaders = {
  * Auth: x-api-key (STORE_API_KEY)
  * Body: { phone, pushToken } — also accepts token / expoPushToken / fcmToken
  *
- * Creates a minimal Customer if the phone is new (logged in before first order).
+ * Saves the token on an existing customer. Does not create an account.
  */
 export async function POST(request: Request) {
   if (!requireStoreApiKey(request)) {
@@ -51,8 +51,6 @@ export async function POST(request: Request) {
     const pushToken = String(
       body.pushToken ?? body.token ?? body.fcmToken ?? body.expoPushToken ?? "",
     ).trim();
-    const fullName =
-      String(body.fullName ?? body.name ?? "").trim() || null;
 
     if (!phone) {
       return NextResponse.json(
@@ -69,14 +67,13 @@ export async function POST(request: Request) {
 
     const customer = await resolveStoreCustomer(prisma, {
       phone,
-      name: fullName,
-      createIfMissing: true,
+      createIfMissing: false,
     });
 
     if (!customer) {
       return NextResponse.json(
-        { error: "Could not resolve customer" },
-        { status: 400, headers: corsHeaders },
+        { error: "Account not found" },
+        { status: 404, headers: corsHeaders },
       );
     }
 
