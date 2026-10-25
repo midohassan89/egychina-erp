@@ -38,7 +38,7 @@ function categorySlug(name: string): string {
 }
 
 async function uniqueCategorySlug(
-  tx: Prisma.TransactionClient,
+  tx: Pick<Prisma.TransactionClient, "category">,
   name: string,
 ): Promise<string> {
   const base = categorySlug(name);
@@ -55,8 +55,10 @@ async function uniqueCategorySlug(
  * Resolve a category by Arabic name, creating it once per distinct name.
  * The in-memory cache stops the same new name from being inserted twice.
  */
-async function resolveCategoryId(
-  tx: Prisma.TransactionClient,
+type CatalogDb = Pick<Prisma.TransactionClient, "category" | "brand">;
+
+export async function resolveCategoryId(
+  tx: CatalogDb,
   cache: Map<string, string>,
   name: string,
 ): Promise<string | null> {
@@ -87,8 +89,8 @@ async function resolveCategoryId(
   return created.id;
 }
 
-async function resolveBrandId(
-  tx: Prisma.TransactionClient,
+export async function resolveBrandId(
+  tx: CatalogDb,
   cache: Map<string, string>,
   name: string,
 ): Promise<string | null> {

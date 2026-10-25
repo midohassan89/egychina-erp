@@ -592,7 +592,7 @@ function ProductsManagement() {
 
   async function handlePriceImport(file: File) {
     setBulkBusy(true);
-    setBulkMessage("جاري استيراد الأسعار…");
+    setBulkMessage("جاري استيراد الملف…");
     try {
       const rows = parsePriceImportSheet(await file.arrayBuffer());
       const res = await fetch("/api/products/import-prices", {
@@ -1077,7 +1077,7 @@ function ProductsManagement() {
                   <button
                     type="button"
                     disabled={bulkBusy}
-                    title="تحديث السعر الأساسي وسعر التخفيض وآخر سعر شراء حسب الباركود أو كود الصنف"
+                    title="تحديث السعر والقسم والعلامة التجارية حسب الباركود أو كود الصنف"
                     onClick={() => priceImportInputRef.current?.click()}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                   >

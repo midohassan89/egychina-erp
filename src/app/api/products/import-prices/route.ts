@@ -5,6 +5,10 @@ import { isEditor } from "@/lib/auth/roles";
 import { roundMoney } from "@/lib/pos/money";
 import { prisma } from "@/lib/prisma";
 import {
+  resolveBrandId,
+  resolveCategoryId,
+} from "@/lib/products/bulkUpdate";
+import {
   ProductServiceError,
   updateProductAndSync,
 } from "@/lib/products/productService";
@@ -21,6 +25,8 @@ type ImportRow = {
   price?: unknown;
   salePrice?: unknown;
   buyingCost?: unknown;
+  category?: unknown;
+  brand?: unknown;
 };
 
 type MatchedProduct = {
@@ -127,6 +133,8 @@ export async function POST(request: Request) {
   let updatedCount = 0;
   let skippedCount = 0;
   const errors: { row: number; name: string; reason: string }[] = [];
+  const categoryCache = new Map<string, string>();
+  const brandCache = new Map<string, string>();
 
   for (const row of rows) {
     const excelRow = Number(row.row) || 0;
@@ -140,8 +148,10 @@ export async function POST(request: Request) {
       const updatePrice = hasField(row, "price");
       const updateSale = hasField(row, "salePrice");
       const updateCost = hasField(row, "buyingCost");
-      if (!updatePrice && !updateSale && !updateCost) {
-        throw new Error("لا توجد أسعار لتحديثها في هذا الصف");
+      const categoryName = String(row.category ?? "").trim();
+      const brandName = String(row.brand ?? "").trim();
+      if (!updatePrice && !updateSale && !updateCost && !categoryName && !brandName) {
+        throw new Error("لا توجد بيانات لتحديثها في هذا الصف");
       }
 
       const product = (barcode && byBarcode.get(barcode)) || (sku && bySku.get(sku));
@@ -181,13 +191,30 @@ export async function POST(request: Request) {
         }
       }
 
-      if (updatePrice || updateSale) {
+      let categoryId: string | undefined;
+      if (categoryName) {
+        const resolved = await resolveCategoryId(prisma, categoryCache, categoryName);
+        if (!resolved) throw new Error("اسم القسم غير صالح");
+        categoryId = resolved;
+      }
+      let brandId: string | undefined;
+      if (brandName) {
+        const resolved = await resolveBrandId(prisma, brandCache, brandName);
+        if (!resolved) throw new Error("اسم العلامة التجارية غير صالح");
+        brandId = resolved;
+      }
+
+      if (updatePrice || updateSale || categoryId || brandId) {
         await updateProductAndSync(product.id, {
           ...(updatePrice ? { price: nextPrice } : {}),
           ...(updateSale ? { salePrice: nextSale } : {}),
+          ...(categoryId ? { categoryId } : {}),
+          ...(brandId ? { brandId } : {}),
         });
-        product.price = nextPrice;
-        product.salePrice = nextSale;
+        if (updatePrice || updateSale) {
+          product.price = nextPrice;
+          product.salePrice = nextSale;
+        }
       }
 
       if (updateCost) {
@@ -216,6 +243,8 @@ export async function POST(request: Request) {
         ...(updatePrice ? { price: nextPrice } : {}),
         ...(updateSale ? { salePrice: nextSale } : {}),
         ...(updateCost ? { buyingCost: nextCost } : {}),
+        ...(categoryId ? { categoryId, category: categoryName } : {}),
+        ...(brandId ? { brandId, brand: brandName } : {}),
       });
       updatedCount += 1;
     } catch (error) {

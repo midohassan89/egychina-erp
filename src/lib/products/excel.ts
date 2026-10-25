@@ -77,6 +77,10 @@ export interface PriceImportRow {
   price?: number;
   salePrice?: number | null;
   buyingCost?: number;
+  /** Trimmed category name when that column exists and the cell is not empty. */
+  category?: string;
+  /** Trimmed brand name when that column exists and the cell is not empty. */
+  brand?: string;
 }
 
 function normHeader(key: string) {
@@ -147,12 +151,19 @@ export function parsePriceImportSheet(fileBuffer: ArrayBuffer): PriceImportRow[]
     "آخر سعر شراء",
     "اخر سعر شراء",
   ]);
+  const categoryKey = headerMatch(headers, ["category", "القسم", "قسم"]);
+  const brandKey = headerMatch(headers, [
+    "brand",
+    "العلامة",
+    "العلامة التجارية",
+    "الماركة",
+  ]);
 
   if (!barcodeKey && !skuKey) {
     throw new Error("الملف يجب أن يحتوي على عمود الباركود أو كود الصنف");
   }
-  if (!priceKey && !saleKey && !costKey) {
-    throw new Error("الملف يجب أن يحتوي على عمود سعر واحد على الأقل");
+  if (!priceKey && !saleKey && !costKey && !categoryKey && !brandKey) {
+    throw new Error("الملف يجب أن يحتوي على عمود سعر أو قسم أو علامة تجارية");
   }
 
   return raw.map((row, index) => {
@@ -181,6 +192,10 @@ export function parsePriceImportSheet(fileBuffer: ArrayBuffer): PriceImportRow[]
         parsed.salePrice = sale;
       }
     }
+    const categoryName = categoryKey ? String(row[categoryKey] ?? "").trim() : "";
+    if (categoryName) parsed.category = categoryName;
+    const brandName = brandKey ? String(row[brandKey] ?? "").trim() : "";
+    if (brandName) parsed.brand = brandName;
     if (costKey && String(row[costKey] ?? "").trim() !== "") {
       const cost = parseAmount(row[costKey]);
       if (cost == null || Number.isNaN(cost)) {
