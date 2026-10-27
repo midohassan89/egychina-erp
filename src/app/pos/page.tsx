@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Wallet } from "lucide-react";
 import { getCachedCustomers, getSales } from "@/lib/cache/indexeddb";
 import { useCart } from "@/hooks/useCart";
 import { useCatalogSync } from "@/hooks/useCatalogSync";
@@ -113,6 +114,8 @@ function POSPageInner() {
   const [toast, setToast] = useState<string | null>(null);
   const desk = usePosDesk((message) => setToast(message));
   const [posDark, setPosDark] = useState(false);
+  const [shiftDetailsOpen, setShiftDetailsOpen] = useState(false);
+  const shiftDetailsRef = useRef<HTMLDivElement | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -329,6 +332,25 @@ function POSPageInner() {
     }, 2500);
     return () => window.clearTimeout(timer);
   }, [scanMessage, scanError]);
+
+  useEffect(() => {
+    if (!shiftDetailsOpen) return;
+    function onPointerDown(event: MouseEvent) {
+      const root = shiftDetailsRef.current;
+      if (root && !root.contains(event.target as Node)) {
+        setShiftDetailsOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setShiftDetailsOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [shiftDetailsOpen]);
 
   const handleBarcodeEnter = useCallback((rawInput: string): boolean => {
     return scanHandlerRef.current(rawInput);
@@ -722,20 +744,92 @@ function POSPageInner() {
               className="h-10 w-auto shrink-0 rounded-md bg-white object-contain px-1.5 sm:h-12"
             />
             <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-              سوق العبور - الكاشير
-              {returnMode ? " · وضع الاسترجاع" : ""}
-            </h1>
-            <p className="mt-0.5 text-xs text-slate-400 sm:text-sm">
-              {isOnline ? "متصل" : "غير متصل"} · {productCount} في القاعدة ·{" "}
-              {catalog.length} جاهز
-              {shiftApi.shift
-                ? ` · الوردية بدأت: ${new Date(shiftApi.shift.startedAt).toLocaleTimeString("ar-EG")} · العهدة: ${formatEGP(shiftApi.shift.startingCash)} · النقدية: ${formatEGP(shiftApi.shift.cashSales ?? 0)}`
-                : ""}
-              {returnMode && managerAuth
-                ? ` · تفويض ${managerAuth.managerName}`
-                : ""}
-            </p>
+              <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+                سوق العبور - الكاشير
+                {returnMode ? " · وضع الاسترجاع" : ""}
+              </h1>
+              {returnMode && managerAuth ? (
+                <p className="mt-0.5 text-xs text-red-200 sm:text-sm">
+                  تفويض {managerAuth.managerName}
+                </p>
+              ) : null}
+            </div>
+            <div className="relative shrink-0" ref={shiftDetailsRef}>
+              <button
+                type="button"
+                onClick={() => setShiftDetailsOpen((open) => !open)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+                aria-expanded={shiftDetailsOpen}
+                aria-haspopup="dialog"
+                aria-label="تفاصيل الوردية والنقدية"
+                title="تفاصيل الوردية والنقدية"
+              >
+                <Wallet className="h-4 w-4" />
+                <span
+                  className={
+                    isOnline
+                      ? "h-2 w-2 rounded-full bg-emerald-400"
+                      : "h-2 w-2 rounded-full bg-red-400"
+                  }
+                  aria-hidden
+                />
+              </button>
+              {shiftDetailsOpen ? (
+                <div
+                  role="dialog"
+                  className="absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-700 bg-slate-900 p-3 text-right shadow-2xl"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    تفاصيل الوردية
+                  </p>
+                  <dl className="mt-2 space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">الاتصال</dt>
+                      <dd className={isOnline ? "font-semibold text-emerald-300" : "font-semibold text-red-300"}>
+                        {isOnline ? "متصل" : "غير متصل"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">في القاعدة</dt>
+                      <dd className="font-semibold tabular-nums text-white">
+                        {productCount.toLocaleString("ar-EG")}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-400">جاهز على الجهاز</dt>
+                      <dd className="font-semibold tabular-nums text-white">
+                        {catalog.length.toLocaleString("ar-EG")}
+                      </dd>
+                    </div>
+                    {shiftApi.shift ? (
+                      <>
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-700 pt-2">
+                          <dt className="text-slate-400">الوردية بدأت</dt>
+                          <dd className="font-semibold text-white">
+                            {new Date(shiftApi.shift.startedAt).toLocaleTimeString("ar-EG")}
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-slate-400">العهدة</dt>
+                          <dd className="font-semibold tabular-nums text-white">
+                            {formatEGP(shiftApi.shift.startingCash)}
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <dt className="text-slate-400">النقدية</dt>
+                          <dd className="font-semibold tabular-nums text-emerald-300">
+                            {formatEGP(shiftApi.shift.cashSales ?? 0)}
+                          </dd>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="border-t border-slate-700 pt-2 text-slate-400">
+                        لا توجد وردية مفتوحة
+                      </p>
+                    )}
+                  </dl>
+                </div>
+              ) : null}
             </div>
           </div>
 
