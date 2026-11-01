@@ -551,6 +551,30 @@ model SaleLine {
   @@index([wcProductId])
 }
 
+/// Queue ticket from Mobile Queue Buster POS — claimed and settled on main /pos.
+model PosQueueTicket {
+  id            String   @id @default(cuid())
+  code          String   @unique // مثل Q-1001, Q-1002
+  status        String   @default("PENDING") // PENDING | CLAIMED | COMPLETED | CANCELLED
+  itemsJson     String // JSON array: [{ productId, packageId, name, barcode, quantity, unitPrice, originalPrice, isWeighted }]
+  subtotal      Float
+  discount      Float    @default(0)
+  total         Float
+  customerId    String?
+  customerPhone String?
+  customerName  String?
+  notes         String?
+  createdById   String
+  createdByName String?
+  claimedById   String?
+  saleId        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([code])
+}
+
 model Brand {
   id        String    @id @default(cuid())
   /** Arabic brand name. */
