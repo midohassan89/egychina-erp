@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Monitor, Wallet } from "lucide-react";
+import { ListOrdered, Monitor, Wallet } from "lucide-react";
 import { getCachedCustomers, getSales } from "@/lib/cache/indexeddb";
 import { useCart } from "@/hooks/useCart";
 import { useCatalogSync } from "@/hooks/useCatalogSync";
@@ -31,6 +31,7 @@ import {
 import { CartPanel, cartItemDomId } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
 import { HeldCartsModal } from "@/components/pos/HeldCartsModal";
+import { QueueTicketsModal } from "@/components/pos/QueueTicketsModal";
 import {
   PinAuthorizationModal,
   type PinAuthAction,
@@ -59,6 +60,12 @@ import {
   saveHeldCarts,
   type HeldCart,
 } from "@/lib/pos/heldCarts";
+import {
+  isQueueTicketCode,
+  normalizeQueueCode,
+  type QueueTicketItem,
+} from "@/lib/pos/queueTicket";
+import { queueItemsToCartLines } from "@/lib/pos/loadQueueTicketToCart";
 import type {
   CachedCustomer,
   CachedProduct,
@@ -122,6 +129,10 @@ function POSPageInner() {
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
   const [heldReady, setHeldReady] = useState(false);
   const [heldModalOpen, setHeldModalOpen] = useState(false);
+  const [queueModalOpen, setQueueModalOpen] = useState(false);
+  const [activeQueueTicketCode, setActiveQueueTicketCode] = useState<string | null>(
+    null,
+  );
   const [toast, setToast] = useState<string | null>(null);
   const desk = usePosDesk((message) => setToast(message));
   const [posDark, setPosDark] = useState(false);
@@ -373,8 +384,111 @@ function POSPageInner() {
     return scanHandlerRef.current(rawInput);
   }, []);
 
+  const claimQueueTicket = useCallback(
+    async (rawCode: string) => {
+      const code = normalizeQueueCode(rawCode);
+      try {
+        const res = await fetch(
+          `/api/pos/queue-tickets/${encodeURIComponent(code)}`,
+          { cache: "no-store" },
+        );
+        const body = (await res.json()) as {
+          error?: string;
+          ticket?: {
+            code: string;
+            items: QueueTicketItem[];
+            customerId?: string | null;
+            customerPhone?: string | null;
+            customerName?: string | null;
+            total: number;
+          };
+        };
+        if (!res.ok || !body.ticket) {
+          setScanError(body.error ?? "قسيمة غير صالحة");
+          setScanMessage(null);
+          playErrorBeep();
+          return;
+        }
+
+        const { lines, missing } = queueItemsToCartLines(
+          body.ticket.items,
+          catalog,
+        );
+        if (lines.length === 0) {
+          setScanError(
+            missing.length
+              ? `تعذر تحميل الأصناف: ${missing.slice(0, 3).join("، ")}`
+              : "القسيمة فارغة",
+          );
+          setScanMessage(null);
+          playErrorBeep();
+          return;
+        }
+
+        if (returnMode) {
+          setReturnMode(false);
+          setManagerAuth(null);
+        }
+        cart.replaceLines(lines);
+        setActiveQueueTicketCode(body.ticket.code);
+
+        if (body.ticket.customerId || body.ticket.customerPhone) {
+          setSelectedCustomer({
+            id: body.ticket.customerId || body.ticket.customerPhone || "",
+            name: body.ticket.customerName ?? null,
+            phone: body.ticket.customerPhone || "",
+            pointsBalance: 0,
+          });
+          // Refresh loyalty balance when we have a real customer id.
+          if (body.ticket.customerId) {
+            void (async () => {
+              try {
+                const phone = body.ticket!.customerPhone;
+                if (!phone) return;
+                const lookup = await fetch(
+                  `/api/admin/customers/search?phone=${encodeURIComponent(phone)}`,
+                  { cache: "no-store" },
+                );
+                const data = (await lookup.json()) as {
+                  customer?: {
+                    id: string;
+                    name: string | null;
+                    phone: string;
+                    pointsBalance: number;
+                  };
+                };
+                if (data.customer) setSelectedCustomer(data.customer);
+              } catch {
+                // keep stub customer
+              }
+            })();
+          }
+        }
+
+        setScanError(null);
+        setScanMessage(
+          missing.length
+            ? `تم تحميل ${body.ticket.code} · ناقص ${missing.length} صنف`
+            : `تم تحميل قسيمة ${body.ticket.code} · ${formatEGP(body.ticket.total)}`,
+        );
+        playSuccessBeep();
+        focusBarcodeSearch();
+      } catch {
+        setScanError("تعذر تحميل القسيمة");
+        setScanMessage(null);
+        playErrorBeep();
+      }
+    },
+    [catalog, cart, returnMode, focusBarcodeSearch],
+  );
+
   function scanBarcode(rawInput: string): boolean {
       const scanned = rawInput.trim();
+      if (isQueueTicketCode(scanned)) {
+        void claimQueueTicket(scanned);
+        closeKeyboard();
+        return true;
+      }
       const cleanPhone = normalizeLoyaltyPhone(scanned);
       if (isCustomerLoyaltyScan(cleanPhone)) {
         void (async () => {
@@ -611,6 +725,7 @@ function POSPageInner() {
     const snapshot = createHeldCart(cart.lines);
     setHeldCarts((prev) => [snapshot, ...prev]);
     cart.clear();
+    setActiveQueueTicketCode(null);
     setToast(`Invoice held at ${snapshot.label} · تم تعليق الفاتورة`);
     focusBarcodeSearch();
   }, [cart.lines, cart.clear, returnMode, focusBarcodeSearch]);
@@ -1020,6 +1135,17 @@ function POSPageInner() {
             )}
             <button
               type="button"
+              disabled={shiftLocked}
+              onClick={() => setQueueModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+              title="قسائم الكاشير المحمول"
+            >
+              <ListOrdered className="h-4 w-4" />
+              قسائم الموبايل
+              {activeQueueTicketCode ? ` · ${activeQueueTicketCode}` : ""}
+            </button>
+            <button
+              type="button"
               onClick={() => setOrdersOpen(true)}
               className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-orange-400"
             >
@@ -1119,6 +1245,7 @@ function POSPageInner() {
             onUpdateLine={cart.updateLine}
             onClear={() => {
               cart.clear();
+              setActiveQueueTicketCode(null);
               setSelectedCustomer(null);
               setRedeemPoints(false);
               focusBarcodeSearch();
@@ -1203,13 +1330,29 @@ function POSPageInner() {
               pointsRedeemed: applyLoyalty ? pointsDiscount * 1000 : 0,
             });
             if (sale) {
+              const ticketCode = activeQueueTicketCode;
               // Unblock the POS UI immediately — print runs later in an isolated iframe.
               cart.clear();
               setSelectedCustomer(null);
               setRedeemPoints(false);
               setPaymentPreview(null);
               setCheckoutOpen(false);
+              setActiveQueueTicketCode(null);
               focusBarcodeSearch();
+
+              if (ticketCode && !sale.isReturn) {
+                void fetch(
+                  `/api/pos/queue-tickets/${encodeURIComponent(ticketCode)}`,
+                  {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      status: "COMPLETED",
+                      saleId: sale.id,
+                    }),
+                  },
+                ).catch(() => undefined);
+              }
 
               if (!sale.isReturn && sale.paymentMethod !== "STAFF_MEAL") {
                 const completedAt = Date.now();
@@ -1331,6 +1474,12 @@ function POSPageInner() {
           onClose={() => setHeldModalOpen(false)}
           onResume={resumeHeldCart}
           onDiscard={discardHeldCart}
+        />
+
+        <QueueTicketsModal
+          open={queueModalOpen}
+          onClose={() => setQueueModalOpen(false)}
+          onClaim={(code) => claimQueueTicket(code)}
         />
 
         <PriceCheckModal
