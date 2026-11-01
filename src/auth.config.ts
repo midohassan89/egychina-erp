@@ -47,7 +47,10 @@ export const authConfig = {
         pathname.startsWith("/price-checker") ||
         pathname.startsWith("/api/price-checker") ||
         pathname.startsWith("/api/store") ||
-        pathname.startsWith("/api/driver")
+        pathname.startsWith("/api/driver") ||
+        // Mobile Queue Buster: own JWT (mobile-pos) / handler-level auth (queue-tickets)
+        pathname.startsWith("/api/mobile-pos") ||
+        pathname.startsWith("/api/pos/queue-tickets")
       ) {
         return true;
       }
