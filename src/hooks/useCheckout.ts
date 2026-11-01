@@ -319,26 +319,31 @@ export function useCheckout() {
         return synced;
       }
 
-      try {
-        const synced = await syncSaleToWooCommerce(sale);
-        setLastSale(synced);
-        return synced;
-      } catch (err) {
-        const queued: LocalSale = {
-          ...sale,
-          syncStatus: "pending",
-          syncError:
-            err instanceof Error ? err.message : "Could not create order",
-        };
-        await saveSale(queued);
-        setLastSale(queued);
-        setError(
-          `${queued.syncError}. Sale saved locally — will sync when online.`,
-        );
-        return queued;
-      } finally {
-        setIsSubmitting(false);
-      }
+      // Unblock the checkout dialog immediately after the ERP ticket is saved.
+      // WooCommerce sync continues in the background so dual-monitor print cannot freeze the POS.
+      await saveSale(sale);
+      setLastSale(sale);
+      setIsSubmitting(false);
+
+      void syncSaleToWooCommerce(sale)
+        .then(async (synced) => {
+          setLastSale(synced);
+        })
+        .catch(async (err) => {
+          const queued: LocalSale = {
+            ...sale,
+            syncStatus: "pending",
+            syncError:
+              err instanceof Error ? err.message : "Could not create order",
+          };
+          await saveSale(queued);
+          setLastSale(queued);
+          setError(
+            `${queued.syncError}. Sale saved locally — will sync when online.`,
+          );
+        });
+
+      return sale;
     },
     [],
   );

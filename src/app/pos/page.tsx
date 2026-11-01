@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Wallet } from "lucide-react";
+import { Monitor, Wallet } from "lucide-react";
 import { getCachedCustomers, getSales } from "@/lib/cache/indexeddb";
 import { useCart } from "@/hooks/useCart";
 import { useCatalogSync } from "@/hooks/useCatalogSync";
@@ -17,6 +17,17 @@ import { buildBarcodeMap } from "@/lib/pos/barcodeMap";
 import { resolveScannedBarcode } from "@/lib/pos/resolveBarcode";
 import { isCustomerLoyaltyScan, normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { formatEGP, formatQty } from "@/lib/pos/money";
+import { paymentMethodLabelAr } from "@/lib/pos/paymentMethods";
+import { receiptBarcodeValue } from "@/lib/pos/code128";
+import {
+  CFD_COMPLETED_MS,
+  emptyCustomerDisplayState,
+  openCustomerDisplayWindow,
+  publishCustomerDisplayState,
+  type CustomerDisplayLastUpdatedItem,
+  type CustomerDisplayPayment,
+  type CustomerDisplayState,
+} from "@/lib/pos/customerDisplaySync";
 import { CartPanel, cartItemDomId } from "@/components/pos/CartPanel";
 import { CheckoutDialog } from "@/components/pos/CheckoutDialog";
 import { HeldCartsModal } from "@/components/pos/HeldCartsModal";
@@ -116,6 +127,12 @@ function POSPageInner() {
   const [posDark, setPosDark] = useState(false);
   const [shiftDetailsOpen, setShiftDetailsOpen] = useState(false);
   const shiftDetailsRef = useRef<HTMLDivElement | null>(null);
+  const [paymentPreview, setPaymentPreview] = useState<CustomerDisplayPayment>(null);
+  const cfdCompletedHoldUntilRef = useRef(0);
+  const cfdPrevLinesRef = useRef<Map<string, { qty: number; lineTotal: number }>>(
+    new Map(),
+  );
+  const cfdLastUpdatedRef = useRef<CustomerDisplayLastUpdatedItem>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -701,6 +718,130 @@ function POSPageInner() {
       : 0;
   const payableTotal = Math.max(0, cart.total - pointsDiscount);
 
+  const syncCfdLastUpdatedItem = useCallback((): CustomerDisplayLastUpdatedItem => {
+    const prev = cfdPrevLinesRef.current;
+    if (cart.lines.length === 0) {
+      cfdPrevLinesRef.current = new Map();
+      cfdLastUpdatedRef.current = null;
+      return null;
+    }
+
+    let changed: (typeof cart.lines)[number] | null = null;
+    for (const line of cart.lines) {
+      const old = prev.get(line.lineId);
+      if (
+        !old ||
+        old.qty !== line.qty ||
+        Math.abs(old.lineTotal - line.lineTotal) > 0.001
+      ) {
+        changed = line;
+      }
+    }
+
+    cfdPrevLinesRef.current = new Map(
+      cart.lines.map((line) => [
+        line.lineId,
+        { qty: line.qty, lineTotal: line.lineTotal },
+      ]),
+    );
+
+    if (changed) {
+      cfdLastUpdatedRef.current = {
+        productId: String(changed.product.prismaId ?? changed.product.id),
+        lineId: changed.lineId,
+        name: changed.product.name,
+        nameZh: changed.product.nameZh ?? null,
+        imageUrl: changed.product.images?.[0]?.src?.trim() || null,
+        quantity: changed.qty,
+        lineTotal: changed.lineTotal,
+        updatedAt: Date.now(),
+      };
+    }
+
+    return cfdLastUpdatedRef.current;
+  }, [cart.lines]);
+
+  const buildCustomerDisplaySnapshot = useCallback(
+    (
+      modeOverride?: CustomerDisplayState["mode"],
+      completed?: CustomerDisplayState["lastCompletedSale"],
+      lastUpdatedOverride?: CustomerDisplayLastUpdatedItem,
+    ): CustomerDisplayState => {
+      const items = cart.lines.map((line) => ({
+        id: line.lineId,
+        name: line.product.name,
+        nameZh: line.product.nameZh ?? null,
+        imageUrl: line.product.images?.[0]?.src?.trim() || null,
+        qty: line.qty,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      }));
+      const lastUpdatedItem =
+        lastUpdatedOverride !== undefined
+          ? lastUpdatedOverride
+          : cfdLastUpdatedRef.current;
+      const highlightItemId =
+        lastUpdatedItem?.lineId ??
+        (cart.lines.length > 0 ? cart.lines[cart.lines.length - 1]!.lineId : null);
+      let mode: CustomerDisplayState["mode"] = "IDLE";
+      if (modeOverride) mode = modeOverride;
+      else if (checkoutOpen) mode = "PAYMENT";
+      else if (cart.lines.length > 0) mode = "SHOPPING";
+
+      return emptyCustomerDisplayState({
+        mode,
+        items,
+        itemCount: cart.lines.length,
+        subtotal: cart.total,
+        discount: pointsDiscount,
+        total: payableTotal,
+        customer: selectedCustomer
+          ? {
+              name: selectedCustomer.name?.trim() || selectedCustomer.phone,
+              pointsBalance: selectedCustomer.pointsBalance,
+            }
+          : null,
+        payment: mode === "PAYMENT" ? paymentPreview : null,
+        highlightItemId,
+        lastUpdatedItem,
+        lastCompletedSale: completed ?? null,
+      });
+    },
+    [
+      cart.lines,
+      cart.total,
+      checkoutOpen,
+      paymentPreview,
+      pointsDiscount,
+      payableTotal,
+      selectedCustomer,
+    ],
+  );
+
+  useEffect(() => {
+    // Keep the thank-you screen after checkout; don't overwrite with IDLE.
+    if (
+      Date.now() < cfdCompletedHoldUntilRef.current &&
+      cart.lines.length === 0 &&
+      !checkoutOpen
+    ) {
+      return;
+    }
+    // A new sale started — cancel the completed-sale hold / pending IDLE publish.
+    if (cart.lines.length > 0) {
+      cfdCompletedHoldUntilRef.current = 0;
+    }
+    const lastUpdatedItem = syncCfdLastUpdatedItem();
+    publishCustomerDisplayState(
+      buildCustomerDisplaySnapshot(undefined, undefined, lastUpdatedItem),
+    );
+  }, [
+    buildCustomerDisplaySnapshot,
+    syncCfdLastUpdatedItem,
+    cart.lines,
+    checkoutOpen,
+  ]);
+
   return (
     <>
       {shiftLocked && (
@@ -834,6 +975,19 @@ function POSPageInner() {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                openCustomerDisplayWindow();
+                // Re-broadcast current cart so a freshly opened window paints immediately.
+                publishCustomerDisplayState(buildCustomerDisplaySnapshot());
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-500"
+              title="فتح شاشة العميل على الشاشة الثانية"
+            >
+              <Monitor className="h-4 w-4" />
+              شاشة العميل
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -998,6 +1152,18 @@ function POSPageInner() {
           error={checkout.error}
           customers={customers}
           isReturn={returnMode}
+          onPaymentPreview={(preview) => {
+            if (!preview) {
+              setPaymentPreview(null);
+              return;
+            }
+            setPaymentPreview({
+              method: preview.paymentMethod,
+              methodLabel: paymentMethodLabelAr(preview.paymentMethod),
+              paidAmount: preview.paidAmount,
+              changeAmount: preview.changeAmount,
+            });
+          }}
           onClose={() => {
             if (!checkout.isSubmitting) setCheckoutOpen(false);
           }}
@@ -1037,7 +1203,46 @@ function POSPageInner() {
               pointsRedeemed: applyLoyalty ? pointsDiscount * 1000 : 0,
             });
             if (sale) {
-              await shiftApi.refresh();
+              // Unblock the POS UI immediately — print runs later in an isolated iframe.
+              cart.clear();
+              setSelectedCustomer(null);
+              setRedeemPoints(false);
+              setPaymentPreview(null);
+              setCheckoutOpen(false);
+              focusBarcodeSearch();
+
+              if (!sale.isReturn && sale.paymentMethod !== "STAFF_MEAL") {
+                const completedAt = Date.now();
+                cfdCompletedHoldUntilRef.current = completedAt + CFD_COMPLETED_MS;
+                publishCustomerDisplayState(
+                  emptyCustomerDisplayState({
+                    mode: "COMPLETED",
+                    lastCompletedSale: {
+                      orderNumber: receiptBarcodeValue(sale),
+                      total: Math.abs(sale.total),
+                      paidAmount: sale.tendered,
+                      changeAmount: sale.change,
+                      completedAt,
+                    },
+                  }),
+                );
+                // Mirror CFD auto-reset from the cashier side so IDLE is published
+                // even if the customer window missed the local timeout.
+                const holdUntil = cfdCompletedHoldUntilRef.current;
+                window.setTimeout(() => {
+                  // Skip if a newer sale interrupted the thank-you hold.
+                  if (cfdCompletedHoldUntilRef.current !== holdUntil) return;
+                  cfdCompletedHoldUntilRef.current = 0;
+                  publishCustomerDisplayState(
+                    emptyCustomerDisplayState({ mode: "IDLE" }),
+                  );
+                }, CFD_COMPLETED_MS);
+              } else {
+                cfdCompletedHoldUntilRef.current = 0;
+                publishCustomerDisplayState(emptyCustomerDisplayState({ mode: "IDLE" }));
+              }
+
+              void shiftApi.refresh();
               const changeNote =
                 !sale.isReturn &&
                 sale.paymentMethod === "cash" &&
@@ -1055,10 +1260,6 @@ function POSPageInner() {
                   : sale.syncStatus === "pending"
                     ? " · queued offline"
                     : "";
-              cart.clear();
-              setSelectedCustomer(null);
-              setRedeemPoints(false);
-              setCheckoutOpen(false);
               if (sale.isReturn) {
                 disableReturnMode();
                 setScanMessage(
@@ -1071,8 +1272,6 @@ function POSPageInner() {
               } else {
                 setScanMessage(`Sale complete${changeNote}${syncNote}`);
               }
-              // Focus for next customer after print dialog closes (and immediately as fallback).
-              focusBarcodeSearch();
               printReceipt(sale, focusBarcodeSearch);
             }
           }}

@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LocalSale, ZReportSummary } from "@/types/woocommerce";
 import { ReceiptTicket } from "@/components/pos/ReceiptTicket";
 import { ZReportTicket } from "@/components/pos/ZReportTicket";
+import { printIsolatedReceipt } from "@/lib/pos/printIsolatedReceipt";
 
 type PrintJob =
   | { kind: "sale"; sale: LocalSale }
   | { kind: "zreport"; report: ZReportSummary };
 
 /**
- * Thermal print jobs: sale receipts and Z-Reports.
+ * Thermal print jobs: sale receipts (isolated iframe) and Z-Reports.
  */
 export function useReceiptPrint() {
   const [job, setJob] = useState<PrintJob | null>(null);
@@ -19,10 +20,10 @@ export function useReceiptPrint() {
 
   const printReceipt = useCallback(
     (sale: LocalSale, onAfterPrint?: () => void) => {
-      afterPrintCallbackRef.current = onAfterPrint ?? null;
-      pendingPrintRef.current = true;
-      document.documentElement.classList.remove("printing-labels");
-      setJob({ kind: "sale", sale });
+      // Isolated iframe print — never blocks the POS document with window.print().
+      window.setTimeout(() => {
+        printIsolatedReceipt(sale, onAfterPrint);
+      }, 0);
     },
     [],
   );
@@ -41,7 +42,7 @@ export function useReceiptPrint() {
   );
 
   useEffect(() => {
-    if (!job || !pendingPrintRef.current) return;
+    if (!job || job.kind !== "zreport" || !pendingPrintRef.current) return;
     pendingPrintRef.current = false;
 
     const id = window.setTimeout(() => {
@@ -57,6 +58,7 @@ export function useReceiptPrint() {
       const cb = afterPrintCallbackRef.current;
       afterPrintCallbackRef.current = null;
       cb?.();
+      setJob(null);
     };
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
@@ -64,7 +66,7 @@ export function useReceiptPrint() {
 
   const receiptNode = (
     <>
-      <ReceiptTicket sale={job?.kind === "sale" ? job.sale : null} />
+      <ReceiptTicket sale={null} />
       <ZReportTicket report={job?.kind === "zreport" ? job.report : null} />
     </>
   );

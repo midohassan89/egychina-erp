@@ -8,6 +8,7 @@ import { Header } from "./Header";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isPos = pathname === "/pos";
+  const isCustomerDisplay = pathname.startsWith("/pos/customer-display");
   const isLogin = pathname === "/login";
   const isDashboard =
     pathname.startsWith("/dashboard") ||
@@ -16,11 +17,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPriceChecker = pathname.startsWith("/price-checker");
 
   // Bare layouts — no legacy AppShell chrome
-  if (isPos || isLogin || isDashboard || isPriceChecker) {
+  if (isPos || isCustomerDisplay || isLogin || isDashboard || isPriceChecker) {
     return (
       <div
         className={clsx(
-          isPos &&
+          (isPos || isCustomerDisplay) &&
             "flex h-screen overflow-hidden bg-slate-900 print:h-auto print:overflow-visible print:bg-white",
           isLogin && "min-h-screen",
           isDashboard && "min-h-screen",
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main
           className={clsx(
             "min-w-0 flex-1",
-            isPos &&
+            (isPos || isCustomerDisplay) &&
               "min-h-0 overflow-hidden print:overflow-visible",
             isPriceChecker && "flex h-full min-h-0 w-full flex-col overflow-hidden",
           )}

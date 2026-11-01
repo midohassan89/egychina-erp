@@ -27,6 +27,12 @@ interface CheckoutDialogProps {
   customers: CachedCustomer[];
   /** When true, checkout is a refund (negative cart). */
   isReturn?: boolean;
+  /** Live payment preview for the customer-facing display. */
+  onPaymentPreview?: (preview: {
+    paymentMethod: PaymentMethod;
+    paidAmount: number;
+    changeAmount: number;
+  } | null) => void;
   onClose: () => void;
   onConfirm: (input: {
     paymentMethod: PaymentMethod;
@@ -45,6 +51,7 @@ export function CheckoutDialog({
   error,
   customers,
   isReturn = false,
+  onPaymentPreview,
   onClose,
   onConfirm,
 }: CheckoutDialogProps) {
@@ -116,6 +123,29 @@ export function CheckoutDialog({
   const cash = isCashPayment(paymentMethod);
   const staffMeal = isStaffMealPayment(paymentMethod);
   const change = !isReturn && cash ? roundMoney(tendered - total) : 0;
+
+  useEffect(() => {
+    if (!onPaymentPreview) return;
+    if (!open) {
+      onPaymentPreview(null);
+      return;
+    }
+    onPaymentPreview({
+      paymentMethod,
+      paidAmount: staffMeal ? 0 : cash ? (isReturn ? Math.abs(total) : tendered) : Math.abs(total),
+      changeAmount: staffMeal || isReturn ? 0 : Math.max(0, change),
+    });
+  }, [
+    open,
+    paymentMethod,
+    tendered,
+    change,
+    cash,
+    staffMeal,
+    isReturn,
+    total,
+    onPaymentPreview,
+  ]);
   const shortfall = !isReturn && cash && tendered + 0.001 < total;
   const selectedEmployee =
     employees.find((employee) => String(employee.id) === employeeId) ?? null;
