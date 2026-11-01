@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
+import {
+  mobilePosCorsHeaders,
+  mobilePosJson,
+  mobilePosOptions,
+} from "@/lib/pos/mobilePosCors";
+
+export const dynamic = "force-dynamic";
+
+export async function OPTIONS() {
+  return mobilePosOptions();
+}
 
 /**
  * GET /api/mobile-pos/catalog
@@ -9,7 +20,7 @@ import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
 export async function GET(request: Request) {
   const user = await requireMobilePos(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return mobilePosJson({ error: "Unauthorized" }, 401);
   }
 
   try {
@@ -40,31 +51,34 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      ok: true,
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        nameZh: p.nameZh,
-        barcode: p.barcode,
-        price: p.price,
-        salePrice: p.salePrice,
-        stockQuantity: p.stockQuantity,
-        isWeighted: p.isWeighed,
-        imageUrl: p.imageUrl,
-        packages: p.packages.map((pkg) => ({
-          id: pkg.id,
-          barcode: pkg.barcode,
-          name: pkg.name,
-          nameZh: pkg.nameZh,
-          packSize: pkg.packSize,
-          price: pkg.price,
+    return NextResponse.json(
+      {
+        ok: true,
+        products: products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          nameZh: p.nameZh,
+          barcode: p.barcode,
+          price: p.price,
+          salePrice: p.salePrice,
+          stockQuantity: p.stockQuantity,
+          isWeighted: p.isWeighed,
+          imageUrl: p.imageUrl,
+          packages: p.packages.map((pkg) => ({
+            id: pkg.id,
+            barcode: pkg.barcode,
+            name: pkg.name,
+            nameZh: pkg.nameZh,
+            packSize: pkg.packSize,
+            price: pkg.price,
+          })),
         })),
-      })),
-      count: products.length,
-    });
+        count: products.length,
+      },
+      { headers: mobilePosCorsHeaders },
+    );
   } catch (error) {
     console.error("[api/mobile-pos/catalog]", error);
-    return NextResponse.json({ error: "Failed to load catalog" }, { status: 500 });
+    return mobilePosJson({ error: "Failed to load catalog" }, 500);
   }
 }

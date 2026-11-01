@@ -3,61 +3,159 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
   isMobilePosRole,
+  normalizeMobilePosRole,
   signMobilePosToken,
-  type MobilePosRole,
 } from "@/lib/pos/mobilePosAuth";
+import {
+  mobilePosCorsHeaders,
+  mobilePosJson,
+  mobilePosOptions,
+} from "@/lib/pos/mobilePosCors";
 import { mapShiftToCashierShift } from "@/lib/shifts/mapShift";
+
+export const dynamic = "force-dynamic";
+
+export async function OPTIONS() {
+  return mobilePosOptions();
+}
 
 /**
  * POST /api/mobile-pos/login
- * Body: { username, password }
- * Returns bearer token for CASHIER / MANAGER / ADMIN.
+ * Body: { username | usernameOrEmail | email | phone, password }
+ * Login id is matched against User.username (schema has no email/phone columns).
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       username?: unknown;
+      usernameOrEmail?: unknown;
+      email?: unknown;
+      phone?: unknown;
       password?: unknown;
     };
-    const username = String(body.username ?? "").trim();
+
+    const identifier = String(
+      body.usernameOrEmail ??
+        body.username ??
+        body.email ??
+        body.phone ??
+        "",
+    ).trim();
     const password = String(body.password ?? "");
 
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: "username and password are required" },
-        { status: 400 },
+    if (!identifier || !password) {
+      console.log("[mobile-pos/login] missing identifier or password");
+      return mobilePosJson(
+        { error: "يرجى إدخال اسم المستخدم وكلمة المرور" },
+        400,
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { username } });
-    if (!user || user.status !== "ACTIVE" || !isMobilePosRole(user.role)) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    // 1) Exact username match
+    let user = await prisma.user.findUnique({
+      where: { username: identifier },
+      select: {
+        id: true,
+        username: true,
+        password: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    // 2) Case-insensitive username (SQLite) — also covers email/phone-shaped ids stored in username
+    if (!user) {
+      const rows = await prisma.$queryRaw<
+        {
+          id: string;
+          username: string;
+          password: string;
+          role: string;
+          status: string;
+        }[]
+      >`
+        SELECT id, username, password, role, status
+        FROM User
+        WHERE lower(username) = lower(${identifier})
+        LIMIT 1
+      `;
+      const row = rows[0];
+      if (row) {
+        user = {
+          id: row.id,
+          username: row.username,
+          password: row.password,
+          role: row.role as "CASHIER" | "MANAGER" | "ADMIN" | "ACCOUNTANT" | "DRIVER",
+          status: row.status,
+        };
+      }
+    }
+
+    if (!user) {
+      console.log("[mobile-pos/login] user not found:", identifier);
+      return mobilePosJson({ error: "المستخدم غير موجود" }, 400);
+    }
+
+    if (String(user.status ?? "").toUpperCase() !== "ACTIVE") {
+      console.log(
+        "[mobile-pos/login] user suspended:",
+        user.username,
+        user.status,
+      );
+      return mobilePosJson(
+        { error: "هذا الحساب موقوف. تواصل مع الإدارة" },
+        400,
+      );
+    }
+
+    const roleNormalized = normalizeMobilePosRole(String(user.role));
+    if (!roleNormalized || !isMobilePosRole(String(user.role))) {
+      console.log(
+        "[mobile-pos/login] role not allowed:",
+        user.username,
+        user.role,
+      );
+      return mobilePosJson(
+        { error: "عفواً، لا تملك صلاحية الدخول ككاشير" },
+        400,
+      );
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      console.log("[mobile-pos/login] bad password for:", user.username);
+      return mobilePosJson({ error: "كلمة المرور غير صحيحة" }, 400);
     }
 
-    const role = user.role as MobilePosRole;
-    const token = signMobilePosToken(user.id, role);
-
+    const token = signMobilePosToken(user.id, roleNormalized);
     const openShift = await prisma.shift.findFirst({
       where: { userId: user.id, status: "OPEN" },
     });
 
-    return NextResponse.json({
-      ok: true,
-      token,
-      user: {
-        id: user.id,
-        name: user.username,
-        role,
+    console.log(
+      "[mobile-pos/login] success:",
+      user.username,
+      roleNormalized,
+    );
+
+    return NextResponse.json(
+      {
+        ok: true,
+        token,
+        user: {
+          id: user.id,
+          name: user.username,
+          role: roleNormalized,
+        },
+        activeShift: openShift ? mapShiftToCashierShift(openShift) : null,
       },
-      activeShift: openShift ? mapShiftToCashierShift(openShift) : null,
-    });
+      { headers: mobilePosCorsHeaders },
+    );
   } catch (error) {
     console.error("[api/mobile-pos/login]", error);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    return mobilePosJson(
+      { error: "تعذر تسجيل الدخول. حاول مرة أخرى" },
+      500,
+    );
   }
 }

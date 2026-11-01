@@ -18,7 +18,25 @@ function secret(): string {
 }
 
 export function isMobilePosRole(role: string): role is MobilePosRole {
-  return canUsePos(role);
+  const normalized = String(role ?? "").trim().toUpperCase();
+  return (
+    normalized === "CASHIER" ||
+    normalized === "MANAGER" ||
+    normalized === "ADMIN" ||
+    canUsePos(normalized)
+  );
+}
+
+export function normalizeMobilePosRole(role: string): MobilePosRole | null {
+  const normalized = String(role ?? "").trim().toUpperCase();
+  if (
+    normalized === "CASHIER" ||
+    normalized === "MANAGER" ||
+    normalized === "ADMIN"
+  ) {
+    return normalized;
+  }
+  return null;
 }
 
 export function signMobilePosToken(
@@ -81,12 +99,16 @@ export async function requireMobilePos(request: Request) {
       status: true,
     },
   });
-  if (!user || user.status !== "ACTIVE" || !isMobilePosRole(user.role)) {
+  if (!user || String(user.status).toUpperCase() !== "ACTIVE") {
+    return null;
+  }
+  const role = normalizeMobilePosRole(String(user.role));
+  if (!role || !isMobilePosRole(String(user.role))) {
     return null;
   }
   return {
     id: user.id,
     name: user.username,
-    role: user.role as MobilePosRole,
+    role,
   };
 }

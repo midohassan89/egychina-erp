@@ -17,6 +17,17 @@ import { shiftSalesFieldForPayment } from "@/lib/shifts/salesFields";
 import { mapShiftToCashierShift } from "@/lib/shifts/mapShift";
 import { getLoyaltySettings } from "@/lib/loyalty/settings";
 import type { PaymentMethod } from "@/types/woocommerce";
+import {
+  mobilePosCorsHeaders,
+  mobilePosJson,
+  mobilePosOptions,
+} from "@/lib/pos/mobilePosCors";
+
+export const dynamic = "force-dynamic";
+
+export async function OPTIONS() {
+  return mobilePosOptions();
+}
 
 const ALLOWED_PAYMENTS = new Set([
   "cash",
@@ -33,7 +44,7 @@ const ALLOWED_PAYMENTS = new Set([
 export async function POST(request: Request) {
   const user = await requireMobilePos(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return mobilePosJson({ error: "Unauthorized" }, 401);
   }
 
   let body: {
@@ -49,7 +60,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return mobilePosJson({ error: "Invalid request body" }, 400);
   }
 
   const items = (Array.isArray(body.items) ? body.items : [])
@@ -57,12 +68,12 @@ export async function POST(request: Request) {
     .filter((row): row is QueueTicketItem => row != null);
 
   if (items.length === 0) {
-    return NextResponse.json({ error: "Add at least one item" }, { status: 400 });
+    return mobilePosJson({ error: "Add at least one item" }, 400);
   }
 
   const paymentMethod = String(body.paymentMethod ?? "cash").trim() as PaymentMethod;
   if (!ALLOWED_PAYMENTS.has(paymentMethod)) {
-    return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 });
+    return mobilePosJson({ error: "Unsupported payment method" }, 400);
   }
 
   const { subtotal } = summarizeQueueItems(items);
@@ -114,7 +125,7 @@ export async function POST(request: Request) {
     Number(body.paidAmount ?? total),
   );
   if (!Number.isFinite(paidAmount) || paidAmount < 0) {
-    return NextResponse.json({ error: "Invalid paidAmount" }, { status: 400 });
+    return mobilePosJson({ error: "Invalid paidAmount" }, 400);
   }
 
   const productIds = [...new Set(items.map((item) => item.productId))];
@@ -141,9 +152,9 @@ export async function POST(request: Request) {
   });
 
   if (saleLines.some((line) => !line.wcProductId)) {
-    return NextResponse.json(
+    return mobilePosJson(
       { error: "One or more products could not be resolved" },
-      { status: 400 },
+      400,
     );
   }
 
@@ -155,12 +166,15 @@ export async function POST(request: Request) {
   if (localId) {
     const existing = await prisma.sale.findUnique({ where: { localId } });
     if (existing) {
-      return NextResponse.json({
-        ok: true,
-        alreadySynced: true,
-        saleId: existing.id,
-        orderNumber: existing.orderNumber,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          alreadySynced: true,
+          saleId: existing.id,
+          orderNumber: existing.orderNumber,
+        },
+        { headers: mobilePosCorsHeaders },
+      );
     }
   }
 
@@ -268,28 +282,28 @@ export async function POST(request: Request) {
 
     const changeAmount = Math.max(0, roundMoney(paidAmount - total));
 
-    return NextResponse.json({
-      ok: true,
-      saleId: saved.sale.id,
-      orderNumber: saved.sale.orderNumber,
-      total,
-      subtotal,
-      discount: pointsDiscount,
-      paidAmount,
-      changeAmount,
-      pointsEarned: loyaltyCustomer ? pointsEarned : 0,
-      pointsRedeemed: loyaltyCustomer ? pointsRedeemed : 0,
-      customer: saved.customer,
-      shift: mapShiftToCashierShift(saved.shift),
-      stockUpdated: stockResult.updated.length,
-      requiresAudit: saved.sale.requiresAudit,
-      auditReason: saved.sale.auditReason,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        saleId: saved.sale.id,
+        orderNumber: saved.sale.orderNumber,
+        total,
+        subtotal,
+        discount: pointsDiscount,
+        paidAmount,
+        changeAmount,
+        pointsEarned: loyaltyCustomer ? pointsEarned : 0,
+        pointsRedeemed: loyaltyCustomer ? pointsRedeemed : 0,
+        customer: saved.customer,
+        shift: mapShiftToCashierShift(saved.shift),
+        stockUpdated: stockResult.updated.length,
+        requiresAudit: saved.sale.requiresAudit,
+        auditReason: saved.sale.auditReason,
+      },
+      { headers: mobilePosCorsHeaders },
+    );
   } catch (error) {
     console.error("[api/mobile-pos/direct-checkout]", error);
-    return NextResponse.json(
-      { error: "Checkout failed" },
-      { status: 500 },
-    );
+    return mobilePosJson({ error: "Checkout failed" }, 500);
   }
 }
