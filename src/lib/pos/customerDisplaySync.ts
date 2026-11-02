@@ -26,6 +26,8 @@ export type CustomerDisplayPayment = {
   methodLabel: string;
   paidAmount: number;
   changeAmount: number;
+  /** EGP per 1 CNY — set when method is WeChat (UI hint only). */
+  exchangeRate?: number | null;
 } | null;
 
 export type CustomerDisplayCompletedSale = {
@@ -34,6 +36,10 @@ export type CustomerDisplayCompletedSale = {
   paidAmount: number;
   changeAmount: number;
   completedAt: number;
+  /** Payment method id (e.g. wechat) for CFD multi-currency display. */
+  paymentMethod?: string | null;
+  /** EGP per 1 CNY when paid via WeChat. */
+  exchangeRate?: number | null;
 } | null;
 
 /** Most recently added / qty-changed cart line for CFD highlight + scroll. */

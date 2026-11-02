@@ -1289,6 +1289,7 @@ function POSPageInner() {
               methodLabel: paymentMethodLabelAr(preview.paymentMethod),
               paidAmount: preview.paidAmount,
               changeAmount: preview.changeAmount,
+              exchangeRate: preview.exchangeRate ?? null,
             });
           }}
           onClose={() => {
@@ -1345,6 +1346,11 @@ function POSPageInner() {
                       paidAmount: sale.tendered,
                       changeAmount: sale.change,
                       completedAt,
+                      paymentMethod: sale.paymentMethod,
+                      exchangeRate:
+                        sale.paymentMethod === "wechat"
+                          ? (paymentPreview?.exchangeRate ?? null)
+                          : null,
                     },
                   }),
                 );

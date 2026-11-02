@@ -58,3 +58,11 @@ export function isCashPayment(method: PaymentMethod): boolean {
 export function isStaffMealPayment(method: PaymentMethod | string): boolean {
   return method === "STAFF_MEAL";
 }
+
+/** WeChat Pay — UI may show CNY/RMB conversion (invoice stays EGP). */
+export function isWeChatPayment(method: PaymentMethod | string): boolean {
+  return method === "wechat" || method === "WECHAT";
+}
+
+/** Default EGP per 1 CNY display rate for WeChat checkout helper. */
+export const DEFAULT_CNY_EXCHANGE_RATE = 7;

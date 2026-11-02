@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import type { CachedCustomer, PaymentMethod } from "@/types/woocommerce";
 import { formatEGP, roundMoney } from "@/lib/pos/money";
 import {
+  DEFAULT_CNY_EXCHANGE_RATE,
   isCashPayment,
   isStaffMealPayment,
+  isWeChatPayment,
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/pos/paymentMethods";
 import { PosKeyboardInput } from "@/components/pos/PosKeyboardInput";
@@ -15,8 +17,13 @@ import {
   PosKeyboardScrollArea,
   usePosKeyboardOptional,
 } from "@/components/pos/PosKeyboardContext";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
 
 const EGP_DENOMINATIONS = [50, 100, 200] as const;
+const LIVE_CNY_RATE_URL =
+  "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/cny.json";
+/** Subtract 4% from the live CNY→EGP rate so the merchant never under-quotes CNY. */
+const CNY_RATE_SAFETY_MARGIN = 0.04;
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -32,6 +39,7 @@ interface CheckoutDialogProps {
     paymentMethod: PaymentMethod;
     paidAmount: number;
     changeAmount: number;
+    exchangeRate?: number | null;
   } | null) => void;
   onClose: () => void;
   onConfirm: (input: {
@@ -43,7 +51,16 @@ interface CheckoutDialogProps {
   }) => Promise<void>;
 }
 
-export function CheckoutDialog({
+export function CheckoutDialog(props: CheckoutDialogProps) {
+  if (!props.open) return null;
+  return (
+    <ToastProvider>
+      <CheckoutDialogInner {...props} />
+    </ToastProvider>
+  );
+}
+
+function CheckoutDialogInner({
   open,
   total,
   isOnline,
@@ -56,6 +73,7 @@ export function CheckoutDialog({
   onConfirm,
 }: CheckoutDialogProps) {
   const kb = usePosKeyboardOptional();
+  const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [customerId, setCustomerId] = useState("");
   const [tenderedInput, setTenderedInput] = useState("");
@@ -63,6 +81,11 @@ export function CheckoutDialog({
   const [employees, setEmployees] = useState<{ id: number; name: string }[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_CNY_EXCHANGE_RATE);
+  const [exchangeRateInput, setExchangeRateInput] = useState(
+    String(DEFAULT_CNY_EXCHANGE_RATE),
+  );
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   const refundAmount = roundMoney(Math.abs(total));
 
@@ -71,6 +94,8 @@ export function CheckoutDialog({
       setPaymentMethod("cash");
       setCustomerId("");
       setEmployeeId("");
+      setExchangeRate(DEFAULT_CNY_EXCHANGE_RATE);
+      setExchangeRateInput(String(DEFAULT_CNY_EXCHANGE_RATE));
       if (isReturn) {
         setTenderedInput(String(refundAmount));
       } else {
@@ -83,6 +108,50 @@ export function CheckoutDialog({
       }
     }
   }, [open, total, isReturn, refundAmount]);
+
+  // WeChat: exact digital amount — no change for the customer.
+  useEffect(() => {
+    if (!open || isReturn) return;
+    if (!isWeChatPayment(paymentMethod)) return;
+    setTenderedInput(String(roundMoney(Math.abs(total))));
+  }, [open, isReturn, paymentMethod, total]);
+
+  const fetchLiveExchangeRate = useCallback(async () => {
+    setIsFetchingRate(true);
+    const toastNotify = {
+      success: (message: string) => toast(message, "success"),
+      error: (message: string) => toast(message, "error"),
+    };
+    try {
+      const res = await fetch(LIVE_CNY_RATE_URL, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as {
+        cny?: { egp?: number };
+      };
+      const rawRate = data.cny?.egp;
+      if (
+        typeof rawRate !== "number" ||
+        !Number.isFinite(rawRate) ||
+        rawRate <= 0
+      ) {
+        throw new Error("EGP rate missing");
+      }
+      const safeRate = rawRate - rawRate * CNY_RATE_SAFETY_MARGIN;
+      const finalRate = Number(safeRate.toFixed(2));
+      if (!Number.isFinite(finalRate) || finalRate <= 0) {
+        throw new Error("Safe rate invalid");
+      }
+      setExchangeRate(finalRate);
+      setExchangeRateInput(String(finalRate));
+      toastNotify.success("تم تحديث السعر بنجاح");
+    } catch {
+      toastNotify.error("تعذر جلب سعر الصرف — تحقق من الاتصال");
+    } finally {
+      setIsFetchingRate(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!open || isReturn) return;
@@ -122,6 +191,12 @@ export function CheckoutDialog({
   const tendered = roundMoney(parseFloat(tenderedInput || "0"));
   const cash = isCashPayment(paymentMethod);
   const staffMeal = isStaffMealPayment(paymentMethod);
+  const wechat = isWeChatPayment(paymentMethod);
+  const safeExchangeRate =
+    Number.isFinite(exchangeRate) && exchangeRate > 0
+      ? exchangeRate
+      : DEFAULT_CNY_EXCHANGE_RATE;
+  const cnyAmount = wechat ? Math.abs(total) / safeExchangeRate : 0;
   const change = !isReturn && cash ? roundMoney(tendered - total) : 0;
 
   useEffect(() => {
@@ -132,8 +207,15 @@ export function CheckoutDialog({
     }
     onPaymentPreview({
       paymentMethod,
-      paidAmount: staffMeal ? 0 : cash ? (isReturn ? Math.abs(total) : tendered) : Math.abs(total),
-      changeAmount: staffMeal || isReturn ? 0 : Math.max(0, change),
+      paidAmount: staffMeal
+        ? 0
+        : cash
+          ? isReturn
+            ? Math.abs(total)
+            : tendered
+          : Math.abs(total),
+      changeAmount: staffMeal || isReturn || wechat ? 0 : Math.max(0, change),
+      exchangeRate: wechat ? safeExchangeRate : null,
     });
   }, [
     open,
@@ -142,6 +224,8 @@ export function CheckoutDialog({
     change,
     cash,
     staffMeal,
+    wechat,
+    safeExchangeRate,
     isReturn,
     total,
     onPaymentPreview,
@@ -157,8 +241,6 @@ export function CheckoutDialog({
     () => customers.find((c) => String(c.id) === customerId) ?? null,
     [customers, customerId],
   );
-
-  if (!open) return null;
 
   function handleClose() {
     kb?.close();
@@ -242,9 +324,11 @@ export function CheckoutDialog({
                     paymentMethod === method.id
                       ? method.id === "STAFF_MEAL"
                         ? "border-amber-600 bg-amber-50 text-amber-800"
-                        : isReturn
-                          ? "border-red-600 bg-red-50 text-red-700"
-                          : "border-brand-600 bg-brand-50 text-brand-700"
+                        : method.id === "wechat"
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                          : isReturn
+                            ? "border-red-600 bg-red-50 text-red-700"
+                            : "border-brand-600 bg-brand-50 text-brand-700"
                       : method.id === "STAFF_MEAL"
                         ? "border-amber-300 bg-amber-50/60 text-amber-900 hover:bg-amber-50"
                         : "border-slate-200 text-slate-600 hover:bg-slate-50",
@@ -255,6 +339,64 @@ export function CheckoutDialog({
               ))}
             </div>
           </div>
+
+          {wechat && !isReturn && (
+            <div className="space-y-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+              <div>
+                <span className="mb-1 block text-sm font-semibold text-emerald-950">
+                  سعر الصرف (يوان/جنيه)
+                </span>
+                <div className="flex items-stretch gap-2">
+                  <PosKeyboardInput
+                    inputName="checkout-cny-rate"
+                    mode="numpad"
+                    type="text"
+                    inputMode="none"
+                    value={exchangeRateInput}
+                    onChange={(value) => {
+                      setExchangeRateInput(value);
+                      const parsed = parseFloat(value.replace(/,/g, "."));
+                      if (Number.isFinite(parsed) && parsed > 0) {
+                        setExchangeRate(parsed);
+                      }
+                    }}
+                    className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-3 text-lg font-semibold tabular-nums text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
+                  />
+                  <button
+                    type="button"
+                    title="جلب السعر الحالي للبنك"
+                    disabled={isFetchingRate || isSubmitting}
+                    onClick={() => void fetchLiveExchangeRate()}
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-3 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <RefreshCw
+                      className={clsx(
+                        "h-5 w-5",
+                        isFetchingRate && "animate-spin",
+                      )}
+                    />
+                  </button>
+                </div>
+                <span className="mt-1 block text-xs text-emerald-800/80">
+                  مثال: 7 يعني 7 ج.م ≈ 1 يوان — أو اجلب السعر الحي من البنك
+                </span>
+              </div>
+              <div className="rounded-xl bg-emerald-600 px-4 py-4 text-white shadow-sm">
+                <p className="text-sm font-medium text-emerald-100">
+                  المبلغ المطلوب باليوان
+                </p>
+                <p className="text-xs text-emerald-100/90" lang="zh-CN" dir="ltr">
+                  人民币金额
+                </p>
+                <p
+                  className="mt-1 text-3xl font-black tabular-nums tracking-tight"
+                  dir="ltr"
+                >
+                  ¥ {cnyAmount.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
 
           {staffMeal && (
             <label className="block rounded-xl border border-amber-200 bg-amber-50 p-4">

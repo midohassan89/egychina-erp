@@ -12,6 +12,43 @@ import {
 
 const CFD_HIGHLIGHT_MS = 3_500;
 const CFD_PLACEHOLDER_IMG = "/logos/logo-ar.svg";
+/** Static WeChat Pay QR — place the file under public/uploads/images/. */
+const WECHAT_QR_SRC = "/uploads/images/wechat-qr.jpg";
+
+function isWeChatDisplayMethod(
+  method?: string | null,
+  methodLabel?: string | null,
+): boolean {
+  return (
+    method === "wechat" ||
+    method === "WECHAT" ||
+    !!methodLabel?.includes("وي شات")
+  );
+}
+
+function WeChatQrPanel() {
+  return (
+    <div
+      className="flex w-[350px] shrink-0 animate-zoom-fade-in flex-col items-center justify-center rounded-3xl bg-white p-5 text-center shadow-lg [animation-duration:500ms] sm:p-6"
+      dir="ltr"
+    >
+      <p className="mb-2 break-words text-sm font-bold text-slate-800 sm:text-base">
+        امسح الكود للدفع / Scan to Pay
+      </p>
+      <p
+        className="mb-4 break-words text-sm font-semibold text-emerald-700 sm:text-base"
+        lang="zh-CN"
+      >
+        请扫码付款
+      </p>
+      <img
+        src={WECHAT_QR_SRC}
+        alt="WeChat Pay QR"
+        className="h-64 w-64 max-w-full rounded-2xl bg-white object-contain shadow-lg"
+      />
+    </div>
+  );
+}
 
 function cartItemDomId(lineId: string): string {
   return `cart-item-${lineId}`;
@@ -298,6 +335,8 @@ function PaymentSummaryRows({
   paidAmount,
   changeAmount,
   methodLabel,
+  paymentMethod,
+  exchangeRate,
   tone = "dark",
   size = "default",
 }: {
@@ -305,6 +344,8 @@ function PaymentSummaryRows({
   paidAmount: number;
   changeAmount: number;
   methodLabel?: string | null;
+  paymentMethod?: string | null;
+  exchangeRate?: number | null;
   tone?: "dark" | "light";
   size?: "default" | "hero";
 }) {
@@ -320,17 +361,70 @@ function PaymentSummaryRows({
   const valuePaid =
     tone === "dark" ? "text-slate-200" : "text-slate-700";
 
+  const wechat = isWeChatDisplayMethod(paymentMethod, methodLabel);
+  const rate =
+    typeof exchangeRate === "number" &&
+    Number.isFinite(exchangeRate) &&
+    exchangeRate > 0
+      ? exchangeRate
+      : null;
+  const cnyAmount = wechat && rate ? total / rate : null;
+
+  // WeChat: amount-only focus (EGP + CNY) next to the QR — no tendered/change rows.
+  if (wechat) {
+    return (
+      <div className="flex min-w-0 w-full flex-col items-center gap-4 text-center sm:gap-6">
+        <div className="min-w-0 w-full">
+          <p
+            className={`break-words font-bold ${hero ? "text-xl sm:text-2xl md:text-3xl" : "text-base md:text-xl"} ${labelMain}`}
+          >
+            المبلغ المطلوب
+          </p>
+          <p
+            className={`mt-1 break-words opacity-80 ${hero ? "text-base sm:text-lg" : "text-sm"} ${zhMuted}`}
+            lang="zh-CN"
+            dir="ltr"
+          >
+            总金额
+          </p>
+        </div>
+        <div className="flex w-full min-w-0 justify-center">
+          <p
+            className={`whitespace-nowrap font-black tabular-nums leading-none ${hero ? "text-4xl lg:text-5xl xl:text-6xl" : "text-3xl lg:text-4xl"} ${valueMain}`}
+          >
+            {formatEGP(total)}
+          </p>
+        </div>
+        {cnyAmount != null ? (
+          <div className="flex w-full min-w-0 flex-col items-center" dir="ltr">
+            <p
+              className={`whitespace-nowrap font-black tabular-nums text-amber-400 ${hero ? "text-3xl lg:text-4xl xl:text-5xl" : "text-2xl lg:text-3xl"}`}
+            >
+              ≈ ¥ {cnyAmount.toFixed(2)}
+            </p>
+            <p
+              className={`mt-1 whitespace-nowrap font-semibold text-amber-300/90 ${hero ? "text-sm sm:text-base md:text-lg" : "text-xs md:text-sm"}`}
+              lang="zh-CN"
+            >
+              人民币 ¥ {cnyAmount.toFixed(2)}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col ${hero ? "gap-6 sm:gap-8" : "gap-3 sm:gap-4"}`}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p
-            className={`${hero ? "text-2xl font-bold md:text-4xl lg:text-5xl" : "text-base font-bold md:text-2xl"} ${labelMain}`}
+            className={`break-words ${hero ? "text-2xl font-bold md:text-4xl" : "text-base font-bold md:text-2xl"} ${labelMain}`}
           >
             المبلغ المطلوب
           </p>
           <p
-            className={`${hero ? "mt-1 text-lg md:text-2xl" : "text-sm"} opacity-80 ${zhMuted}`}
+            className={`break-words ${hero ? "mt-1 text-lg md:text-2xl" : "text-sm"} opacity-80 ${zhMuted}`}
             lang="zh-CN"
             dir="ltr"
           >
@@ -338,7 +432,7 @@ function PaymentSummaryRows({
           </p>
         </div>
         <p
-          className={`shrink-0 font-bold tabular-nums ${hero ? "text-4xl md:text-6xl lg:text-7xl" : "text-2xl md:text-3xl"} ${valueMain}`}
+          className={`min-w-0 shrink break-words text-end font-bold tabular-nums ${hero ? "text-4xl md:text-5xl" : "text-2xl md:text-3xl"} ${valueMain}`}
         >
           {formatEGP(total)}
         </p>
@@ -347,13 +441,13 @@ function PaymentSummaryRows({
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p
-            className={`${hero ? "text-xl font-semibold md:text-3xl" : "text-sm font-semibold md:text-lg"} ${labelMuted}`}
+            className={`break-words ${hero ? "text-xl font-semibold md:text-3xl" : "text-sm font-semibold md:text-lg"} ${labelMuted}`}
           >
             النقدية المستلمة
             {methodLabel ? ` · ${methodLabel}` : ""}
           </p>
           <p
-            className={`${hero ? "mt-1 text-base md:text-xl" : "text-sm"} opacity-80 ${zhMuted}`}
+            className={`break-words ${hero ? "mt-1 text-base md:text-xl" : "text-sm"} opacity-80 ${zhMuted}`}
             lang="zh-CN"
             dir="ltr"
           >
@@ -361,7 +455,7 @@ function PaymentSummaryRows({
           </p>
         </div>
         <p
-          className={`shrink-0 font-bold tabular-nums ${hero ? "text-3xl md:text-5xl lg:text-6xl" : "text-xl md:text-2xl"} ${valuePaid}`}
+          className={`min-w-0 shrink break-words text-end font-bold tabular-nums ${hero ? "text-3xl md:text-4xl" : "text-xl md:text-2xl"} ${valuePaid}`}
         >
           {formatEGP(paidAmount)}
         </p>
@@ -372,14 +466,16 @@ function PaymentSummaryRows({
       >
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className={hero ? "text-xl font-bold md:text-3xl" : "text-sm font-bold md:text-lg"}>
+            <p
+              className={`break-words ${hero ? "text-xl font-bold md:text-3xl" : "text-sm font-bold md:text-lg"}`}
+            >
               الباقي للعميل
             </p>
             <p
               className={
                 hero
-                  ? "mt-1 text-base text-emerald-100/90 md:text-xl"
-                  : "text-sm text-emerald-100/90"
+                  ? "mt-1 break-words text-base text-emerald-100/90 md:text-xl"
+                  : "break-words text-sm text-emerald-100/90"
               }
               lang="zh-CN"
               dir="ltr"
@@ -388,7 +484,7 @@ function PaymentSummaryRows({
             </p>
           </div>
           <p
-            className={`shrink-0 font-black tabular-nums ${hero ? "text-5xl md:text-7xl lg:text-8xl" : "text-2xl md:text-4xl lg:text-5xl"}`}
+            className={`min-w-0 shrink break-words text-end font-black tabular-nums ${hero ? "text-4xl md:text-5xl lg:text-6xl" : "text-2xl md:text-4xl"}`}
           >
             {formatEGP(Math.max(0, changeAmount))}
           </p>
@@ -431,6 +527,8 @@ function CompletedScreen({ state }: { state: CustomerDisplayState }) {
             total={sale.total}
             paidAmount={sale.paidAmount}
             changeAmount={sale.changeAmount}
+            paymentMethod={sale.paymentMethod}
+            exchangeRate={sale.exchangeRate}
             tone="dark"
             size="hero"
           />
@@ -498,13 +596,65 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
 
   // PAYMENT: products unmounted from DOM — focus only on numbers, centered.
   if (isPayment && state.payment) {
+    const wechatPay = isWeChatDisplayMethod(
+      state.payment.method,
+      state.payment.methodLabel,
+    );
+
+    if (wechatPay) {
+      return (
+        <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-4 py-6">
+          <div className="mx-auto flex w-full max-w-6xl flex-row items-center justify-center gap-8 px-4">
+            <div className="min-w-0 flex-1 rounded-3xl bg-slate-900 p-5 text-white shadow-2xl sm:p-8">
+              <div className="mb-5 flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+                <div className="min-w-0">
+                  <h2 className="break-words text-xl font-black sm:text-2xl md:text-3xl">
+                    إتمام الدفع · وي شات
+                  </h2>
+                  <p
+                    className="mt-1 break-words text-sm text-slate-400 sm:text-base"
+                    lang="zh-CN"
+                    dir="ltr"
+                  >
+                    微信支付
+                  </p>
+                </div>
+                <img
+                  src="/logos/logo-ar.svg"
+                  alt=""
+                  className="h-10 w-auto shrink-0 rounded-xl bg-white object-contain px-2 py-1 sm:h-12"
+                />
+              </div>
+              <PaymentSummaryRows
+                total={state.total}
+                paidAmount={state.payment.paidAmount}
+                changeAmount={state.payment.changeAmount}
+                methodLabel={state.payment.methodLabel}
+                paymentMethod={state.payment.method}
+                exchangeRate={state.payment.exchangeRate}
+                tone="dark"
+                size="hero"
+              />
+            </div>
+            <WeChatQrPanel />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center p-8">
         <div className="w-full max-w-4xl rounded-3xl bg-slate-900 p-6 text-white shadow-2xl sm:p-10 lg:p-12">
           <div className="mb-6 flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div className="min-w-0">
-              <h2 className="text-2xl font-black md:text-4xl">إتمام الدفع</h2>
-              <p className="mt-1 text-base text-slate-400 md:text-xl" lang="zh-CN" dir="ltr">
+              <h2 className="break-words text-2xl font-black md:text-4xl">
+                إتمام الدفع
+              </h2>
+              <p
+                className="mt-1 break-words text-base text-slate-400 md:text-xl"
+                lang="zh-CN"
+                dir="ltr"
+              >
                 结账付款
               </p>
             </div>
@@ -527,6 +677,8 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
             paidAmount={state.payment.paidAmount}
             changeAmount={state.payment.changeAmount}
             methodLabel={state.payment.methodLabel}
+            paymentMethod={state.payment.method}
+            exchangeRate={state.payment.exchangeRate}
             tone="dark"
             size="hero"
           />
