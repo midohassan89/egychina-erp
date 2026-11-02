@@ -1331,7 +1331,39 @@ function POSPageInner() {
             });
             if (sale) {
               const ticketCode = activeQueueTicketCode;
-              // Unblock the POS UI immediately — print runs later in an isolated iframe.
+
+              // 1) CFD COMPLETED sync first (BroadcastChannel) — never wait on print.
+              if (!sale.isReturn && sale.paymentMethod !== "STAFF_MEAL") {
+                const completedAt = Date.now();
+                cfdCompletedHoldUntilRef.current = completedAt + CFD_COMPLETED_MS;
+                publishCustomerDisplayState(
+                  emptyCustomerDisplayState({
+                    mode: "COMPLETED",
+                    lastCompletedSale: {
+                      orderNumber: receiptBarcodeValue(sale),
+                      total: Math.abs(sale.total),
+                      paidAmount: sale.tendered,
+                      changeAmount: sale.change,
+                      completedAt,
+                    },
+                  }),
+                );
+                const holdUntil = cfdCompletedHoldUntilRef.current;
+                window.setTimeout(() => {
+                  if (cfdCompletedHoldUntilRef.current !== holdUntil) return;
+                  cfdCompletedHoldUntilRef.current = 0;
+                  publishCustomerDisplayState(
+                    emptyCustomerDisplayState({ mode: "IDLE" }),
+                  );
+                }, CFD_COMPLETED_MS);
+              } else {
+                cfdCompletedHoldUntilRef.current = 0;
+                publishCustomerDisplayState(
+                  emptyCustomerDisplayState({ mode: "IDLE" }),
+                );
+              }
+
+              // 2) Free the cashier UI immediately.
               cart.clear();
               setSelectedCustomer(null);
               setRedeemPoints(false);
@@ -1352,37 +1384,6 @@ function POSPageInner() {
                     }),
                   },
                 ).catch(() => undefined);
-              }
-
-              if (!sale.isReturn && sale.paymentMethod !== "STAFF_MEAL") {
-                const completedAt = Date.now();
-                cfdCompletedHoldUntilRef.current = completedAt + CFD_COMPLETED_MS;
-                publishCustomerDisplayState(
-                  emptyCustomerDisplayState({
-                    mode: "COMPLETED",
-                    lastCompletedSale: {
-                      orderNumber: receiptBarcodeValue(sale),
-                      total: Math.abs(sale.total),
-                      paidAmount: sale.tendered,
-                      changeAmount: sale.change,
-                      completedAt,
-                    },
-                  }),
-                );
-                // Mirror CFD auto-reset from the cashier side so IDLE is published
-                // even if the customer window missed the local timeout.
-                const holdUntil = cfdCompletedHoldUntilRef.current;
-                window.setTimeout(() => {
-                  // Skip if a newer sale interrupted the thank-you hold.
-                  if (cfdCompletedHoldUntilRef.current !== holdUntil) return;
-                  cfdCompletedHoldUntilRef.current = 0;
-                  publishCustomerDisplayState(
-                    emptyCustomerDisplayState({ mode: "IDLE" }),
-                  );
-                }, CFD_COMPLETED_MS);
-              } else {
-                cfdCompletedHoldUntilRef.current = 0;
-                publishCustomerDisplayState(emptyCustomerDisplayState({ mode: "IDLE" }));
               }
 
               void shiftApi.refresh();
@@ -1415,7 +1416,11 @@ function POSPageInner() {
               } else {
                 setScanMessage(`Sale complete${changeNote}${syncNote}`);
               }
-              printReceipt(sale, focusBarcodeSearch);
+
+              // 3) Print only after modal/state have closed — never await.
+              window.setTimeout(() => {
+                printReceipt(sale, focusBarcodeSearch);
+              }, 150);
             }
           }}
         />

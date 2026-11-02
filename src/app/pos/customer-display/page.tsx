@@ -17,12 +17,6 @@ function cartItemDomId(lineId: string): string {
   return `cart-item-${lineId}`;
 }
 
-type ClockAngles = {
-  hours: number;
-  minutes: number;
-  seconds: number;
-};
-
 /** Numerals ordered for clock positions starting at 12, then 1…11. */
 const CLOCK_NUMERALS = [
   ["١٢", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠", "١١"],
@@ -30,6 +24,19 @@ const CLOCK_NUMERALS = [
   ["十二", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一"],
 ] as const;
 
+function clockAnglesNow() {
+  const time = new Date();
+  return {
+    seconds: (time.getSeconds() + time.getMilliseconds() / 1000) * 6,
+    minutes: (time.getMinutes() + time.getSeconds() / 60) * 6,
+    hours: ((time.getHours() % 12) + time.getMinutes() / 60) * 30,
+  };
+}
+
+/**
+ * Analog clock: static SVG face + div hands updated via refs.
+ * Zero React re-renders per frame (no useState in rAF).
+ */
 function AnalogClock({
   className = "",
   langIndex = 0,
@@ -39,35 +46,31 @@ function AnalogClock({
   langIndex?: number;
   numerals?: readonly string[];
 }) {
-  const [angles, setAngles] = useState<ClockAngles>(() => {
-    const time = new Date();
-    return {
-      seconds: (time.getSeconds() + time.getMilliseconds() / 1000) * 6,
-      minutes: (time.getMinutes() + time.getSeconds() / 60) * 6,
-      hours: ((time.getHours() % 12) + time.getMinutes() / 60) * 30,
-    };
-  });
+  const hourRef = useRef<HTMLDivElement>(null);
+  const minuteRef = useRef<HTMLDivElement>(null);
+  const secondRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let frame = 0;
+    const apply = () => {
+      const { hours, minutes, seconds } = clockAnglesNow();
+      if (hourRef.current) {
+        hourRef.current.style.transform = `rotate(${hours}deg)`;
+      }
+      if (minuteRef.current) {
+        minuteRef.current.style.transform = `rotate(${minutes}deg)`;
+      }
+      if (secondRef.current) {
+        secondRef.current.style.transform = `rotate(${seconds}deg)`;
+      }
+    };
 
     const tick = () => {
-      const time = new Date();
-      const secondsAngle =
-        (time.getSeconds() + time.getMilliseconds() / 1000) * 6;
-      const minutesAngle = (time.getMinutes() + time.getSeconds() / 60) * 6;
-      const hoursAngle =
-        ((time.getHours() % 12) + time.getMinutes() / 60) * 30;
-
-      setAngles({
-        hours: hoursAngle,
-        minutes: minutesAngle,
-        seconds: secondsAngle,
-      });
-
+      apply();
       frame = window.requestAnimationFrame(tick);
     };
 
+    apply();
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -76,6 +79,7 @@ function AnalogClock({
   const activeNumerals =
     numerals ?? CLOCK_NUMERALS[langIndex] ?? CLOCK_NUMERALS[0];
   const numeralFontSize = langIndex === 2 ? 12 : 14;
+  const initial = clockAnglesNow();
 
   return (
     <div className={`relative z-10 flex flex-col items-center ${className}`}>
@@ -133,43 +137,44 @@ function AnalogClock({
               );
             })}
           </g>
-          {/* Hour hand */}
-          <line
-            x1="100"
-            y1="100"
-            x2="100"
-            y2="55"
-            stroke="#f8fafc"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-            transform={`rotate(${angles.hours} 100 100)`}
-          />
-          {/* Minute hand */}
-          <line
-            x1="100"
-            y1="100"
-            x2="100"
-            y2="38"
-            stroke="#ffffff"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            transform={`rotate(${angles.minutes} 100 100)`}
-          />
-          {/* Second hand with tail */}
-          <g transform={`rotate(${angles.seconds} 100 100)`}>
-            <line
-              x1="100"
-              y1="118"
-              x2="100"
-              y2="28"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <circle cx="100" cy="100" r="5" fill="#f59e0b" />
-            <circle cx="100" cy="100" r="2.2" fill="#fff7ed" />
-          </g>
         </svg>
+
+        {/* Hands: DOM style.transform only — never setState */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          <div
+            ref={hourRef}
+            className="absolute inset-0"
+            style={{
+              transform: `rotate(${initial.hours}deg)`,
+              transformOrigin: "center",
+            }}
+          >
+            <div className="absolute left-1/2 top-[28%] bottom-1/2 w-[5.5px] -translate-x-1/2 rounded-full bg-slate-50" />
+          </div>
+          <div
+            ref={minuteRef}
+            className="absolute inset-0"
+            style={{
+              transform: `rotate(${initial.minutes}deg)`,
+              transformOrigin: "center",
+            }}
+          >
+            <div className="absolute left-1/2 top-[18%] bottom-1/2 w-[3.5px] -translate-x-1/2 rounded-full bg-white" />
+          </div>
+          <div
+            ref={secondRef}
+            className="absolute inset-0"
+            style={{
+              transform: `rotate(${initial.seconds}deg)`,
+              transformOrigin: "center",
+            }}
+          >
+            <div className="absolute left-1/2 top-[14%] bottom-[42%] w-[2px] -translate-x-1/2 rounded-full bg-amber-500" />
+            <div className="absolute left-1/2 top-1/2 bottom-[38%] w-[2px] -translate-x-1/2 rounded-full bg-amber-500" />
+          </div>
+          <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500 shadow" />
+          <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-50" />
+        </div>
       </div>
     </div>
   );
@@ -301,13 +306,16 @@ function PaymentSummaryRows({
   changeAmount,
   methodLabel,
   tone = "dark",
+  size = "default",
 }: {
   total: number;
   paidAmount: number;
   changeAmount: number;
   methodLabel?: string | null;
   tone?: "dark" | "light";
+  size?: "default" | "hero";
 }) {
+  const hero = size === "hero";
   const labelMain =
     tone === "dark" ? "text-white" : "text-emerald-950";
   const labelMuted =
@@ -320,49 +328,75 @@ function PaymentSummaryRows({
     tone === "dark" ? "text-slate-200" : "text-slate-700";
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className={`flex flex-col ${hero ? "gap-6 sm:gap-8" : "gap-3 sm:gap-4"}`}>
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className={`text-base font-bold md:text-2xl ${labelMain}`}>
+          <p
+            className={`${hero ? "text-2xl font-bold md:text-4xl lg:text-5xl" : "text-base font-bold md:text-2xl"} ${labelMain}`}
+          >
             المبلغ المطلوب
           </p>
-          <p className={`text-sm opacity-80 ${zhMuted}`} lang="zh-CN" dir="ltr">
+          <p
+            className={`${hero ? "mt-1 text-lg md:text-2xl" : "text-sm"} opacity-80 ${zhMuted}`}
+            lang="zh-CN"
+            dir="ltr"
+          >
             总金额
           </p>
         </div>
         <p
-          className={`shrink-0 text-2xl font-bold tabular-nums md:text-3xl ${valueMain}`}
+          className={`shrink-0 font-bold tabular-nums ${hero ? "text-4xl md:text-6xl lg:text-7xl" : "text-2xl md:text-3xl"} ${valueMain}`}
         >
           {formatEGP(total)}
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className={`text-sm font-semibold md:text-lg ${labelMuted}`}>
+          <p
+            className={`${hero ? "text-xl font-semibold md:text-3xl" : "text-sm font-semibold md:text-lg"} ${labelMuted}`}
+          >
             النقدية المستلمة
             {methodLabel ? ` · ${methodLabel}` : ""}
           </p>
-          <p className={`text-sm opacity-80 ${zhMuted}`} lang="zh-CN" dir="ltr">
+          <p
+            className={`${hero ? "mt-1 text-base md:text-xl" : "text-sm"} opacity-80 ${zhMuted}`}
+            lang="zh-CN"
+            dir="ltr"
+          >
             收款金额
           </p>
         </div>
         <p
-          className={`shrink-0 text-xl font-bold tabular-nums md:text-2xl ${valuePaid}`}
+          className={`shrink-0 font-bold tabular-nums ${hero ? "text-3xl md:text-5xl lg:text-6xl" : "text-xl md:text-2xl"} ${valuePaid}`}
         >
           {formatEGP(paidAmount)}
         </p>
       </div>
 
-      <div className="rounded-2xl bg-green-600 px-3 py-3 text-white sm:px-4 sm:py-4">
-        <div className="flex items-center justify-between gap-3">
+      <div
+        className={`rounded-2xl bg-green-600 text-white ${hero ? "px-5 py-5 sm:px-8 sm:py-7" : "px-3 py-3 sm:px-4 sm:py-4"}`}
+      >
+        <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-bold md:text-lg">الباقي للعميل</p>
-            <p className="text-sm text-emerald-100/90" lang="zh-CN" dir="ltr">
+            <p className={hero ? "text-xl font-bold md:text-3xl" : "text-sm font-bold md:text-lg"}>
+              الباقي للعميل
+            </p>
+            <p
+              className={
+                hero
+                  ? "mt-1 text-base text-emerald-100/90 md:text-xl"
+                  : "text-sm text-emerald-100/90"
+              }
+              lang="zh-CN"
+              dir="ltr"
+            >
               找零
             </p>
           </div>
-          <p className="shrink-0 text-2xl font-black tabular-nums md:text-4xl lg:text-5xl">
+          <p
+            className={`shrink-0 font-black tabular-nums ${hero ? "text-5xl md:text-7xl lg:text-8xl" : "text-2xl md:text-4xl lg:text-5xl"}`}
+          >
             {formatEGP(Math.max(0, changeAmount))}
           </p>
         </div>
@@ -374,7 +408,7 @@ function PaymentSummaryRows({
 function CompletedScreen({ state }: { state: CustomerDisplayState }) {
   const sale = state.lastCompletedSale;
   return (
-    <div className="relative flex h-full min-h-0 flex-col items-center justify-center overflow-hidden px-4 text-center sm:px-8">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden p-8 text-center">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -393,8 +427,8 @@ function CompletedScreen({ state }: { state: CustomerDisplayState }) {
         Thank you for shopping with us
       </p>
       {sale ? (
-        <div className="relative z-10 mt-6 w-full max-w-xl rounded-3xl bg-white/10 p-4 text-start text-white backdrop-blur sm:mt-10 sm:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3 text-base md:text-xl">
+        <div className="relative z-10 mt-6 w-full max-w-4xl rounded-3xl bg-white/10 p-6 text-start text-white backdrop-blur sm:mt-10 sm:p-10">
+          <div className="mb-6 flex items-center justify-between gap-4 text-xl md:text-3xl">
             <span className="text-emerald-100">رقم الفاتورة</span>
             <span className="font-black tabular-nums" dir="ltr">
               {sale.orderNumber}
@@ -405,6 +439,7 @@ function CompletedScreen({ state }: { state: CustomerDisplayState }) {
             paidAmount={sale.paidAmount}
             changeAmount={sale.changeAmount}
             tone="dark"
+            size="hero"
           />
         </div>
       ) : null}
@@ -438,8 +473,14 @@ function ProductThumb({
 
 function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
   const [highlightLineId, setHighlightLineId] = useState<string | null>(null);
+  const isShopping = state.mode === "SHOPPING";
+  const isPayment = state.mode === "PAYMENT" && !!state.payment;
 
   useEffect(() => {
+    if (!isShopping) {
+      setHighlightLineId(null);
+      return;
+    }
     const lineId = state.lastUpdatedItem?.lineId;
     if (!lineId) {
       setHighlightLineId(null);
@@ -448,9 +489,10 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
     setHighlightLineId(lineId);
     const timer = window.setTimeout(() => setHighlightLineId(null), CFD_HIGHLIGHT_MS);
     return () => window.clearTimeout(timer);
-  }, [state.lastUpdatedItem?.updatedAt, state.lastUpdatedItem?.lineId]);
+  }, [isShopping, state.lastUpdatedItem?.updatedAt, state.lastUpdatedItem?.lineId]);
 
   useEffect(() => {
+    if (!isShopping) return;
     const lineId = state.lastUpdatedItem?.lineId;
     if (!lineId) return;
     const timer = window.setTimeout(() => {
@@ -459,89 +501,133 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 60);
     return () => window.clearTimeout(timer);
-  }, [state.lastUpdatedItem?.updatedAt, state.lastUpdatedItem?.lineId]);
+  }, [isShopping, state.lastUpdatedItem?.updatedAt, state.lastUpdatedItem?.lineId]);
 
+  // PAYMENT: products unmounted from DOM — focus only on numbers, centered.
+  if (isPayment && state.payment) {
+    return (
+      <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center p-8">
+        <div className="w-full max-w-4xl rounded-3xl bg-slate-900 p-6 text-white shadow-2xl sm:p-10 lg:p-12">
+          <div className="mb-6 flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+            <div className="min-w-0">
+              <h2 className="text-2xl font-black md:text-4xl">إتمام الدفع</h2>
+              <p className="mt-1 text-base text-slate-400 md:text-xl" lang="zh-CN" dir="ltr">
+                结账付款
+              </p>
+            </div>
+            <img
+              src="/logos/logo-ar.svg"
+              alt=""
+              className="h-12 w-auto shrink-0 rounded-xl bg-white object-contain px-2 py-1 sm:h-16"
+            />
+          </div>
+          {state.customer ? (
+            <div className="mb-6 rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-sm text-emerald-200 md:text-base">العميل</p>
+              <p className="whitespace-normal break-words text-xl font-bold md:text-2xl">
+                {state.customer.name}
+              </p>
+            </div>
+          ) : null}
+          <PaymentSummaryRows
+            total={state.total}
+            paidAmount={state.payment.paidAmount}
+            changeAmount={state.payment.changeAmount}
+            methodLabel={state.payment.methodLabel}
+            tone="dark"
+            size="hero"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // SHOPPING: product list + total card at the bottom/side as before.
   return (
     <div className="relative grid h-full min-h-0 grid-cols-1 gap-3 p-2 sm:p-3 lg:grid-cols-12 lg:gap-4 lg:p-4">
-      <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl bg-white shadow-xl lg:col-span-8">
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="min-w-0">
-            <h2 className="whitespace-normal break-words text-lg font-black text-slate-900 md:text-xl lg:text-2xl">
-              فاتورتك الحالية
-            </h2>
-            <p
-              className="mt-0.5 text-xs font-semibold text-gray-500 md:text-sm"
-              lang="zh-CN"
-              dir="ltr"
-            >
-              当前订单
-            </p>
-          </div>
-          <img
-            src="/logos/logo-ar.svg"
-            alt=""
-            className="h-9 w-auto shrink-0 object-contain sm:h-11 md:h-12"
-          />
-        </header>
-        <div className={HIDDEN_SCROLLBAR}>
-          {state.items.length === 0 ? (
-            <p className="px-3 py-10 text-center text-lg text-slate-400 md:text-xl">
-              لا توجد أصناف بعد
-            </p>
-          ) : (
-            state.items.map((item) => {
-              const active = item.id === highlightLineId;
-              const nameZh = item.nameZh?.trim();
-              return (
-                <div
-                  key={item.id}
-                  id={cartItemDomId(item.id)}
-                  className={
-                    active
-                      ? "mb-1.5 rounded-xl border border-emerald-400 bg-green-100/50 px-2.5 py-2 sm:px-3"
-                      : "mb-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2.5 py-2 sm:px-3"
-                  }
-                >
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <ProductThumb src={item.imageUrl} alt={item.name} />
-                    <div className="flex min-w-0 flex-1 flex-col whitespace-normal break-words">
-                      <p className="whitespace-normal break-words text-sm font-bold leading-snug text-slate-900 md:text-base lg:text-lg">
-                        {item.name}
-                      </p>
-                      {nameZh ? (
+      {isShopping ? (
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl bg-white shadow-xl lg:col-span-8">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="min-w-0">
+              <h2 className="whitespace-normal break-words text-lg font-black text-slate-900 md:text-xl lg:text-2xl">
+                فاتورتك الحالية
+              </h2>
+              <p
+                className="mt-0.5 text-xs font-semibold text-gray-500 md:text-sm"
+                lang="zh-CN"
+                dir="ltr"
+              >
+                当前订单
+              </p>
+            </div>
+            <img
+              src="/logos/logo-ar.svg"
+              alt=""
+              className="h-9 w-auto shrink-0 object-contain sm:h-11 md:h-12"
+            />
+          </header>
+          <div className={HIDDEN_SCROLLBAR}>
+            {state.items.length === 0 ? (
+              <p className="px-3 py-10 text-center text-lg text-slate-400 md:text-xl">
+                لا توجد أصناف بعد
+              </p>
+            ) : (
+              state.items.map((item) => {
+                const active = item.id === highlightLineId;
+                const nameZh = item.nameZh?.trim();
+                return (
+                  <div
+                    key={item.id}
+                    id={cartItemDomId(item.id)}
+                    className={
+                      active
+                        ? "mb-1.5 rounded-xl border border-emerald-400 bg-green-100/50 px-2.5 py-2 sm:px-3"
+                        : "mb-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2.5 py-2 sm:px-3"
+                    }
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <ProductThumb src={item.imageUrl} alt={item.name} />
+                      <div className="flex min-w-0 flex-1 flex-col whitespace-normal break-words">
+                        <p className="whitespace-normal break-words text-sm font-bold leading-snug text-slate-900 md:text-base lg:text-lg">
+                          {item.name}
+                        </p>
+                        {nameZh ? (
+                          <p
+                            className="mt-0.5 whitespace-normal break-words text-xs leading-snug text-gray-500 md:text-sm"
+                            lang="zh-CN"
+                            dir="ltr"
+                          >
+                            {nameZh}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1 text-end">
+                        <p className="text-sm font-black tabular-nums text-emerald-700 md:text-base lg:text-lg">
+                          {formatEGP(item.lineTotal)}
+                        </p>
                         <p
-                          className="mt-0.5 whitespace-normal break-words text-xs leading-snug text-gray-500 md:text-sm"
-                          lang="zh-CN"
+                          className={
+                            active
+                              ? "animate-pulse text-xs font-bold tabular-nums text-emerald-700 md:text-sm"
+                              : "text-xs font-semibold tabular-nums text-slate-500 md:text-sm"
+                          }
                           dir="ltr"
                         >
-                          {nameZh}
+                          {formatQty(item.qty)} × {formatEGP(item.unitPrice)}
                         </p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1 text-end">
-                      <p className="text-sm font-black tabular-nums text-emerald-700 md:text-base lg:text-lg">
-                        {formatEGP(item.lineTotal)}
-                      </p>
-                      <p
-                        className={
-                          active
-                            ? "animate-pulse text-xs font-bold tabular-nums text-emerald-700 md:text-sm"
-                            : "text-xs font-semibold tabular-nums text-slate-500 md:text-sm"
-                        }
-                        dir="ltr"
-                      >
-                        {formatQty(item.qty)} × {formatEGP(item.unitPrice)}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
+                );
+              })
+            )}
+          </div>
+        </section>
+      ) : null}
 
-      <aside className="flex min-h-0 min-w-0 flex-col gap-3 lg:col-span-4">
+      <aside
+        className={`flex min-h-0 min-w-0 flex-col gap-3 ${isShopping ? "lg:col-span-4" : "lg:col-span-12"}`}
+      >
         <div className="flex min-h-0 flex-1 flex-col rounded-3xl bg-slate-900 p-3 text-white shadow-xl sm:p-4">
           <BilingualLabel
             ar="عدد الأصناف"
@@ -572,29 +658,17 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
             </div>
           ) : null}
 
-          {state.mode === "PAYMENT" && state.payment ? (
-            <div className="mt-auto rounded-2xl border border-emerald-400/40 bg-white/5 px-3 py-3 sm:px-4 sm:py-4">
-              <PaymentSummaryRows
-                total={state.total}
-                paidAmount={state.payment.paidAmount}
-                changeAmount={state.payment.changeAmount}
-                methodLabel={state.payment.methodLabel}
-                tone="dark"
-              />
-            </div>
-          ) : (
-            <div className="mt-auto rounded-2xl bg-emerald-500 px-3 py-3 text-emerald-950 sm:px-4 sm:py-4">
-              <BilingualLabel
-                ar="المبلغ المطلوب"
-                zh="总金额"
-                arClassName="text-sm font-bold md:text-base lg:text-lg"
-                zhClassName="text-xs font-semibold text-emerald-900/70 md:text-sm"
-              />
-              <p className="mt-1 whitespace-normal break-words text-2xl font-black tabular-nums leading-none md:text-4xl lg:text-5xl">
-                {formatEGP(state.total)}
-              </p>
-            </div>
-          )}
+          <div className="mt-auto rounded-2xl bg-emerald-500 px-3 py-3 text-emerald-950 sm:px-4 sm:py-4">
+            <BilingualLabel
+              ar="المبلغ المطلوب"
+              zh="总金额"
+              arClassName="text-sm font-bold md:text-base lg:text-lg"
+              zhClassName="text-xs font-semibold text-emerald-900/70 md:text-sm"
+            />
+            <p className="mt-1 whitespace-normal break-words text-2xl font-black tabular-nums leading-none md:text-4xl lg:text-5xl">
+              {formatEGP(state.total)}
+            </p>
+          </div>
         </div>
       </aside>
     </div>

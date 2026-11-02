@@ -259,7 +259,8 @@ export function printIsolatedReceipt(
 
   frameWindow.addEventListener("afterprint", cleanup);
 
-  void waitForImages(frameDocument, 500).then(() => {
+  // Never block the POS thread: print after a short image budget, then drop the iframe.
+  void waitForImages(frameDocument, 300).then(() => {
     window.setTimeout(() => {
       try {
         frameWindow.focus();
@@ -268,7 +269,13 @@ export function printIsolatedReceipt(
         cleanup();
         return;
       }
-      window.setTimeout(cleanup, 60_000);
+      window.setTimeout(() => {
+        try {
+          cleanup();
+        } catch {
+          // ignore
+        }
+      }, 3_000);
     }, 30);
   });
 }

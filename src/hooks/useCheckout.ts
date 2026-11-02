@@ -14,11 +14,27 @@ import { syncSaleToWooCommerce } from "@/lib/pos/orderQueue";
 import { isCashPayment, isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import { isNetworkError } from "@/lib/pos/networkError";
 
+const CHECKOUT_FETCH_TIMEOUT_MS = 8_000;
+
 function newSaleId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `sale-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 interface CompleteSaleInput {
@@ -58,11 +74,15 @@ async function restockReturnedItems(
 
   if (items.length === 0) return;
 
-  const response = await fetch("/api/pos/restock", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, managerId }),
-  });
+  const response = await fetchWithTimeout(
+    "/api/pos/restock",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, managerId }),
+    },
+    CHECKOUT_FETCH_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     const body = (await response.json()) as { error?: string };
@@ -73,8 +93,8 @@ async function restockReturnedItems(
 /**
  * Offline-first checkout:
  * 1. Persist sale/return to IndexedDB immediately
- * 2. Sales: push WooCommerce completed order (stock deduct)
- * 3. Returns: restock Prisma + WooCommerce (no WC order)
+ * 2. ERP /api/checkout with hard timeout (never hang the dialog)
+ * 3. WooCommerce sync in background — never blocks UI
  */
 export function useCheckout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,167 +134,185 @@ export function useCheckout() {
       setIsSubmitting(true);
       setError(null);
 
-      const saleLines = cartToSaleLines(lines);
-      const staffMeal = isStaffMealPayment(paymentMethod);
-      const absTotal = roundMoney(Math.abs(total));
-      const change =
-        !isReturn && isCashPayment(paymentMethod)
-          ? roundMoney(Math.max(0, tendered - total))
-          : 0;
-      const mealEmployeeId =
-        staffMeal && employeeId != null && Number(employeeId) > 0
-          ? Number(employeeId)
-          : null;
-      const mealEmployee = employeeName?.trim() || null;
-
-      const sale: LocalSale = {
-        id: newSaleId(),
-        createdAt: new Date().toISOString(),
-        paymentMethod,
-        customerId: staffMeal ? null : (customer?.id ?? null),
-        customerName: staffMeal
-          ? "Staff meal"
-          : customer
-            ? `${customer.first_name} ${customer.last_name}`.trim() ||
-              customer.email
-            : "Walk-in",
-        employeeId: mealEmployeeId,
-        employeeName: staffMeal ? mealEmployee : null,
-        lines: saleLines,
-        total: isReturn ? -absTotal : staffMeal ? 0 : total,
-        tendered: staffMeal ? 0 : isCashPayment(paymentMethod)
-          ? isReturn
-            ? absTotal
-            : tendered
-          : absTotal,
-        change: staffMeal ? 0 : change,
-        wooOrderId: null,
-        syncStatus: "pending",
-        shiftId: shiftId ?? null,
-        isReturn,
-        cashierId,
-        cashierName,
-        managerId,
-        managerName,
-      };
-
-      if (loyaltyCustomerId && loyaltyPhone) {
-        sale.loyalty = {
-          phone: loyaltyPhone,
-          pointsEarned,
-          pointsRedeemed,
-          discountAmount: pointsRedeemed / 1000,
-          pointsBalance: Math.max(
-            0,
-            loyaltyBalance - pointsRedeemed + pointsEarned,
-          ),
-        };
-      }
-
-      await saveSale(sale);
-
-      if (!isOnline) {
-        setLastSale(sale);
-        setIsSubmitting(false);
-        return sale;
-      }
-
-      // Persist to ERP first. Business-rule issues are saved with requiresAudit (HTTP 200).
-      // A dropped connection keeps the ticket pending in IndexedDB.
       try {
-        const checkoutRes = await fetch("/api/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentMethod,
-            amount: absTotal,
-            total: sale.total,
-            isReturn,
-            shiftId,
-            localId: sale.id,
-            createdAt: sale.createdAt,
-            customerName: sale.customerName,
-            employeeId: sale.employeeId ?? null,
-            customerId: loyaltyCustomerId,
-            pointsEarned,
-            pointsRedeemed,
-            lines: saleLines.map((line) => ({
-              productId: line.productId,
-              name: line.name,
-              qty: line.qty,
-              unitPrice: line.unitPrice,
-              lineTotal: line.lineTotal,
-              stockMultiplier: line.stockMultiplier ?? 1,
-            })),
-          }),
-        });
-        if (!checkoutRes.ok) {
-          const body = (await checkoutRes.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          const queued: LocalSale = {
-            ...sale,
-            syncStatus: "pending",
-            syncError: body.error ?? "Checkout will retry when the server is available",
-          };
-          await saveSale(queued);
-          setLastSale(queued);
-          setIsSubmitting(false);
-          return queued;
-        }
-        const saved = (await checkoutRes.json()) as {
-          orderNumber?: string | null;
-          customer?: {
-            phone?: string;
-            pointsBalance?: number;
-          } | null;
+        const saleLines = cartToSaleLines(lines);
+        const staffMeal = isStaffMealPayment(paymentMethod);
+        const absTotal = roundMoney(Math.abs(total));
+        const change =
+          !isReturn && isCashPayment(paymentMethod)
+            ? roundMoney(Math.max(0, tendered - total))
+            : 0;
+        const mealEmployeeId =
+          staffMeal && employeeId != null && Number(employeeId) > 0
+            ? Number(employeeId)
+            : null;
+        const mealEmployee = employeeName?.trim() || null;
+
+        const sale: LocalSale = {
+          id: newSaleId(),
+          createdAt: new Date().toISOString(),
+          paymentMethod,
+          customerId: staffMeal ? null : (customer?.id ?? null),
+          customerName: staffMeal
+            ? "Staff meal"
+            : customer
+              ? `${customer.first_name} ${customer.last_name}`.trim() ||
+                customer.email
+              : "Walk-in",
+          employeeId: mealEmployeeId,
+          employeeName: staffMeal ? mealEmployee : null,
+          lines: saleLines,
+          total: isReturn ? -absTotal : staffMeal ? 0 : total,
+          tendered: staffMeal
+            ? 0
+            : isCashPayment(paymentMethod)
+              ? isReturn
+                ? absTotal
+                : tendered
+              : absTotal,
+          change: staffMeal ? 0 : change,
+          wooOrderId: null,
+          syncStatus: "pending",
+          shiftId: shiftId ?? null,
+          isReturn,
+          cashierId,
+          cashierName,
+          managerId,
+          managerName,
         };
-        if (saved.orderNumber) sale.orderNumber = saved.orderNumber;
+
         if (loyaltyCustomerId && loyaltyPhone) {
           sale.loyalty = {
-            phone: saved.customer?.phone || loyaltyPhone,
+            phone: loyaltyPhone,
             pointsEarned,
             pointsRedeemed,
             discountAmount: pointsRedeemed / 1000,
-            pointsBalance:
-              typeof saved.customer?.pointsBalance === "number"
-                ? saved.customer.pointsBalance
-                : Math.max(0, loyaltyBalance - pointsRedeemed + pointsEarned),
+            pointsBalance: Math.max(
+              0,
+              loyaltyBalance - pointsRedeemed + pointsEarned,
+            ),
           };
         }
-      } catch (err) {
-        console.warn("[checkout] sale persist error", err);
-        const queued: LocalSale = {
-          ...sale,
-          syncStatus: "pending",
-          syncError: isNetworkError(err)
-            ? "Offline — will sync when online"
-            : err instanceof Error
-              ? err.message
-              : "Could not reach the server",
-        };
-        await saveSale(queued);
-        setLastSale(queued);
-        setIsSubmitting(false);
-        return queued;
-      }
 
-      if (isReturn) {
+        await saveSale(sale);
+
         if (!isOnline) {
-          const queued: LocalSale = {
-            ...sale,
-            syncStatus: "pending",
-            syncError: "Offline — restock will sync when online",
-          };
-          await saveSale(queued);
-          setLastSale(queued);
-          setError(queued.syncError ?? null);
-          setIsSubmitting(false);
-          return queued;
+          setLastSale(sale);
+          return sale;
         }
 
         try {
-          await restockReturnedItems(sale, managerId!);
+          const checkoutRes = await fetchWithTimeout(
+            "/api/checkout",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                paymentMethod,
+                amount: absTotal,
+                total: sale.total,
+                isReturn,
+                shiftId,
+                localId: sale.id,
+                createdAt: sale.createdAt,
+                customerName: sale.customerName,
+                employeeId: sale.employeeId ?? null,
+                customerId: loyaltyCustomerId,
+                pointsEarned,
+                pointsRedeemed,
+                lines: saleLines.map((line) => ({
+                  productId: line.productId,
+                  name: line.name,
+                  qty: line.qty,
+                  unitPrice: line.unitPrice,
+                  lineTotal: line.lineTotal,
+                  stockMultiplier: line.stockMultiplier ?? 1,
+                })),
+              }),
+            },
+            CHECKOUT_FETCH_TIMEOUT_MS,
+          );
+          if (!checkoutRes.ok) {
+            const body = (await checkoutRes.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            const queued: LocalSale = {
+              ...sale,
+              syncStatus: "pending",
+              syncError:
+                body.error ?? "Checkout will retry when the server is available",
+            };
+            await saveSale(queued);
+            setLastSale(queued);
+            return queued;
+          }
+          const saved = (await checkoutRes.json()) as {
+            orderNumber?: string | null;
+            customer?: {
+              phone?: string;
+              pointsBalance?: number;
+            } | null;
+          };
+          if (saved.orderNumber) sale.orderNumber = saved.orderNumber;
+          if (loyaltyCustomerId && loyaltyPhone) {
+            sale.loyalty = {
+              phone: saved.customer?.phone || loyaltyPhone,
+              pointsEarned,
+              pointsRedeemed,
+              discountAmount: pointsRedeemed / 1000,
+              pointsBalance:
+                typeof saved.customer?.pointsBalance === "number"
+                  ? saved.customer.pointsBalance
+                  : Math.max(0, loyaltyBalance - pointsRedeemed + pointsEarned),
+            };
+          }
+        } catch (err) {
+          console.warn("[checkout] sale persist error", err);
+          const queued: LocalSale = {
+            ...sale,
+            syncStatus: "pending",
+            syncError:
+              err instanceof Error && err.name === "AbortError"
+                ? "Server timeout — saved offline, will sync"
+                : isNetworkError(err)
+                  ? "Offline — will sync when online"
+                  : err instanceof Error
+                    ? err.message
+                    : "Could not reach the server",
+          };
+          await saveSale(queued);
+          setLastSale(queued);
+          return queued;
+        }
+
+        if (isReturn) {
+          try {
+            await restockReturnedItems(sale, managerId!);
+            const synced: LocalSale = {
+              ...sale,
+              syncStatus: "synced",
+              syncError: undefined,
+            };
+            await saveSale(synced);
+            setLastSale(synced);
+            return synced;
+          } catch (err) {
+            const queued: LocalSale = {
+              ...sale,
+              syncStatus: "pending",
+              syncError:
+                err instanceof Error ? err.message : "Restock failed",
+            };
+            await saveSale(queued);
+            setLastSale(queued);
+            setError(
+              `${queued.syncError}. Saved on this register — will sync when online.`,
+            );
+            return queued;
+          }
+        }
+
+        if (staffMeal) {
           const synced: LocalSale = {
             ...sale,
             syncStatus: "synced",
@@ -283,67 +321,41 @@ export function useCheckout() {
           await saveSale(synced);
           setLastSale(synced);
           return synced;
-        } catch (err) {
-          const queued: LocalSale = {
-            ...sale,
-            syncStatus: "pending",
-            syncError:
-              err instanceof Error ? err.message : "Restock failed",
-          };
-          await saveSale(queued);
-          setLastSale(queued);
-          setError(
-            `${queued.syncError}. Saved on this register — will sync when online.`,
-          );
-          return queued;
-        } finally {
-          setIsSubmitting(false);
         }
-      }
 
-      if (!isOnline) {
+        // Unblock UI immediately — WooCommerce continues in the background.
+        await saveSale(sale);
         setLastSale(sale);
-        setIsSubmitting(false);
+
+        void syncSaleToWooCommerce(sale)
+          .then(async (synced) => {
+            setLastSale(synced);
+          })
+          .catch(async (err) => {
+            const queued: LocalSale = {
+              ...sale,
+              syncStatus: "pending",
+              syncError:
+                err instanceof Error ? err.message : "Could not create order",
+            };
+            await saveSale(queued);
+            setLastSale(queued);
+            setError(
+              `${queued.syncError}. Sale saved locally — will sync when online.`,
+            );
+          });
+
         return sale;
-      }
-
-      if (staffMeal) {
-        const synced: LocalSale = {
-          ...sale,
-          syncStatus: "synced",
-          syncError: undefined,
-        };
-        await saveSale(synced);
-        setLastSale(synced);
+      } catch (err) {
+        console.error("[checkout] unexpected", err);
+        setError(
+          err instanceof Error ? err.message : "Could not complete sale",
+        );
+        return null;
+      } finally {
+        // Guaranteed — dialog never stays on "جاري الإتمام…"
         setIsSubmitting(false);
-        return synced;
       }
-
-      // Unblock the checkout dialog immediately after the ERP ticket is saved.
-      // WooCommerce sync continues in the background so dual-monitor print cannot freeze the POS.
-      await saveSale(sale);
-      setLastSale(sale);
-      setIsSubmitting(false);
-
-      void syncSaleToWooCommerce(sale)
-        .then(async (synced) => {
-          setLastSale(synced);
-        })
-        .catch(async (err) => {
-          const queued: LocalSale = {
-            ...sale,
-            syncStatus: "pending",
-            syncError:
-              err instanceof Error ? err.message : "Could not create order",
-          };
-          await saveSale(queued);
-          setLastSale(queued);
-          setError(
-            `${queued.syncError}. Sale saved locally — will sync when online.`,
-          );
-        });
-
-      return sale;
     },
     [],
   );

@@ -20,10 +20,12 @@ export function useReceiptPrint() {
 
   const printReceipt = useCallback(
     (sale: LocalSale, onAfterPrint?: () => void) => {
-      // Isolated iframe print — never blocks the POS document with window.print().
-      window.setTimeout(() => {
+      // Caller schedules timing; never returns a Promise the POS awaits.
+      try {
         printIsolatedReceipt(sale, onAfterPrint);
-      }, 0);
+      } catch {
+        onAfterPrint?.();
+      }
     },
     [],
   );

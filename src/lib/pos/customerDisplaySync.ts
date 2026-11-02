@@ -167,9 +167,10 @@ export function subscribeCustomerDisplayState(
 
 export function openCustomerDisplayWindow(): Window | null {
   if (typeof window === "undefined") return null;
+  // noopener → separate renderer process so CFD cannot freeze /pos or print.
   return window.open(
     "/pos/customer-display",
     "EgyChinaCustomerDisplay",
-    "width=1280,height=1024,menubar=no,toolbar=no,location=no,status=no",
+    "noopener,noreferrer,width=1280,height=1024,menubar=no,toolbar=no,location=no,status=no",
   );
 }
