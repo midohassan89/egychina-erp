@@ -64,5 +64,15 @@ export function isWeChatPayment(method: PaymentMethod | string): boolean {
   return method === "wechat" || method === "WECHAT";
 }
 
+/** InstaPay — exact EGP digital transfer (no change / no FX). */
+export function isInstaPayPayment(method: PaymentMethod | string): boolean {
+  return method === "instapay" || method === "INSTAPAY";
+}
+
+/** Digital QR methods that settle exact total (no cash change). */
+export function isExactDigitalPayment(method: PaymentMethod | string): boolean {
+  return isWeChatPayment(method) || isInstaPayPayment(method);
+}
+
 /** Default EGP per 1 CNY display rate for WeChat checkout helper. */
 export const DEFAULT_CNY_EXCHANGE_RATE = 7;

@@ -8,6 +8,7 @@ import { formatEGP, roundMoney } from "@/lib/pos/money";
 import {
   DEFAULT_CNY_EXCHANGE_RATE,
   isCashPayment,
+  isExactDigitalPayment,
   isStaffMealPayment,
   isWeChatPayment,
   PAYMENT_METHOD_OPTIONS,
@@ -109,10 +110,10 @@ function CheckoutDialogInner({
     }
   }, [open, total, isReturn, refundAmount]);
 
-  // WeChat: exact digital amount — no change for the customer.
+  // WeChat / InstaPay: exact digital amount — no change for the customer.
   useEffect(() => {
     if (!open || isReturn) return;
-    if (!isWeChatPayment(paymentMethod)) return;
+    if (!isExactDigitalPayment(paymentMethod)) return;
     setTenderedInput(String(roundMoney(Math.abs(total))));
   }, [open, isReturn, paymentMethod, total]);
 
@@ -192,6 +193,7 @@ function CheckoutDialogInner({
   const cash = isCashPayment(paymentMethod);
   const staffMeal = isStaffMealPayment(paymentMethod);
   const wechat = isWeChatPayment(paymentMethod);
+  const exactDigital = isExactDigitalPayment(paymentMethod);
   const safeExchangeRate =
     Number.isFinite(exchangeRate) && exchangeRate > 0
       ? exchangeRate
@@ -214,7 +216,8 @@ function CheckoutDialogInner({
             ? Math.abs(total)
             : tendered
           : Math.abs(total),
-      changeAmount: staffMeal || isReturn || wechat ? 0 : Math.max(0, change),
+      changeAmount:
+        staffMeal || isReturn || exactDigital ? 0 : Math.max(0, change),
       exchangeRate: wechat ? safeExchangeRate : null,
     });
   }, [
@@ -225,6 +228,7 @@ function CheckoutDialogInner({
     cash,
     staffMeal,
     wechat,
+    exactDigital,
     safeExchangeRate,
     isReturn,
     total,
@@ -326,9 +330,11 @@ function CheckoutDialogInner({
                         ? "border-amber-600 bg-amber-50 text-amber-800"
                         : method.id === "wechat"
                           ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                          : isReturn
-                            ? "border-red-600 bg-red-50 text-red-700"
-                            : "border-brand-600 bg-brand-50 text-brand-700"
+                          : method.id === "instapay"
+                            ? "border-[#5b2b8c] bg-purple-50 text-[#5b2b8c]"
+                            : isReturn
+                              ? "border-red-600 bg-red-50 text-red-700"
+                              : "border-brand-600 bg-brand-50 text-brand-700"
                       : method.id === "STAFF_MEAL"
                         ? "border-amber-300 bg-amber-50/60 text-amber-900 hover:bg-amber-50"
                         : "border-slate-200 text-slate-600 hover:bg-slate-50",

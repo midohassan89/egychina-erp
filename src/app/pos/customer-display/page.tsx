@@ -14,6 +14,8 @@ const CFD_HIGHLIGHT_MS = 3_500;
 const CFD_PLACEHOLDER_IMG = "/logos/logo-ar.svg";
 /** Static WeChat Pay QR — place the file under public/uploads/images/. */
 const WECHAT_QR_SRC = "/uploads/images/wechat-qr.jpg";
+/** Static InstaPay QR — place the file under public/uploads/images/. */
+const INSTAPAY_QR_SRC = "/uploads/images/instapay-qr.jpeg";
 
 function isWeChatDisplayMethod(
   method?: string | null,
@@ -26,26 +28,84 @@ function isWeChatDisplayMethod(
   );
 }
 
-function WeChatQrPanel() {
+function isInstaPayDisplayMethod(
+  method?: string | null,
+  methodLabel?: string | null,
+): boolean {
+  return (
+    method === "instapay" ||
+    method === "INSTAPAY" ||
+    !!methodLabel?.includes("انستا")
+  );
+}
+
+function isQrPaymentDisplayMethod(
+  method?: string | null,
+  methodLabel?: string | null,
+): boolean {
+  return (
+    isWeChatDisplayMethod(method, methodLabel) ||
+    isInstaPayDisplayMethod(method, methodLabel)
+  );
+}
+
+function PaymentQrPanel({
+  variant,
+}: {
+  variant: "wechat" | "instapay";
+}) {
+  const isInstapay = variant === "instapay";
   return (
     <div
       className="flex w-[350px] shrink-0 animate-zoom-fade-in flex-col items-center justify-center rounded-3xl bg-white p-5 text-center shadow-lg [animation-duration:500ms] sm:p-6"
       dir="ltr"
     >
-      <p className="mb-2 break-words text-sm font-bold text-slate-800 sm:text-base">
-        امسح الكود للدفع / Scan to Pay
-      </p>
-      <p
-        className="mb-4 break-words text-sm font-semibold text-emerald-700 sm:text-base"
-        lang="zh-CN"
-      >
-        请扫码付款
-      </p>
-      <img
-        src={WECHAT_QR_SRC}
-        alt="WeChat Pay QR"
-        className="h-64 w-64 max-w-full rounded-2xl bg-white object-contain shadow-lg"
-      />
+      {isInstapay ? (
+        <>
+          <p
+            className="mb-2 break-words text-sm font-bold sm:text-base"
+            style={{ color: "#5b2b8c" }}
+          >
+            امسح الكود للدفع عبر إنستا باي
+          </p>
+          <p className="mb-4 break-words text-xs font-semibold text-slate-500 sm:text-sm">
+            Scan to Pay · InstaPay
+          </p>
+          <img
+            src={INSTAPAY_QR_SRC}
+            alt="InstaPay QR"
+            className="h-64 w-64 max-w-full rounded-2xl bg-white object-contain shadow-lg"
+          />
+          <div className="mt-6 flex w-full flex-col items-center justify-center gap-1 border-t border-gray-100 pt-4">
+            <span className="text-lg font-medium text-gray-500">
+              أو التحويل على الرقم:
+            </span>
+            <span
+              className="text-3xl font-bold tracking-wider text-[#5b2b8c]"
+              dir="ltr"
+            >
+              01028009271
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mb-2 break-words text-sm font-bold text-slate-800 sm:text-base">
+            امسح الكود للدفع / Scan to Pay
+          </p>
+          <p
+            className="mb-4 break-words text-sm font-semibold text-emerald-700 sm:text-base"
+            lang="zh-CN"
+          >
+            请扫码付款
+          </p>
+          <img
+            src={WECHAT_QR_SRC}
+            alt="WeChat Pay QR"
+            className="h-64 w-64 max-w-full rounded-2xl bg-white object-contain shadow-lg"
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -362,6 +422,7 @@ function PaymentSummaryRows({
     tone === "dark" ? "text-slate-200" : "text-slate-700";
 
   const wechat = isWeChatDisplayMethod(paymentMethod, methodLabel);
+  const instapay = isInstaPayDisplayMethod(paymentMethod, methodLabel);
   const rate =
     typeof exchangeRate === "number" &&
     Number.isFinite(exchangeRate) &&
@@ -370,8 +431,9 @@ function PaymentSummaryRows({
       : null;
   const cnyAmount = wechat && rate ? total / rate : null;
 
-  // WeChat: amount-only focus (EGP + CNY) next to the QR — no tendered/change rows.
-  if (wechat) {
+  // WeChat / InstaPay: amount-only next to QR — no tendered/change rows.
+  // CNY line is WeChat-only; InstaPay stays EGP-only.
+  if (wechat || instapay) {
     return (
       <div className="flex min-w-0 w-full flex-col items-center gap-4 text-center sm:gap-6">
         <div className="min-w-0 w-full">
@@ -380,13 +442,22 @@ function PaymentSummaryRows({
           >
             المبلغ المطلوب
           </p>
-          <p
-            className={`mt-1 break-words opacity-80 ${hero ? "text-base sm:text-lg" : "text-sm"} ${zhMuted}`}
-            lang="zh-CN"
-            dir="ltr"
-          >
-            总金额
-          </p>
+          {wechat ? (
+            <p
+              className={`mt-1 break-words opacity-80 ${hero ? "text-base sm:text-lg" : "text-sm"} ${zhMuted}`}
+              lang="zh-CN"
+              dir="ltr"
+            >
+              总金额
+            </p>
+          ) : (
+            <p
+              className={`mt-1 break-words opacity-80 ${hero ? "text-base sm:text-lg" : "text-sm"} ${zhMuted}`}
+              dir="ltr"
+            >
+              Amount due
+            </p>
+          )}
         </div>
         <div className="flex w-full min-w-0 justify-center">
           <p
@@ -395,7 +466,7 @@ function PaymentSummaryRows({
             {formatEGP(total)}
           </p>
         </div>
-        {cnyAmount != null ? (
+        {wechat && cnyAmount != null ? (
           <div className="flex w-full min-w-0 flex-col items-center" dir="ltr">
             <p
               className={`whitespace-nowrap font-black tabular-nums text-amber-400 ${hero ? "text-3xl lg:text-4xl xl:text-5xl" : "text-2xl lg:text-3xl"}`}
@@ -600,8 +671,16 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
       state.payment.method,
       state.payment.methodLabel,
     );
+    const instapayPay = isInstaPayDisplayMethod(
+      state.payment.method,
+      state.payment.methodLabel,
+    );
+    const qrPay = isQrPaymentDisplayMethod(
+      state.payment.method,
+      state.payment.methodLabel,
+    );
 
-    if (wechatPay) {
+    if (qrPay) {
       return (
         <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-4 py-6">
           <div className="mx-auto flex w-full max-w-6xl flex-row items-center justify-center gap-8 px-4">
@@ -609,15 +688,27 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
               <div className="mb-5 flex items-center justify-between gap-3 border-b border-white/10 pb-4">
                 <div className="min-w-0">
                   <h2 className="break-words text-xl font-black sm:text-2xl md:text-3xl">
-                    إتمام الدفع · وي شات
+                    {wechatPay
+                      ? "إتمام الدفع · وي شات"
+                      : "إتمام الدفع · إنستا باي"}
                   </h2>
-                  <p
-                    className="mt-1 break-words text-sm text-slate-400 sm:text-base"
-                    lang="zh-CN"
-                    dir="ltr"
-                  >
-                    微信支付
-                  </p>
+                  {wechatPay ? (
+                    <p
+                      className="mt-1 break-words text-sm text-slate-400 sm:text-base"
+                      lang="zh-CN"
+                      dir="ltr"
+                    >
+                      微信支付
+                    </p>
+                  ) : (
+                    <p
+                      className="mt-1 break-words text-sm sm:text-base"
+                      style={{ color: "#c4a3e8" }}
+                      dir="ltr"
+                    >
+                      InstaPay
+                    </p>
+                  )}
                 </div>
                 <img
                   src="/logos/logo-ar.svg"
@@ -636,7 +727,9 @@ function ShoppingScreen({ state }: { state: CustomerDisplayState }) {
                 size="hero"
               />
             </div>
-            <WeChatQrPanel />
+            <PaymentQrPanel
+              variant={instapayPay && !wechatPay ? "instapay" : "wechat"}
+            />
           </div>
         </div>
       );
