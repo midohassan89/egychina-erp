@@ -38,14 +38,40 @@ export function isQueueTicketCode(raw: string): boolean {
   return /^Q-\d+$/i.test(String(raw ?? "").trim());
 }
 
+function parseQueueSeq(code: string): number | null {
+  const match = /^Q-(\d+)$/i.exec(String(code ?? "").trim());
+  if (!match) return null;
+  const n = parseInt(match[1]!, 10);
+  return Number.isFinite(n) && !Number.isNaN(n) && n > 0 ? n : null;
+}
+
+/**
+ * Allocate next Q-xxxx code. Prefers OrderNumberCounter(QUEUE), falls back to
+ * scanning the latest PosQueueTicket so we never return Q-???? / empty.
+ */
 export async function allocateQueueTicketCode(db: Db): Promise<string> {
-  const counter = await db.orderNumberCounter.upsert({
-    where: { channel: "QUEUE" },
-    create: { channel: "QUEUE", nextValue: 1002 },
-    update: { nextValue: { increment: 1 } },
+  try {
+    const counter = await db.orderNumberCounter.upsert({
+      where: { channel: "QUEUE" },
+      create: { channel: "QUEUE", nextValue: 1002 },
+      update: { nextValue: { increment: 1 } },
+    });
+    const issued = counter.nextValue - 1;
+    if (Number.isFinite(issued) && !Number.isNaN(issued) && issued >= 1001) {
+      return `Q-${issued}`;
+    }
+  } catch (error) {
+    console.error("[allocateQueueTicketCode] counter failed", error);
+  }
+
+  const last = await db.posQueueTicket.findFirst({
+    where: { code: { startsWith: "Q-" } },
+    orderBy: [{ createdAt: "desc" }],
+    select: { code: true },
   });
-  const issued = counter.nextValue - 1;
-  return `Q-${issued}`;
+  const lastSeq = last?.code ? parseQueueSeq(last.code) : null;
+  const next = lastSeq != null ? lastSeq + 1 : 1001;
+  return `Q-${next}`;
 }
 
 export function parseQueueItemsJson(raw: string): QueueTicketItem[] {
@@ -60,23 +86,40 @@ export function parseQueueItemsJson(raw: string): QueueTicketItem[] {
   }
 }
 
+/**
+ * Accept mobile / POS item shapes flexibly:
+ * productId|id, quantity|qty, unitPrice|salePrice|price, name, barcode.
+ */
 export function normalizeQueueItem(raw: unknown): QueueTicketItem | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
-  const productId = String(row.productId ?? "").trim();
-  const name = String(row.name ?? "").trim();
-  const quantity = roundQty(Math.abs(Number(row.quantity) || 0));
-  const unitPrice = roundMoney(Math.abs(Number(row.unitPrice) || 0));
-  if (!productId || !name || quantity <= 0) return null;
+
+  const productId = String(row.productId ?? row.id ?? "")
+    .trim();
+  const name = String(row.name ?? "صنف").trim() || "صنف";
+  const quantity = roundQty(
+    Math.abs(Number(row.quantity ?? row.qty ?? 1) || 0),
+  );
+  const unitPrice = roundMoney(
+    Math.abs(
+      Number(row.unitPrice ?? row.salePrice ?? row.price ?? 0) || 0,
+    ),
+  );
+
+  if (!productId || quantity <= 0) return null;
+
   const stockMultiplier = Math.max(
     1,
     Math.floor(Number(row.stockMultiplier) || 1),
   );
+
   return {
     productId,
-    packageId: row.packageId != null ? String(row.packageId).trim() || null : null,
+    packageId:
+      row.packageId != null ? String(row.packageId).trim() || null : null,
     name,
-    barcode: row.barcode != null ? String(row.barcode).trim() || null : null,
+    barcode:
+      row.barcode != null ? String(row.barcode).trim() || "" : "",
     quantity,
     unitPrice,
     originalPrice:

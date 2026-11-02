@@ -27,6 +27,13 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[api/pos/queue-tickets GET]", error);
-    return NextResponse.json({ error: "Failed to load tickets" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "تعذر تحميل قسائم الانتظار",
+        message: "تعذر تحميل قسائم الانتظار",
+      },
+      { status: 500 },
+    );
   }
 }

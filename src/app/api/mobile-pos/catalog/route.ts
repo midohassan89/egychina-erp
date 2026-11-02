@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
 import {
   mobilePosCorsHeaders,
+  mobilePosError,
   mobilePosJson,
   mobilePosOptions,
 } from "@/lib/pos/mobilePosCors";
@@ -18,12 +19,12 @@ export async function OPTIONS() {
  * Lightweight active catalog for the mobile queue-buster POS.
  */
 export async function GET(request: Request) {
-  const user = await requireMobilePos(request);
-  if (!user) {
-    return mobilePosJson({ error: "Unauthorized" }, 401);
-  }
-
   try {
+    const user = await requireMobilePos(request);
+    if (!user) {
+      return mobilePosError("غير مصرح — يرجى تسجيل الدخول مجدداً", 401);
+    }
+
     const products = await prisma.product.findMany({
       where: { isDeleted: false, isActive: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -79,6 +80,6 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("[api/mobile-pos/catalog]", error);
-    return mobilePosJson({ error: "Failed to load catalog" }, 500);
+    return mobilePosError("تعذر تحميل كتالوج المنتجات", 500);
   }
 }

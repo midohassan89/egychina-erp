@@ -8,6 +8,7 @@ import {
 } from "@/lib/pos/mobilePosAuth";
 import {
   mobilePosCorsHeaders,
+  mobilePosError,
   mobilePosJson,
   mobilePosOptions,
 } from "@/lib/pos/mobilePosCors";
@@ -45,10 +46,7 @@ export async function POST(request: Request) {
 
     if (!identifier || !password) {
       console.log("[mobile-pos/login] missing identifier or password");
-      return mobilePosJson(
-        { error: "يرجى إدخال اسم المستخدم وكلمة المرور" },
-        400,
-      );
+      return mobilePosError("يرجى إدخال اسم المستخدم وكلمة المرور", 400);
     }
 
     // 1) Exact username match
@@ -93,7 +91,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       console.log("[mobile-pos/login] user not found:", identifier);
-      return mobilePosJson({ error: "المستخدم غير موجود" }, 400);
+      return mobilePosError("المستخدم غير موجود", 400);
     }
 
     if (String(user.status ?? "").toUpperCase() !== "ACTIVE") {
@@ -102,10 +100,7 @@ export async function POST(request: Request) {
         user.username,
         user.status,
       );
-      return mobilePosJson(
-        { error: "هذا الحساب موقوف. تواصل مع الإدارة" },
-        400,
-      );
+      return mobilePosError("هذا الحساب موقوف. تواصل مع الإدارة", 400);
     }
 
     const roleNormalized = normalizeMobilePosRole(String(user.role));
@@ -115,16 +110,13 @@ export async function POST(request: Request) {
         user.username,
         user.role,
       );
-      return mobilePosJson(
-        { error: "عفواً، لا تملك صلاحية الدخول ككاشير" },
-        400,
-      );
+      return mobilePosError("عفواً، لا تملك صلاحية الدخول ككاشير", 400);
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       console.log("[mobile-pos/login] bad password for:", user.username);
-      return mobilePosJson({ error: "كلمة المرور غير صحيحة" }, 400);
+      return mobilePosError("كلمة المرور غير صحيحة", 400);
     }
 
     const token = signMobilePosToken(user.id, roleNormalized);
@@ -153,9 +145,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("[api/mobile-pos/login]", error);
-    return mobilePosJson(
-      { error: "تعذر تسجيل الدخول. حاول مرة أخرى" },
-      500,
-    );
+    return mobilePosError("تعذر تسجيل الدخول. حاول مرة أخرى", 500);
   }
 }

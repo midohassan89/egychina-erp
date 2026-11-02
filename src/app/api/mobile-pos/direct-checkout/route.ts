@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
@@ -14,11 +13,10 @@ import {
   syncSaleStockRows,
 } from "@/lib/pos/applySaleStock";
 import { shiftSalesFieldForPayment } from "@/lib/shifts/salesFields";
-import { mapShiftToCashierShift } from "@/lib/shifts/mapShift";
 import { getLoyaltySettings } from "@/lib/loyalty/settings";
 import type { PaymentMethod } from "@/types/woocommerce";
 import {
-  mobilePosCorsHeaders,
+  mobilePosError,
   mobilePosJson,
   mobilePosOptions,
 } from "@/lib/pos/mobilePosCors";
@@ -29,156 +27,219 @@ export async function OPTIONS() {
   return mobilePosOptions();
 }
 
-const ALLOWED_PAYMENTS = new Set([
-  "cash",
-  "visa",
-  "wallet",
-  "instapay",
-  "wechat",
-]);
+/** Map mobile UpperCase (and aliases) → stored Sale.paymentMethod lowercase. */
+function normalizePaymentMethod(raw: unknown): PaymentMethod {
+  const upper = String(raw ?? "CASH")
+    .trim()
+    .toUpperCase();
+  switch (upper) {
+    case "CASH":
+      return "cash";
+    case "CARD":
+    case "VISA":
+      return "visa";
+    case "WALLET":
+      return "wallet";
+    case "INSTAPAY":
+      return "instapay";
+    case "WECHAT":
+      return "wechat";
+    default: {
+      const lower = upper.toLowerCase();
+      if (
+        lower === "cash" ||
+        lower === "visa" ||
+        lower === "wallet" ||
+        lower === "instapay" ||
+        lower === "wechat"
+      ) {
+        return lower as PaymentMethod;
+      }
+      return "cash";
+    }
+  }
+}
+
+function paymentMethodLabelUpper(method: PaymentMethod): string {
+  if (method === "visa") return "VISA";
+  return method.toUpperCase();
+}
 
 /**
  * POST /api/mobile-pos/direct-checkout
- * Full sale from the mobile queue-buster (auto-opens shift if needed).
+ * Full sale from the mobile cashier (auto-opens shift if needed).
  */
 export async function POST(request: Request) {
-  const user = await requireMobilePos(request);
-  if (!user) {
-    return mobilePosJson({ error: "Unauthorized" }, 401);
-  }
-
-  let body: {
-    items?: unknown;
-    paymentMethod?: unknown;
-    paidAmount?: unknown;
-    customerPhone?: unknown;
-    customerName?: unknown;
-    customerId?: unknown;
-    pointsRedeemed?: unknown;
-    localId?: unknown;
-  };
   try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return mobilePosJson({ error: "Invalid request body" }, 400);
-  }
+    const user = await requireMobilePos(request);
+    if (!user) {
+      return mobilePosError("غير مصرح — يرجى تسجيل الدخول مجدداً", 401);
+    }
 
-  const items = (Array.isArray(body.items) ? body.items : [])
-    .map((row) => normalizeQueueItem(row))
-    .filter((row): row is QueueTicketItem => row != null);
-
-  if (items.length === 0) {
-    return mobilePosJson({ error: "Add at least one item" }, 400);
-  }
-
-  const paymentMethod = String(body.paymentMethod ?? "cash").trim() as PaymentMethod;
-  if (!ALLOWED_PAYMENTS.has(paymentMethod)) {
-    return mobilePosJson({ error: "Unsupported payment method" }, 400);
-  }
-
-  const { subtotal } = summarizeQueueItems(items);
-  const loyalty = await getLoyaltySettings();
-  const requestedRedeem = Math.max(
-    0,
-    Math.floor(Number(body.pointsRedeemed) || 0),
-  );
-  const customerId = String(body.customerId ?? "").trim() || null;
-  const customerPhone = normalizeLoyaltyPhone(String(body.customerPhone ?? ""));
-  const customerName =
-    String(body.customerName ?? "").trim().slice(0, 120) || null;
-
-  let pointsRedeemed = 0;
-  let pointsDiscount = 0;
-  let loyaltyCustomer: {
-    id: string;
-    name: string | null;
-    phone: string;
-    pointsBalance: number;
-  } | null = null;
-
-  if (customerId || customerPhone) {
-    loyaltyCustomer = await prisma.customer.findFirst({
-      where: {
-        deletedAt: null,
-        ...(customerId ? { id: customerId } : { phone: customerPhone }),
-      },
-      select: { id: true, name: true, phone: true, pointsBalance: true },
-    });
-  }
-
-  if (loyaltyCustomer && requestedRedeem > 0) {
-    const maxByBalance =
-      Math.floor(loyaltyCustomer.pointsBalance / loyalty.pointsRedeemValue) *
-      loyalty.pointsRedeemValue;
-    const maxByTotal =
-      Math.floor(subtotal) * loyalty.pointsRedeemValue;
-    pointsRedeemed = Math.min(requestedRedeem, maxByBalance, maxByTotal);
-    // Align to redeem value steps (POS uses 1000 pts = 1 EGP typically).
-    pointsRedeemed =
-      Math.floor(pointsRedeemed / loyalty.pointsRedeemValue) *
-      loyalty.pointsRedeemValue;
-    pointsDiscount = roundMoney(pointsRedeemed / loyalty.pointsRedeemValue);
-  }
-
-  const total = Math.max(0, roundMoney(subtotal - pointsDiscount));
-  const paidAmount = roundMoney(
-    Number(body.paidAmount ?? total),
-  );
-  if (!Number.isFinite(paidAmount) || paidAmount < 0) {
-    return mobilePosJson({ error: "Invalid paidAmount" }, 400);
-  }
-
-  const productIds = [...new Set(items.map((item) => item.productId))];
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, isDeleted: false },
-    select: { id: true, wcId: true, name: true },
-  });
-  const byId = new Map(products.map((p) => [p.id, p]));
-
-  const saleLines = items.map((item) => {
-    const product = byId.get(item.productId);
-    const stockMultiplier = Math.max(
-      1,
-      Math.floor(Number(item.stockMultiplier) || 1),
-    );
-    return {
-      wcProductId: product?.wcId ?? null,
-      name: item.name || product?.name || "Item",
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineTotal: roundMoney(item.quantity * item.unitPrice),
-      stockMultiplier,
+    let body: {
+      items?: unknown;
+      paymentMethod?: unknown;
+      paidAmount?: unknown;
+      customerPhone?: unknown;
+      customerName?: unknown;
+      customerId?: unknown;
+      pointsRedeemed?: unknown;
+      localId?: unknown;
     };
-  });
+    try {
+      body = (await request.json()) as typeof body;
+    } catch (error) {
+      console.error("[api/mobile-pos/direct-checkout] bad json", error);
+      return mobilePosError("جسم الطلب غير صالح (JSON)", 400);
+    }
 
-  if (saleLines.some((line) => !line.wcProductId)) {
-    return mobilePosJson(
-      { error: "One or more products could not be resolved" },
-      400,
+    const items = (Array.isArray(body.items) ? body.items : [])
+      .map((row) => normalizeQueueItem(row))
+      .filter((row): row is QueueTicketItem => row != null);
+
+    if (items.length === 0) {
+      return mobilePosError(
+        "يجب إضافة صنف واحد على الأقل (تحقق من productId/id والكمية والسعر)",
+        400,
+      );
+    }
+
+    const paymentMethod = normalizePaymentMethod(body.paymentMethod);
+    const { subtotal } = summarizeQueueItems(items);
+    const loyalty = await getLoyaltySettings();
+    const requestedRedeem = Math.max(
+      0,
+      Math.floor(Number(body.pointsRedeemed) || 0),
     );
-  }
+    const customerId = String(body.customerId ?? "").trim() || null;
+    const customerPhone = normalizeLoyaltyPhone(
+      String(body.customerPhone ?? ""),
+    );
+    const customerName =
+      String(body.customerName ?? "").trim().slice(0, 120) || null;
 
-  const localId =
-    body.localId != null && String(body.localId).trim()
-      ? String(body.localId).trim()
-      : null;
+    let pointsRedeemed = 0;
+    let pointsDiscount = 0;
+    let loyaltyCustomer: {
+      id: string;
+      name: string | null;
+      phone: string;
+      pointsBalance: number;
+    } | null = null;
 
-  if (localId) {
-    const existing = await prisma.sale.findUnique({ where: { localId } });
-    if (existing) {
-      return NextResponse.json(
-        {
+    if (customerId || customerPhone) {
+      loyaltyCustomer = await prisma.customer.findFirst({
+        where: {
+          deletedAt: null,
+          ...(customerId ? { id: customerId } : { phone: customerPhone }),
+        },
+        select: { id: true, name: true, phone: true, pointsBalance: true },
+      });
+    }
+
+    if (loyaltyCustomer && requestedRedeem > 0) {
+      const maxByBalance =
+        Math.floor(loyaltyCustomer.pointsBalance / loyalty.pointsRedeemValue) *
+        loyalty.pointsRedeemValue;
+      const maxByTotal = Math.floor(subtotal) * loyalty.pointsRedeemValue;
+      pointsRedeemed = Math.min(requestedRedeem, maxByBalance, maxByTotal);
+      pointsRedeemed =
+        Math.floor(pointsRedeemed / loyalty.pointsRedeemValue) *
+        loyalty.pointsRedeemValue;
+      pointsDiscount = roundMoney(pointsRedeemed / loyalty.pointsRedeemValue);
+    }
+
+    const total = Math.max(0, roundMoney(subtotal - pointsDiscount));
+
+    // Cash can overpay (change); digital must settle exact total.
+    let paidAmount = roundMoney(
+      body.paidAmount != null && body.paidAmount !== ""
+        ? Number(body.paidAmount)
+        : total,
+    );
+    if (!Number.isFinite(paidAmount) || paidAmount < 0) {
+      paidAmount = total;
+    }
+    if (paymentMethod !== "cash" && paidAmount < total) {
+      paidAmount = total;
+    }
+
+    const productKeys = [...new Set(items.map((item) => item.productId))];
+    const numericWcIds = productKeys
+      .map((key) => Number(key))
+      .filter((n) => Number.isFinite(n) && n > 0);
+
+    const products = await prisma.product.findMany({
+      where: {
+        isDeleted: false,
+        OR: [
+          { id: { in: productKeys } },
+          ...(numericWcIds.length > 0 ? [{ wcId: { in: numericWcIds } }] : []),
+        ],
+      },
+      select: { id: true, wcId: true, name: true },
+    });
+
+    const byPrismaId = new Map(products.map((p) => [p.id, p]));
+    const byWcId = new Map(
+      products
+        .filter((p) => p.wcId != null)
+        .map((p) => [String(p.wcId), p]),
+    );
+
+    const unresolved: string[] = [];
+    const saleLines = items.map((item) => {
+      const product =
+        byPrismaId.get(item.productId) ?? byWcId.get(item.productId) ?? null;
+      if (!product) unresolved.push(item.productId);
+      const stockMultiplier = Math.max(
+        1,
+        Math.floor(Number(item.stockMultiplier) || 1),
+      );
+      return {
+        productId: product?.id ?? null,
+        wcProductId: product?.wcId ?? null,
+        name: item.name || product?.name || "صنف",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: roundMoney(item.quantity * item.unitPrice),
+        stockMultiplier,
+        barcode: item.barcode || "",
+      };
+    });
+
+    if (unresolved.length > 0) {
+      return mobilePosError(
+        `تعذر التعرف على بعض الأصناف في قاعدة البيانات: ${unresolved.slice(0, 5).join(", ")}`,
+        400,
+      );
+    }
+
+    const localId =
+      body.localId != null && String(body.localId).trim()
+        ? String(body.localId).trim()
+        : null;
+
+    if (localId) {
+      const existing = await prisma.sale.findUnique({ where: { localId } });
+      if (existing) {
+        return mobilePosJson({
           ok: true,
           alreadySynced: true,
           saleId: existing.id,
+          invoiceNumber: existing.orderNumber,
+          code: existing.orderNumber,
           orderNumber: existing.orderNumber,
-        },
-        { headers: mobilePosCorsHeaders },
-      );
+          total: existing.total,
+          paidAmount,
+          changeAmount: Math.max(0, roundMoney(paidAmount - existing.total)),
+          paymentMethod: paymentMethodLabelUpper(paymentMethod),
+          cashierName: user.name,
+          createdAt: existing.createdAt.toISOString(),
+        });
+      }
     }
-  }
 
-  try {
     let shift = await prisma.shift.findFirst({
       where: { userId: user.id, status: "OPEN" },
     });
@@ -201,16 +262,24 @@ export async function POST(request: Request) {
     const salesField = shiftSalesFieldForPayment(paymentMethod);
     const pointsEarned = Math.floor(total * loyalty.pointsEarnRatio);
 
+    const stockable = saleLines.filter((line) => line.wcProductId != null);
     const stockResult = await applySaleStockChanges({
-      lines: saleLines.map((line) => ({
+      lines: stockable.map((line) => ({
         wcProductId: line.wcProductId,
         quantity: line.quantity,
         stockMultiplier: line.stockMultiplier,
       })),
     });
 
+    const missingWc = saleLines.filter((line) => !line.wcProductId);
+    if (missingWc.length > 0) {
+      stockResult.auditReasons.push(
+        `أصناف بدون wcId: ${missingWc.map((l) => l.name).join(", ")}`,
+      );
+    }
+
     const saved = await prisma.$transaction(async (tx) => {
-      const updatedShift = await tx.shift.update({
+      await tx.shift.update({
         where: { id: shift!.id },
         data: {
           ...(salesField ? { [salesField]: { increment: total } } : {}),
@@ -235,7 +304,14 @@ export async function POST(request: Request) {
           auditReason: stockResult.auditReasons.length
             ? stockResult.auditReasons.join("; ").slice(0, 500)
             : null,
-          lines: saleLines,
+          lines: saleLines.map((line) => ({
+            wcProductId: line.wcProductId,
+            name: line.name,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+            stockMultiplier: line.stockMultiplier,
+          })),
         },
         tx,
       );
@@ -248,7 +324,12 @@ export async function POST(request: Request) {
           updatedLoyalty = await tx.customer.update({
             where: { id: loyaltyCustomer.id },
             data: { pointsBalance: nextBalance },
-            select: { id: true, name: true, phone: true, pointsBalance: true },
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              pointsBalance: true,
+            },
           });
           if (pointsEarned > 0) {
             await tx.pointsTransaction.create({
@@ -273,7 +354,7 @@ export async function POST(request: Request) {
         }
       }
 
-      return { sale, shift: updatedShift, customer: updatedLoyalty };
+      return { sale, customer: updatedLoyalty };
     });
 
     if (stockResult.wooRows.length > 0) {
@@ -281,29 +362,40 @@ export async function POST(request: Request) {
     }
 
     const changeAmount = Math.max(0, roundMoney(paidAmount - total));
+    const invoiceNumber = saved.sale.orderNumber ?? saved.sale.id;
 
-    return NextResponse.json(
-      {
-        ok: true,
-        saleId: saved.sale.id,
-        orderNumber: saved.sale.orderNumber,
-        total,
-        subtotal,
-        discount: pointsDiscount,
-        paidAmount,
-        changeAmount,
-        pointsEarned: loyaltyCustomer ? pointsEarned : 0,
-        pointsRedeemed: loyaltyCustomer ? pointsRedeemed : 0,
-        customer: saved.customer,
-        shift: mapShiftToCashierShift(saved.shift),
-        stockUpdated: stockResult.updated.length,
-        requiresAudit: saved.sale.requiresAudit,
-        auditReason: saved.sale.auditReason,
-      },
-      { headers: mobilePosCorsHeaders },
-    );
+    return mobilePosJson({
+      ok: true,
+      saleId: saved.sale.id,
+      invoiceNumber,
+      code: invoiceNumber,
+      orderNumber: invoiceNumber,
+      subtotal,
+      discount: pointsDiscount,
+      total,
+      paidAmount,
+      changeAmount,
+      paymentMethod: paymentMethodLabelUpper(paymentMethod),
+      cashierName: user.name,
+      createdAt: saved.sale.createdAt.toISOString(),
+      items: saleLines.map((line) => ({
+        productId: line.productId,
+        name: line.name,
+        barcode: line.barcode,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      })),
+      pointsEarned: loyaltyCustomer ? pointsEarned : 0,
+      pointsRedeemed: loyaltyCustomer ? pointsRedeemed : 0,
+      customer: saved.customer,
+      requiresAudit: saved.sale.requiresAudit,
+      auditReason: saved.sale.auditReason,
+    });
   } catch (error) {
     console.error("[api/mobile-pos/direct-checkout]", error);
-    return mobilePosJson({ error: "Checkout failed" }, 500);
+    const detail =
+      error instanceof Error ? error.message : "خطأ غير معروف";
+    return mobilePosError(`فشل إتمام البيع: ${detail}`, 500);
   }
 }

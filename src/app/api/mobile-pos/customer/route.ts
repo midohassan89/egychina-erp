@@ -4,7 +4,7 @@ import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import {
   mobilePosCorsHeaders,
-  mobilePosJson,
+  mobilePosError,
   mobilePosOptions,
 } from "@/lib/pos/mobilePosCors";
 
@@ -18,18 +18,18 @@ export async function OPTIONS() {
  * GET /api/mobile-pos/customer?phone=...
  */
 export async function GET(request: Request) {
-  const user = await requireMobilePos(request);
-  if (!user) {
-    return mobilePosJson({ error: "Unauthorized" }, 401);
-  }
-
-  const { searchParams } = new URL(request.url);
-  const phone = normalizeLoyaltyPhone(searchParams.get("phone") ?? "");
-  if (!phone) {
-    return mobilePosJson({ error: "phone is required" }, 400);
-  }
-
   try {
+    const user = await requireMobilePos(request);
+    if (!user) {
+      return mobilePosError("غير مصرح — يرجى تسجيل الدخول مجدداً", 401);
+    }
+
+    const { searchParams } = new URL(request.url);
+    const phone = normalizeLoyaltyPhone(searchParams.get("phone") ?? "");
+    if (!phone) {
+      return mobilePosError("يرجى إدخال رقم هاتف العميل", 400);
+    }
+
     const customer = await prisma.customer.findFirst({
       where: {
         phone,
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     });
 
     if (!customer) {
-      return mobilePosJson({ error: "Customer not found" }, 404);
+      return mobilePosError("العميل غير موجود", 404);
     }
 
     return NextResponse.json(
@@ -61,6 +61,6 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("[api/mobile-pos/customer]", error);
-    return mobilePosJson({ error: "Lookup failed" }, 500);
+    return mobilePosError("تعذر البحث عن العميل", 500);
   }
 }

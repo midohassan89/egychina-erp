@@ -23,24 +23,48 @@ export async function GET(_request: Request, context: RouteContext) {
   const { code: raw } = await context.params;
   const code = normalizeQueueCode(raw);
   if (!isQueueTicketCode(code)) {
-    return NextResponse.json({ error: "Invalid queue ticket code" }, { status: 400 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "كود القسيمة غير صالح (المتوقع مثل Q-1001)",
+        message: "كود القسيمة غير صالح (المتوقع مثل Q-1001)",
+      },
+      { status: 400 },
+    );
   }
 
   try {
     const existing = await prisma.posQueueTicket.findUnique({ where: { code } });
     if (!existing) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "القسيمة غير موجودة",
+          message: "القسيمة غير موجودة",
+        },
+        { status: 404 },
+      );
     }
 
     if (existing.status === "COMPLETED") {
       return NextResponse.json(
-        { error: "Ticket already completed", status: existing.status },
+        {
+          ok: false,
+          error: "تم إتمام هذه القسيمة مسبقاً",
+          message: "تم إتمام هذه القسيمة مسبقاً",
+          status: existing.status,
+        },
         { status: 409 },
       );
     }
     if (existing.status === "CANCELLED") {
       return NextResponse.json(
-        { error: "Ticket cancelled", status: existing.status },
+        {
+          ok: false,
+          error: "تم إلغاء هذه القسيمة",
+          message: "تم إلغاء هذه القسيمة",
+          status: existing.status,
+        },
         { status: 409 },
       );
     }
@@ -62,7 +86,14 @@ export async function GET(_request: Request, context: RouteContext) {
     });
   } catch (error) {
     console.error("[api/pos/queue-tickets GET code]", error);
-    return NextResponse.json({ error: "Failed to claim ticket" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "تعذر استلام القسيمة",
+        message: "تعذر استلام القسيمة",
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -79,7 +110,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   const { code: raw } = await context.params;
   const code = normalizeQueueCode(raw);
   if (!isQueueTicketCode(code)) {
-    return NextResponse.json({ error: "Invalid queue ticket code" }, { status: 400 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "كود القسيمة غير صالح (المتوقع مثل Q-1001)",
+        message: "كود القسيمة غير صالح (المتوقع مثل Q-1001)",
+      },
+      { status: 400 },
+    );
   }
 
   let body: { status?: unknown; saleId?: unknown } = {};
@@ -91,14 +129,28 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const nextStatus = String(body.status ?? "COMPLETED").trim().toUpperCase();
   if (nextStatus !== "COMPLETED" && nextStatus !== "CANCELLED") {
-    return NextResponse.json({ error: "Unsupported status" }, { status: 400 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "حالة القسيمة غير مدعومة (COMPLETED أو CANCELLED فقط)",
+        message: "حالة القسيمة غير مدعومة (COMPLETED أو CANCELLED فقط)",
+      },
+      { status: 400 },
+    );
   }
   const saleId = String(body.saleId ?? "").trim() || null;
 
   try {
     const existing = await prisma.posQueueTicket.findUnique({ where: { code } });
     if (!existing) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "القسيمة غير موجودة",
+          message: "القسيمة غير موجودة",
+        },
+        { status: 404 },
+      );
     }
     if (existing.status === "COMPLETED") {
       return NextResponse.json({
@@ -127,6 +179,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     });
   } catch (error) {
     console.error("[api/pos/queue-tickets PATCH]", error);
-    return NextResponse.json({ error: "Failed to update ticket" }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "تعذر تحديث حالة القسيمة",
+        message: "تعذر تحديث حالة القسيمة",
+      },
+      { status: 500 },
+    );
   }
 }

@@ -16,6 +16,23 @@ export function mobilePosJson(
   });
 }
 
+/** Standard Arabic error payload for the mobile cashier app. */
+export function mobilePosError(
+  messageAr: string,
+  status = 400,
+  extra?: Record<string, unknown>,
+) {
+  return mobilePosJson(
+    {
+      ok: false,
+      error: messageAr,
+      message: messageAr,
+      ...extra,
+    },
+    status,
+  );
+}
+
 export function mobilePosOptions() {
   return new NextResponse(null, {
     status: 204,
