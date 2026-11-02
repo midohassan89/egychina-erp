@@ -18,6 +18,38 @@ export async function OPTIONS() {
   return mobilePosOptions();
 }
 
+/**
+ * Canonical mobile-admin envelope:
+ * { ok: true, items: T[], data: T[], stats: {...}, ...extras }
+ */
+function envelope(
+  moduleName: string,
+  result: {
+    items?: unknown[];
+    stats?: Record<string, unknown>;
+    data?: Record<string, unknown>;
+  },
+  status = 200,
+) {
+  const items = Array.isArray(result.items) ? result.items : [];
+  const stats = result.stats ?? { count: items.length };
+  const extras =
+    result.data && typeof result.data === "object" ? result.data : {};
+
+  return mobilePosJson(
+    {
+      ok: true,
+      module: moduleName.trim().toLowerCase(),
+      items,
+      data: items,
+      stats,
+      count: items.length,
+      ...extras,
+    },
+    status,
+  );
+}
+
 async function handle(
   request: Request,
   context: RouteContext,
@@ -59,14 +91,7 @@ async function handle(
       return mobilePosError(result.error, result.status);
     }
 
-    return mobilePosJson(
-      {
-        ok: true,
-        module: moduleName.trim().toLowerCase(),
-        ...result.data,
-      },
-      result.status ?? 200,
-    );
+    return envelope(moduleName, result, result.status ?? 200);
   } catch (error) {
     console.error(`[api/mobile-admin] ${method}`, error);
     return mobilePosError("تعذر تنفيذ الطلب. حاول مرة أخرى", 500);

@@ -24,8 +24,7 @@ export async function OPTIONS() {
 
 /**
  * POST /api/mobile-admin/login
- * Body: { username | usernameOrEmail | email | phone, password }
- * Only ACTIVE ADMIN / MANAGER may obtain a Mobile Admin ERP token.
+ * Same JWT as /api/mobile-pos/login — ADMIN / MANAGER / CASHIER.
  */
 export async function POST(request: Request) {
   try {
@@ -82,7 +81,12 @@ export async function POST(request: Request) {
           id: row.id,
           username: row.username,
           password: row.password,
-          role: row.role as "CASHIER" | "MANAGER" | "ADMIN" | "ACCOUNTANT" | "DRIVER",
+          role: row.role as
+            | "CASHIER"
+            | "MANAGER"
+            | "ADMIN"
+            | "ACCOUNTANT"
+            | "DRIVER",
           status: row.status,
         };
       }

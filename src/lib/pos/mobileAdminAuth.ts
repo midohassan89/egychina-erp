@@ -1,50 +1,32 @@
-import { prisma } from "@/lib/prisma";
 import {
-  bearerFromRequest,
-  normalizeMobilePosRole,
-  verifyMobilePosToken,
+  requireMobilePos,
   type MobilePosRole,
 } from "@/lib/pos/mobilePosAuth";
 
-export type MobileAdminRole = "ADMIN" | "MANAGER";
+/**
+ * Mobile Admin ERP roles — same Bearer JWT as mobile-pos login.
+ * CASHIER / MANAGER / ADMIN may read and operate on /api/mobile-admin/*.
+ */
+export type MobileAdminRole = MobilePosRole;
 
 export function isMobileAdminRole(role: string): role is MobileAdminRole {
   const normalized = String(role ?? "").trim().toUpperCase();
-  return normalized === "ADMIN" || normalized === "MANAGER";
+  return (
+    normalized === "ADMIN" ||
+    normalized === "MANAGER" ||
+    normalized === "CASHIER"
+  );
 }
 
 /**
- * Require Bearer JWT from mobile-pos/mobile-admin login.
- * Only ACTIVE ADMIN or MANAGER users may access Mobile Admin ERP APIs.
+ * Same token verification as /api/mobile-pos/* (verifyMobilePosToken + ACTIVE user).
+ * Accepts the ordinary mobile-pos login token immediately.
  */
 export async function requireMobileAdmin(request: Request) {
-  const token = bearerFromRequest(request);
-  const payload = verifyMobilePosToken(token);
-  if (!payload) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.sub },
-    select: {
-      id: true,
-      username: true,
-      role: true,
-      status: true,
-    },
-  });
-  if (!user || String(user.status).toUpperCase() !== "ACTIVE") {
-    return null;
-  }
-
-  const role = normalizeMobilePosRole(String(user.role));
-  if (!role || !isMobileAdminRole(role)) {
-    return null;
-  }
-
-  return {
-    id: user.id,
-    name: user.username,
-    role: role as MobileAdminRole,
-  };
+  const user = await requireMobilePos(request);
+  if (!user) return null;
+  if (!isMobileAdminRole(user.role)) return null;
+  return user;
 }
 
 export type MobileAdminUser = NonNullable<
