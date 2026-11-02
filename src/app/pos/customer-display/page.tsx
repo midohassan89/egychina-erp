@@ -79,7 +79,6 @@ function AnalogClock({
   const activeNumerals =
     numerals ?? CLOCK_NUMERALS[langIndex] ?? CLOCK_NUMERALS[0];
   const numeralFontSize = langIndex === 2 ? 12 : 14;
-  const initial = clockAnglesNow();
 
   return (
     <div className={`relative z-10 flex flex-col items-center ${className}`}>
@@ -118,8 +117,8 @@ function AnalogClock({
             {activeNumerals.map((label, index) => {
               const angleRad = ((index * 30 - 90) * Math.PI) / 180;
               const radius = 68;
-              const x = 100 + radius * Math.cos(angleRad);
-              const y = 100 + radius * Math.sin(angleRad);
+              const x = Number((100 + radius * Math.cos(angleRad)).toFixed(3));
+              const y = Number((100 + radius * Math.sin(angleRad)).toFixed(3));
               return (
                 <text
                   key={`${langIndex}-${index}`}
@@ -139,35 +138,26 @@ function AnalogClock({
           </g>
         </svg>
 
-        {/* Hands: DOM style.transform only — never setState */}
+        {/* Hands: no initial transform in SSR — rAF applies angles after mount */}
         <div className="pointer-events-none absolute inset-0" aria-hidden>
           <div
             ref={hourRef}
-            className="absolute inset-0"
-            style={{
-              transform: `rotate(${initial.hours}deg)`,
-              transformOrigin: "center",
-            }}
+            className="absolute inset-0 origin-center"
+            style={{ transformOrigin: "center" }}
           >
             <div className="absolute left-1/2 top-[28%] bottom-1/2 w-[5.5px] -translate-x-1/2 rounded-full bg-slate-50" />
           </div>
           <div
             ref={minuteRef}
-            className="absolute inset-0"
-            style={{
-              transform: `rotate(${initial.minutes}deg)`,
-              transformOrigin: "center",
-            }}
+            className="absolute inset-0 origin-center"
+            style={{ transformOrigin: "center" }}
           >
             <div className="absolute left-1/2 top-[18%] bottom-1/2 w-[3.5px] -translate-x-1/2 rounded-full bg-white" />
           </div>
           <div
             ref={secondRef}
-            className="absolute inset-0"
-            style={{
-              transform: `rotate(${initial.seconds}deg)`,
-              transformOrigin: "center",
-            }}
+            className="absolute inset-0 origin-center"
+            style={{ transformOrigin: "center" }}
           >
             <div className="absolute left-1/2 top-[14%] bottom-[42%] w-[2px] -translate-x-1/2 rounded-full bg-amber-500" />
             <div className="absolute left-1/2 top-1/2 bottom-[38%] w-[2px] -translate-x-1/2 rounded-full bg-amber-500" />
@@ -284,7 +274,10 @@ function IdleScreen() {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2 sm:gap-4">
           <AnalogClock langIndex={langIndex} numerals={numerals} />
           <div className="flex min-h-[2.5rem] items-center justify-center px-3">
-            <p className="whitespace-normal break-words text-sm font-semibold text-emerald-100 sm:text-base md:text-lg lg:text-xl">
+            <p
+              className="whitespace-normal break-words text-sm font-semibold text-emerald-100 sm:text-base md:text-lg lg:text-xl"
+              suppressHydrationWarning
+            >
               {dateLabel}
             </p>
           </div>
