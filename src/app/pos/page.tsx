@@ -70,6 +70,7 @@ import type {
   CachedCustomer,
   CachedProduct,
   LocalSale,
+  PaymentMethod,
   ZReportSummary,
 } from "@/types/woocommerce";
 
@@ -139,6 +140,43 @@ function POSPageInner() {
   const [shiftDetailsOpen, setShiftDetailsOpen] = useState(false);
   const shiftDetailsRef = useRef<HTMLDivElement | null>(null);
   const [paymentPreview, setPaymentPreview] = useState<CustomerDisplayPayment>(null);
+  const handlePaymentPreview = useCallback(
+    (
+      preview: {
+        paymentMethod: PaymentMethod;
+        paidAmount: number;
+        changeAmount: number;
+        exchangeRate?: number | null;
+      } | null,
+    ) => {
+      if (!preview) {
+        setPaymentPreview((prev) => (prev === null ? prev : null));
+        return;
+      }
+      const methodLabel = paymentMethodLabelAr(preview.paymentMethod);
+      const exchangeRate = preview.exchangeRate ?? null;
+      setPaymentPreview((prev) => {
+        if (
+          prev &&
+          prev.method === preview.paymentMethod &&
+          prev.methodLabel === methodLabel &&
+          prev.paidAmount === preview.paidAmount &&
+          prev.changeAmount === preview.changeAmount &&
+          (prev.exchangeRate ?? null) === exchangeRate
+        ) {
+          return prev;
+        }
+        return {
+          method: preview.paymentMethod,
+          methodLabel,
+          paidAmount: preview.paidAmount,
+          changeAmount: preview.changeAmount,
+          exchangeRate,
+        };
+      });
+    },
+    [],
+  );
   const cfdCompletedHoldUntilRef = useRef(0);
   const cfdPrevLinesRef = useRef<Map<string, { qty: number; lineTotal: number }>>(
     new Map(),
@@ -989,32 +1027,16 @@ function POSPageInner() {
         <header
           className={
             returnMode
-              ? "flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-red-800 bg-red-950 px-4 py-3 text-white"
-              : "flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3 text-white"
+              ? "shrink-0 border-b border-red-800 bg-red-950 px-3 py-2 text-white"
+              : "shrink-0 border-b border-slate-800 bg-slate-900 px-3 py-2 text-white"
           }
         >
-          <div className="flex min-w-0 items-center gap-3 text-right">
-            <img
-              src="/logos/logo-ar.svg"
-              alt="ايجي شاينا ماركت"
-              className="h-10 w-auto shrink-0 rounded-md bg-white object-contain px-1.5 sm:h-12"
-            />
-            <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-                سوق العبور - الكاشير
-                {returnMode ? " · وضع الاسترجاع" : ""}
-              </h1>
-              {returnMode && managerAuth ? (
-                <p className="mt-0.5 text-xs text-red-200 sm:text-sm">
-                  تفويض {managerAuth.managerName}
-                </p>
-              ) : null}
-            </div>
-            <div className="relative shrink-0" ref={shiftDetailsRef}>
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <div className="relative" ref={shiftDetailsRef}>
               <button
                 type="button"
                 onClick={() => setShiftDetailsOpen((open) => !open)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-600"
                 aria-expanded={shiftDetailsOpen}
                 aria-haspopup="dialog"
                 aria-label="تفاصيل الوردية والنقدية"
@@ -1033,7 +1055,7 @@ function POSPageInner() {
               {shiftDetailsOpen ? (
                 <div
                   role="dialog"
-                  className="absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-700 bg-slate-900 p-3 text-right shadow-2xl"
+                  className="absolute start-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-700 bg-slate-900 p-3 text-right shadow-2xl"
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                     تفاصيل الوردية
@@ -1041,7 +1063,13 @@ function POSPageInner() {
                   <dl className="mt-2 space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-slate-400">الاتصال</dt>
-                      <dd className={isOnline ? "font-semibold text-emerald-300" : "font-semibold text-red-300"}>
+                      <dd
+                        className={
+                          isOnline
+                            ? "font-semibold text-emerald-300"
+                            : "font-semibold text-red-300"
+                        }
+                      >
                         {isOnline ? "متصل" : "غير متصل"}
                       </dd>
                     </div>
@@ -1062,7 +1090,9 @@ function POSPageInner() {
                         <div className="flex items-center justify-between gap-3 border-t border-slate-700 pt-2">
                           <dt className="text-slate-400">الوردية بدأت</dt>
                           <dd className="font-semibold text-white">
-                            {new Date(shiftApi.shift.startedAt).toLocaleTimeString("ar-EG")}
+                            {new Date(
+                              shiftApi.shift.startedAt,
+                            ).toLocaleTimeString("ar-EG")}
                           </dd>
                         </div>
                         <div className="flex items-center justify-between gap-3">
@@ -1087,17 +1117,21 @@ function POSPageInner() {
                 </div>
               ) : null}
             </div>
-          </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+            {returnMode ? (
+              <span className="rounded-xl bg-white/15 px-3 py-1.5 text-sm font-semibold text-red-100">
+                وضع الاسترجاع
+                {managerAuth ? ` · ${managerAuth.managerName}` : ""}
+              </span>
+            ) : null}
+
             <button
               type="button"
               onClick={() => {
                 openCustomerDisplayWindow();
-                // Re-broadcast current cart so a freshly opened window paints immediately.
                 publishCustomerDisplayState(buildCustomerDisplaySnapshot());
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-500"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-teal-500"
               title="فتح شاشة العميل على الشاشة الثانية"
             >
               <Monitor className="h-4 w-4" />
@@ -1108,9 +1142,12 @@ function POSPageInner() {
               onClick={() => {
                 const next = !posDark;
                 setPosDark(next);
-                window.localStorage.setItem("pos-theme", next ? "dark" : "light");
+                window.localStorage.setItem(
+                  "pos-theme",
+                  next ? "dark" : "light",
+                );
               }}
-              className="rounded-xl bg-slate-700 px-3 py-2 text-sm font-bold text-white hover:bg-slate-600"
+              className="rounded-xl bg-slate-700 px-3 py-1.5 text-sm font-bold text-white hover:bg-slate-600"
               aria-label={posDark ? "الوضع الفاتح" : "الوضع الداكن"}
             >
               {posDark ? "☀️" : "🌙"}
@@ -1120,7 +1157,9 @@ function POSPageInner() {
                 type="button"
                 onClick={() => {
                   if (!installEvent) {
-                    setToast("من متصفح كروم: قائمة ⋮ ثم تثبيت برنامج الكاشير");
+                    setToast(
+                      "من متصفح كروم: قائمة ⋮ ثم تثبيت برنامج الكاشير",
+                    );
                     return;
                   }
                   void installEvent.prompt().then(() => {
@@ -1128,16 +1167,16 @@ function POSPageInner() {
                     setInstalled(true);
                   });
                 }}
-                className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-bold text-white hover:bg-sky-500"
+                className="rounded-xl bg-sky-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-sky-500"
               >
-                💻 تثبيت برنامج الكاشير على الجهاز
+                💻 تثبيت التطبيق
               </button>
             )}
             <button
               type="button"
               disabled={shiftLocked}
               onClick={() => setQueueModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-slate-600"
               title="قسائم الكاشير المحمول"
             >
               <ListOrdered className="h-4 w-4" />
@@ -1147,34 +1186,25 @@ function POSPageInner() {
             <button
               type="button"
               onClick={() => setOrdersOpen(true)}
-              className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-orange-400"
+              className="rounded-xl bg-orange-500 px-3 py-1.5 text-sm font-bold text-slate-950 hover:bg-orange-400"
             >
               🛵 طلبات الأونلاين ({desk.openOrderCount})
             </button>
             <button
               type="button"
               onClick={() => setChatOpen(true)}
-              className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-500"
+              className="rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-emerald-500"
             >
               💬 شات العملاء ({desk.chatUnread})
             </button>
-            <div className="hidden max-w-xs text-right text-sm sm:block">
-              {scanError ? (
-                <p className="font-medium text-red-300">{scanError}</p>
-              ) : scanMessage ? (
-                <p className="font-medium text-brand-300">{scanMessage}</p>
-              ) : (
-                <p className="text-slate-400">أدخل الباركود...</p>
-              )}
-            </div>
             <button
               type="button"
               disabled={shiftLocked || isClosingShift}
               onClick={handleReturnModeClick}
               className={
                 returnMode
-                  ? "rounded-xl bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
-                  : "rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
+                  ? "rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-red-800 hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
+                  : "rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-white"
               }
             >
               {returnMode ? "إنهاء الاسترجاع" : "وضع الاسترجاع"}
@@ -1183,7 +1213,7 @@ function POSPageInner() {
               type="button"
               disabled={shiftLocked || isClosingShift}
               onClick={handleOpenDrawer}
-              className="rounded-xl bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:bg-slate-600"
+              className="rounded-xl bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:bg-slate-600"
             >
               فتح الدرج
             </button>
@@ -1191,7 +1221,7 @@ function POSPageInner() {
               type="button"
               disabled={shiftLocked || isClosingShift}
               onClick={() => void openZReportModal()}
-              className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-600"
+              className="rounded-xl bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-600"
             >
               تقفيل الكاشير (Z-Report)
             </button>
@@ -1199,7 +1229,7 @@ function POSPageInner() {
         </header>
 
         {recentSales.length > 0 && (
-          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-4 py-1.5">
+          <div className="flex w-full shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-4 py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               السجل
             </span>
@@ -1279,19 +1309,7 @@ function POSPageInner() {
           error={checkout.error}
           customers={customers}
           isReturn={returnMode}
-          onPaymentPreview={(preview) => {
-            if (!preview) {
-              setPaymentPreview(null);
-              return;
-            }
-            setPaymentPreview({
-              method: preview.paymentMethod,
-              methodLabel: paymentMethodLabelAr(preview.paymentMethod),
-              paidAmount: preview.paidAmount,
-              changeAmount: preview.changeAmount,
-              exchangeRate: preview.exchangeRate ?? null,
-            });
-          }}
+          onPaymentPreview={handlePaymentPreview}
           onClose={() => {
             if (!checkout.isSubmitting) setCheckoutOpen(false);
           }}

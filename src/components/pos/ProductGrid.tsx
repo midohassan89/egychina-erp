@@ -218,9 +218,12 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
 
     return (
       <section className="flex min-h-0 flex-1 flex-col bg-slate-100">
-        <div className="shrink-0 space-y-3 border-b border-slate-200 bg-white p-3">
-          <div className="flex gap-2">
-            <form onSubmit={handleSubmit} className="relative min-w-0 flex-1">
+        <div className="w-full shrink-0 space-y-3 border-b border-slate-200 bg-white p-3">
+          <div className="flex w-full shrink-0 min-w-0 gap-2">
+            <form
+              onSubmit={handleSubmit}
+              className="relative min-w-[200px] flex-1"
+            >
               <Search className="pointer-events-none absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <PosKeyboardInput
                 ref={searchInputRef}
@@ -239,7 +242,7 @@ export const ProductGrid = forwardRef<ProductGridHandle, ProductGridProps>(
                 disabled={scanLocked}
                 placeholder="ابحث بالاسم أو امسح الباركود..."
                 autoComplete="off"
-                className="pos-input w-full rounded-xl border border-slate-400 bg-white py-3 pe-4 ps-11 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:bg-slate-100"
+                className="pos-input w-full min-w-[200px] rounded-xl border border-slate-400 bg-white py-3 pe-4 ps-11 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:bg-slate-100"
               />
             </form>
             {onOpenPriceCheck && (
