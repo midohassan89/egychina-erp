@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { QuickNameDialog, translateArabicName } from "@/components/dashboard/QuickNameDialog";
+import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { useToast } from "@/components/ui/Toast";
 
 interface CategoryOption {
@@ -115,25 +116,19 @@ export function CategorySelect({
   return (
     <>
       <div className="flex items-center gap-2">
-        <select
+        <SearchableCombobox
+          options={categories}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={
-            className ??
-            "min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
-          }
-        >
-          <option value="">
-            {loaded && categories.length === 0
+          onChange={onChange}
+          loaded={loaded}
+          placeholder={
+            loaded && categories.length === 0
               ? "لا توجد تصنيفات"
-              : "اختر التصنيف..."}
-          </option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
+              : "ابحث عن التصنيف..."
+          }
+          emptyLabel="لا توجد نتائج مطابقة"
+          className={className}
+        />
         <button
           type="button"
           title="إضافة تصنيف"

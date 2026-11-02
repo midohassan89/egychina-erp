@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { QuickNameDialog, translateArabicName } from "@/components/dashboard/QuickNameDialog";
+import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { useToast } from "@/components/ui/Toast";
 
 interface BrandOption {
@@ -100,25 +101,19 @@ export function BrandSelect({
   return (
     <>
       <div className="flex items-center gap-2">
-        <select
+        <SearchableCombobox
+          options={brands}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={
-            className ??
-            "min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
-          }
-        >
-          <option value="">
-            {loaded && brands.length === 0
+          onChange={onChange}
+          loaded={loaded}
+          placeholder={
+            loaded && brands.length === 0
               ? "لا توجد علامات تجارية"
-              : "اختر العلامة التجارية..."}
-          </option>
-          {brands.map((brand) => (
-            <option key={brand.id} value={brand.id}>
-              {brand.name}
-            </option>
-          ))}
-        </select>
+              : "ابحث عن العلامة التجارية..."
+          }
+          emptyLabel="لا توجد نتائج مطابقة"
+          className={className}
+        />
         <button
           type="button"
           title="إضافة علامة تجارية"
