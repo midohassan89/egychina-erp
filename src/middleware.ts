@@ -40,8 +40,9 @@ export default auth((req) => {
     pathname.startsWith("/api/customer") ||
     (req.method === "GET" && /^\/api\/products\/[^/]+$/.test(pathname)) ||
     pathname.startsWith("/api/driver") ||
-    // Mobile Queue Buster POS — JWT in handlers; do not require NextAuth cookie
+    // Mobile Queue Buster POS + Mobile Admin ERP — JWT in handlers; no NextAuth cookie
     pathname.startsWith("/api/mobile-pos") ||
+    pathname.startsWith("/api/mobile-admin") ||
     pathname.startsWith("/api/pos/queue-tickets") ||
     (pathname === "/api/settings" && req.method === "GET") ||
     (pathname === "/api/delivery-zones" &&
