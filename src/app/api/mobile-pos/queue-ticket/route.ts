@@ -3,6 +3,8 @@ import { requireMobilePos } from "@/lib/pos/mobilePosAuth";
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import {
   allocateQueueTicketCode,
+  isQueueTicketCode,
+  normalizeQueueCode,
   normalizeQueueItem,
   serializeQueueTicket,
   summarizeQueueItems,
@@ -18,6 +20,80 @@ export const dynamic = "force-dynamic";
 
 export async function OPTIONS() {
   return mobilePosOptions();
+}
+
+/**
+ * GET /api/mobile-pos/queue-ticket?code=Q-1011
+ * Load a queue ticket (with items) into the mobile cashier cart.
+ * PENDING tickets become CLAIMED for this cashier.
+ */
+export async function GET(request: Request) {
+  try {
+    const user = await requireMobilePos(request);
+    if (!user) {
+      return mobilePosError("غير مصرح — يرجى تسجيل الدخول مجدداً", 401);
+    }
+
+    const url = new URL(request.url);
+    const code = normalizeQueueCode(
+      url.searchParams.get("code") ??
+        url.searchParams.get("ticket") ??
+        url.searchParams.get("q") ??
+        "",
+    );
+
+    if (!code || !isQueueTicketCode(code)) {
+      return mobilePosError(
+        "كود القسيمة غير صالح (المتوقع مثل Q-1001)",
+        400,
+      );
+    }
+
+    const existing = await prisma.posQueueTicket.findUnique({
+      where: { code },
+    });
+
+    if (!existing) {
+      return mobilePosError("القسيمة غير موجودة", 404);
+    }
+
+    if (existing.status === "COMPLETED") {
+      return mobilePosError("تم إتمام هذه القسيمة مسبقاً", 409, {
+        status: existing.status,
+      });
+    }
+    if (existing.status === "CANCELLED") {
+      return mobilePosError("تم إلغاء هذه القسيمة", 409, {
+        status: existing.status,
+      });
+    }
+
+    const ticket =
+      existing.status === "PENDING"
+        ? await prisma.posQueueTicket.update({
+            where: { id: existing.id },
+            data: {
+              status: "CLAIMED",
+              claimedById: user.id,
+            },
+          })
+        : existing;
+
+    const serialized = serializeQueueTicket(ticket);
+
+    return mobilePosJson({
+      ok: true,
+      ticket: serialized,
+      items: serialized.items,
+      data: serialized.items,
+      code: ticket.code,
+      total: ticket.total,
+      count: serialized.items.length,
+    });
+  } catch (error) {
+    console.error("[api/mobile-pos/queue-ticket GET]", error);
+    return mobilePosError("تعذر جلب قسيمة الانتظار", 500);
+  }
 }
 
 /**
