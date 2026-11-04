@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     code: sale.orderNumber || upper,
     lines: sale.lines.map((line) => ({
       name: line.name,
-      nameZh: line.product?.nameZh ?? null,
+      nameZh: line.nameZh?.trim() || line.product?.nameZh || null,
       sku: line.product?.sku ?? "",
       qty: line.quantity,
       unitPrice: line.unitPrice,

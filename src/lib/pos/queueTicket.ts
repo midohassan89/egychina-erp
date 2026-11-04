@@ -35,7 +35,8 @@ export function normalizeQueueCode(raw: string): string {
 }
 
 export function isQueueTicketCode(raw: string): boolean {
-  return /^Q-\d+$/i.test(String(raw ?? "").trim());
+  const code = normalizeQueueCode(raw);
+  return /^Q-\d+$/i.test(code);
 }
 
 function parseQueueSeq(code: string): number | null {

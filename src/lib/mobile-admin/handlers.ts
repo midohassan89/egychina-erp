@@ -416,6 +416,7 @@ async function createPosReturn(
       ? original.lines.map((line) => ({
           wcProductId: line.wcProductId,
           name: line.name,
+          nameZh: line.nameZh ?? null,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
           lineTotal: -Math.abs(line.lineTotal),
@@ -429,6 +430,8 @@ async function createPosReturn(
             wcProductId:
               row.wcProductId != null ? Number(row.wcProductId) : null,
             name: String(row.name ?? "صنف"),
+            nameZh:
+              row.nameZh != null ? String(row.nameZh).trim() || null : null,
             quantity,
             unitPrice,
             lineTotal: -roundMoney(quantity * unitPrice),
@@ -676,6 +679,8 @@ async function handleProducts(ctx: ModuleContext): Promise<ModuleResult> {
           ? {
               OR: [
                 { name: { contains: search } },
+                { nameZh: { contains: search } },
+                { nameEn: { contains: search } },
                 { barcode: { contains: search } },
                 { sku: { contains: search } },
               ],

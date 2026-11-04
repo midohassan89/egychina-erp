@@ -540,6 +540,8 @@ model SaleLine {
   /** WooCommerce product id from POS cart */
   wcProductId Int?
   name        String
+  /** Chinese name snapshot for bilingual receipts / mobile admin. */
+  nameZh      String?
   quantity    Float
   unitPrice   Float
   /** Snapshot cost for COGS at time of sale */

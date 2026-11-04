@@ -522,8 +522,15 @@ function POSPageInner() {
 
   function scanBarcode(rawInput: string): boolean {
       const scanned = rawInput.trim();
-      if (isQueueTicketCode(scanned)) {
+      // Mobile queue ticket QR (Q-1007) — claim into cart, never treat as a product.
+      if (isQueueTicketCode(scanned) || isQueueTicketCode(normalizeQueueCode(scanned))) {
         void claimQueueTicket(scanned);
+        closeKeyboard();
+        return true;
+      }
+      // Printed cashier invoice QR (POS-xxxx / WC-xxxx) — load return receipt.
+      if (/^POS-\d+$/i.test(scanned) || /^WC-\d+$/i.test(scanned)) {
+        void openReceiptReturn(scanned);
         closeKeyboard();
         return true;
       }

@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       return mobilePosError("جسم الطلب غير صالح (JSON)", 400);
     }
 
-    const items = (Array.isArray(body.items) ? body.items : [])
+    let items = (Array.isArray(body.items) ? body.items : [])
       .map((row) => normalizeQueueItem(row))
       .filter((row): row is QueueTicketItem => row != null);
 
@@ -56,6 +56,51 @@ export async function POST(request: Request) {
         400,
       );
     }
+
+    // Fill missing Chinese names from Product / ProductPackage.
+    const productIds = [...new Set(items.map((item) => item.productId))];
+    const packageIds = [
+      ...new Set(
+        items
+          .map((item) => item.packageId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const [dbProducts, dbPackages] = await Promise.all([
+      prisma.product.findMany({
+        where: { id: { in: productIds }, isDeleted: false },
+        select: {
+          id: true,
+          name: true,
+          nameZh: true,
+          barcode: true,
+          imageUrl: true,
+        },
+      }),
+      packageIds.length > 0
+        ? prisma.productPackage.findMany({
+            where: { id: { in: packageIds } },
+            select: { id: true, name: true, nameZh: true, barcode: true },
+          })
+        : Promise.resolve([]),
+    ]);
+    const productById = new Map(dbProducts.map((p) => [p.id, p]));
+    const packageById = new Map(dbPackages.map((p) => [p.id, p]));
+    items = items.map((item) => {
+      const product = productById.get(item.productId);
+      const pkg = item.packageId ? packageById.get(item.packageId) : null;
+      return {
+        ...item,
+        name: item.name || pkg?.name || product?.name || "صنف",
+        nameZh:
+          item.nameZh?.trim() ||
+          pkg?.nameZh?.trim() ||
+          product?.nameZh?.trim() ||
+          null,
+        barcode: item.barcode || pkg?.barcode || product?.barcode || "",
+        imageUrl: item.imageUrl || product?.imageUrl || null,
+      };
+    });
 
     const { subtotal } = summarizeQueueItems(items);
     const discount = Math.max(0, Number(body.discount) || 0);

@@ -11,6 +11,8 @@ export interface PersistSaleLineInput {
   /** WooCommerce product id (POS cart uses wcId as product.id). */
   wcProductId?: number | null;
   name: string;
+  /** Chinese name snapshot for bilingual receipts. */
+  nameZh?: string | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -70,15 +72,16 @@ export async function persistSaleRecord(
     wcIds.length > 0
       ? await db.product.findMany({
           where: { wcId: { in: wcIds }, isDeleted: false },
-          select: { id: true, wcId: true },
+          select: { id: true, wcId: true, nameZh: true },
         })
       : [];
-  const byWcId = new Map(products.map((p) => [p.wcId, p.id]));
+  const byWcId = new Map(products.map((p) => [p.wcId, p]));
 
   const lineCreates: {
     productId: string | null;
     wcProductId: number | null;
     name: string;
+    nameZh: string | null;
     quantity: number;
     unitPrice: number;
     unitCost: number;
@@ -93,7 +96,8 @@ export async function persistSaleRecord(
       line.wcProductId != null && Number(line.wcProductId) > 0
         ? Number(line.wcProductId)
         : null;
-    const productId = wcProductId != null ? (byWcId.get(wcProductId) ?? null) : null;
+    const product = wcProductId != null ? (byWcId.get(wcProductId) ?? null) : null;
+    const productId = product?.id ?? null;
 
     const stockMultiplier = Math.max(
       1,
@@ -106,10 +110,16 @@ export async function persistSaleRecord(
       );
     }
 
+    const nameZh =
+      (line.nameZh != null && String(line.nameZh).trim()) ||
+      product?.nameZh?.trim() ||
+      null;
+
     lineCreates.push({
       productId,
       wcProductId,
       name: String(line.name || "Item").slice(0, 200),
+      nameZh: nameZh ? nameZh.slice(0, 200) : null,
       quantity: qty,
       unitPrice: roundMoney(Math.abs(Number(line.unitPrice) || 0)),
       unitCost,

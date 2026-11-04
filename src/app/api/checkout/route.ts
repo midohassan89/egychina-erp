@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     lines?: {
       productId?: number;
       name?: string;
+      nameZh?: string | null;
       qty?: number;
       unitPrice?: number;
       lineTotal?: number;
@@ -127,6 +128,10 @@ export async function POST(request: Request) {
   const saleLines = (body.lines ?? []).map((line) => ({
     wcProductId: line.productId ?? null,
     name: line.name ?? "Item",
+    nameZh:
+      line.nameZh != null && String(line.nameZh).trim()
+        ? String(line.nameZh).trim()
+        : null,
     quantity: Math.abs(Number(line.qty) || 0),
     unitPrice: Number(line.unitPrice) || 0,
     lineTotal: Number(line.lineTotal) || 0,

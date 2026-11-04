@@ -6,6 +6,7 @@ import {
   CreateProductError,
 } from "@/lib/products/createProduct";
 import { expandPosCatalog } from "@/lib/products/mapProduct";
+import { productTextSearchOr } from "@/lib/products/productTextSearch";
 import { productUnits } from "@/lib/products/units";
 import type { Prisma } from "@prisma/client";
 
@@ -84,14 +85,7 @@ export async function GET(request: Request) {
     ];
 
     if (q) {
-      filters.push({
-        OR: [
-          { name: { contains: q } },
-          { barcode: { contains: q } },
-          { sku: { contains: q } },
-          { packages: { some: { barcode: { contains: q } } } },
-        ],
-      });
+      filters.push({ OR: productTextSearchOr(q) });
     }
 
     if (stockStatusFilter === "instock") {
@@ -134,15 +128,7 @@ export async function GET(request: Request) {
         sinceDate != null && !Number.isNaN(sinceDate.getTime());
       const serverTime = new Date();
       const textFilter: Prisma.ProductWhereInput | null = q
-        ? {
-            OR: [
-              { name: { contains: q } },
-              { barcode: { contains: q } },
-              { sku: { contains: q } },
-              { packages: { some: { barcode: { contains: q } } } },
-              { packages: { some: { name: { contains: q } } } },
-            ],
-          }
+        ? { OR: productTextSearchOr(q) }
         : null;
       const products = await prisma.product.findMany({
         where: {
@@ -195,14 +181,7 @@ export async function GET(request: Request) {
       : { isDeleted: false };
     const sharedOptionFilters: Prisma.ProductWhereInput[] = [catalogScope];
     if (q) {
-      sharedOptionFilters.push({
-        OR: [
-          { name: { contains: q } },
-          { barcode: { contains: q } },
-          { sku: { contains: q } },
-          { packages: { some: { barcode: { contains: q } } } },
-        ],
-      });
+      sharedOptionFilters.push({ OR: productTextSearchOr(q) });
     }
     if (stockStatusFilter === "instock") {
       sharedOptionFilters.push({ stockQuantity: { gt: 0 } });
@@ -226,18 +205,7 @@ export async function GET(request: Request) {
         weighed
           ? { isWeighed: true, isDeleted: false }
           : { isDeleted: trash },
-        ...(q
-          ? [
-              {
-                OR: [
-                  { name: { contains: q } },
-                  { barcode: { contains: q } },
-                  { sku: { contains: q } },
-                  { packages: { some: { barcode: { contains: q } } } },
-                ],
-              },
-            ]
-          : []),
+        ...(q ? [{ OR: productTextSearchOr(q) }] : []),
         ...(categoryId ? [{ categoryId }] : []),
         ...(brandId ? [{ brandId }] : []),
       ],

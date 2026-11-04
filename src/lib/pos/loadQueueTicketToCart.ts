@@ -68,11 +68,17 @@ export function queueItemsToCartLines(
     const unitPrice = roundMoney(Math.abs(item.unitPrice));
     const isScale = Boolean(item.isWeighted || product.isWeighed);
 
+    const productWithZh: CachedProduct = {
+      ...product,
+      nameZh: item.nameZh?.trim() || product.nameZh || null,
+      name: item.name?.trim() || product.name,
+    };
+
     if (isScale) {
       const lineTotal = roundMoney(qty * unitPrice);
       lines.push({
         lineId: newLineId(),
-        product,
+        product: productWithZh,
         qty,
         unitPrice,
         lineTotal,
@@ -88,7 +94,7 @@ export function queueItemsToCartLines(
 
     lines.push({
       lineId: newLineId(),
-      product,
+      product: productWithZh,
       qty,
       unitPrice,
       lineTotal: computeLineTotal(qty, unitPrice),

@@ -223,6 +223,7 @@ export function useCheckout() {
                 lines: saleLines.map((line) => ({
                   productId: line.productId,
                   name: line.name,
+                  nameZh: line.nameZh ?? null,
                   qty: line.qty,
                   unitPrice: line.unitPrice,
                   lineTotal: line.lineTotal,

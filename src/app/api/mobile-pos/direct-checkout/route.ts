@@ -177,7 +177,7 @@ export async function POST(request: Request) {
           ...(numericWcIds.length > 0 ? [{ wcId: { in: numericWcIds } }] : []),
         ],
       },
-      select: { id: true, wcId: true, name: true },
+      select: { id: true, wcId: true, name: true, nameZh: true },
     });
 
     const byPrismaId = new Map(products.map((p) => [p.id, p]));
@@ -200,6 +200,7 @@ export async function POST(request: Request) {
         productId: product?.id ?? null,
         wcProductId: product?.wcId ?? null,
         name: item.name || product?.name || "صنف",
+        nameZh: item.nameZh?.trim() || product?.nameZh || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         lineTotal: roundMoney(item.quantity * item.unitPrice),
@@ -307,6 +308,7 @@ export async function POST(request: Request) {
           lines: saleLines.map((line) => ({
             wcProductId: line.wcProductId,
             name: line.name,
+            nameZh: line.nameZh,
             quantity: line.quantity,
             unitPrice: line.unitPrice,
             lineTotal: line.lineTotal,
