@@ -502,7 +502,7 @@ async function createPosReturn(
       },
     });
 
-    return persistSaleRecord(
+    const persisted = await persistSaleRecord(
       {
         shiftId: shift!.id,
         userId: ctx.user.id,
@@ -514,6 +514,7 @@ async function createPosReturn(
       },
       tx,
     );
+    return persisted.sale;
   });
 
   return okOne(

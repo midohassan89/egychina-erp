@@ -54,6 +54,7 @@ model User {
   driverExpenses DriverExpense[] @relation("DriverExpenses")
   reviewedDriverExpenses DriverExpense[] @relation("DriverExpenseReviewer")
   assignedOrders Order[] @relation("AssignedDriverOrders")
+  enrolledPosDevices PosDevice[] @relation("PosDeviceEnrolledBy")
 }
 
 /// Immutable activity log for accountability (who did what).
@@ -935,4 +936,24 @@ model ChatMessage {
   createdAt        DateTime @default(now())
 
   @@index([customerId, createdAt])
+}
+
+/// Windows / desktop till enrolled against the ERP (device bearer, not a staff cookie).
+model PosDevice {
+  id               String    @id @default(cuid())
+  /** Matches the till's local terminal.id (GUID). */
+  terminalKey      String
+  storeCode        String    @default("OBOUR")
+  displayName      String
+  /** SHA-256 hex of the raw bearer token. Raw token is shown once at enroll. */
+  tokenHash        String    @unique
+  enrolledByUserId String
+  enrolledBy       User      @relation("PosDeviceEnrolledBy", fields: [enrolledByUserId], references: [id])
+  revokedAt        DateTime?
+  lastSeenAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([storeCode, terminalKey])
+  @@index([storeCode, revokedAt])
 }

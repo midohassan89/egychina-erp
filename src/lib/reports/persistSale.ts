@@ -1,11 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { roundMoney, roundQty } from "@/lib/pos/money";
 import { resolveProductUnitCost } from "@/lib/inventory/resolveUnitCost";
 import type { PaymentMethod } from "@/types/woocommerce";
 import { allocateOrderNumber } from "@/lib/orders/orderNumber";
 
-type DbClient = Prisma.TransactionClient | typeof prisma;
+type DbClient = PrismaTypes.TransactionClient | typeof prisma;
 
 export interface PersistSaleLineInput {
   /** WooCommerce product id (POS cart uses wcId as product.id). */
@@ -36,13 +36,21 @@ export interface PersistSaleInput {
   lines: PersistSaleLineInput[];
 }
 
+export type PersistSaleResult = {
+  sale: PrismaTypes.SaleGetPayload<{ include: { lines: true } }>;
+  /** False when an existing row with the same localId was returned (or won the race). */
+  created: boolean;
+};
+
 /**
- * Persist a completed POS sale/return for reporting (idempotent on localId).
+ * Persist a completed POS sale/return.
+ * Idempotent on `localId`: returns `{ created: false }` when the id already exists,
+ * including when a concurrent insert hits the unique constraint.
  */
 export async function persistSaleRecord(
   input: PersistSaleInput,
   db: DbClient = prisma,
-) {
+): Promise<PersistSaleResult> {
   const localId =
     input.localId != null && String(input.localId).trim()
       ? String(input.localId).trim()
@@ -53,13 +61,12 @@ export async function persistSaleRecord(
       where: { localId },
       include: { lines: true },
     });
-    if (existing) return existing;
+    if (existing) return { sale: existing, created: false };
   }
 
   const isReturn = Boolean(input.isReturn) || input.total < 0;
   const createdAt = input.createdAt ? new Date(input.createdAt) : new Date();
 
-  // Resolve WC ids → Prisma products + unit costs
   const wcIds = [
     ...new Set(
       input.lines
@@ -135,27 +142,45 @@ export async function persistSaleRecord(
   const orderNumber =
     paymentMethod === "store" ? null : await allocateOrderNumber(db, "POS");
 
-  return db.sale.create({
-    data: {
-      localId,
-      orderNumber,
-      shiftId: input.shiftId != null ? Number(input.shiftId) : null,
-      userId: input.userId ?? null,
-      total: roundMoney(input.total),
-      paymentMethod,
-      isReturn,
-      status: "completed",
-      wooOrderId: input.wooOrderId ?? null,
-      customerName: input.customerName ?? null,
-      employeeId:
-        input.employeeId != null && Number(input.employeeId) > 0
-          ? Number(input.employeeId)
-          : null,
-      requiresAudit: Boolean(input.requiresAudit) || Boolean(auditReason),
-      auditReason,
-      createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
-      lines: { create: lineCreates },
-    },
-    include: { lines: true },
-  });
+  try {
+    const sale = await db.sale.create({
+      data: {
+        localId,
+        orderNumber,
+        shiftId: input.shiftId != null ? Number(input.shiftId) : null,
+        userId: input.userId ?? null,
+        total: roundMoney(input.total),
+        paymentMethod,
+        isReturn,
+        status: "completed",
+        wooOrderId: input.wooOrderId ?? null,
+        customerName: input.customerName ?? null,
+        employeeId:
+          input.employeeId != null && Number(input.employeeId) > 0
+            ? Number(input.employeeId)
+            : null,
+        requiresAudit: Boolean(input.requiresAudit) || Boolean(auditReason),
+        auditReason,
+        createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
+        lines: { create: lineCreates },
+      },
+      include: { lines: true },
+    });
+    return { sale, created: true };
+  } catch (error) {
+    // Concurrent insert with the same localId. orderNumber conflicts must not be
+    // treated as success — only return when this localId row actually exists.
+    if (
+      localId &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await db.sale.findUnique({
+        where: { localId },
+        include: { lines: true },
+      });
+      if (existing) return { sale: existing, created: false };
+    }
+    throw error;
+  }
 }

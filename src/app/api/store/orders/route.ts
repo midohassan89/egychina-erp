@@ -753,7 +753,7 @@ export async function POST(request: Request) {
           lines: saleLines,
         },
         tx,
-      );
+      ); // created flag unused: store orders have no localId claim
 
       return created;
     });

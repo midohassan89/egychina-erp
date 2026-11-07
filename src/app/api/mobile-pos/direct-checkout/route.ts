@@ -288,7 +288,7 @@ export async function POST(request: Request) {
         },
       });
 
-      const sale = await persistSaleRecord(
+      const { sale } = await persistSaleRecord(
         {
           localId,
           shiftId: shift!.id,

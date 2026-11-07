@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma db push && tsx prisma/seed.ts"
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "test:checkout-idemp": "tsx scripts/test-checkout-localid-idempotency.ts",
+    "test:pos-device-auth": "tsx scripts/test-pos-device-auth.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
 import {
   createProductOnErpAndWoo,
   CreateProductError,
@@ -47,8 +48,8 @@ const productSelect = {
  * - `trash=1`: only soft-deleted products (admin). Default excludes trash.
  */
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
+  const access = await resolvePosAccess(request);
+  if (!access) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -56,6 +57,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim() ?? "";
     const pageParam = searchParams.get("page");
+    // Device tills only receive the POS full-catalog shape (no admin pagination/trash).
+    if (access.kind === "device" && (pageParam || searchParams.get("trash") === "1")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const trash = searchParams.get("trash") === "1";
     const weighed = searchParams.get("weighed") === "1";
     const categoryId = searchParams.get("categoryId")?.trim() ?? "";

@@ -1,0 +1,45 @@
+# Project Context & Architecture: egychina-erp
+You are an expert full-stack engineer working on `egychina-erp` (local npm package name: `supermarket-pos`), the central Enterprise Resource Planning (ERP) backend, Admin Dashboard, and Web Point of Sale (POS) for "EgyChina / Souq El Obour" hypermarket.
+
+- Production URL: `https://erp.echinamart.com`
+- Storefront domain: `https://echinamart.com`
+- Server path: `/var/www/egychina-erp`
+- Local default: `npm run dev -- -p 3001`
+
+## CRITICAL ARCHITECTURAL RULE (ERP IS SINGLE SOURCE OF TRUTH)
+- `egychina-erp` owns the SQLite database and is the single source of truth for catalog, inventory, sales, online orders, customers, loyalty, drivers, and admin data.
+- It serves REST APIs to four client apps: `egychina-store` (web storefront), `elobour-app` (customer mobile), `elobour-driver` (driver expenses mobile), and `egychina-pos-app` (mobile POS + admin).
+- **Do not build new features on WordPress or WooCommerce.** New catalog/order/customer flows must read/write the local Prisma database and ERP APIs only.
+- Legacy WooCommerce/WordPress code still exists (`src/lib/woocommerce/*`, `src/app/api/woocommerce/*`, `src/app/api/sync/pull-from-wc`, `Product.wcId`, `.env` Woo keys) but **live sync is disabled** (`wooCommerceFetch` / pull-from-wc return **410**). Do not re-enable Woo sync or depend on WP REST unless the user explicitly requests a migration task.
+
+## Tech Stack (Strictly Enforced — matches this repo)
+- Framework: Next.js 15 (App Router), React 19, TypeScript.
+- Database & ORM: Prisma 6 + **SQLite** (`DATABASE_URL=file:./dev.db`).
+- Auth: NextAuth v5 (JWT) + `bcryptjs`. Roles: `CASHIER`, `ACCOUNTANT`, `MANAGER`, `ADMIN`, `DRIVER` (mobile APIs).
+- Styling: Tailwind CSS 3.x, Lucide Icons, custom components under `src/components/ui/` (**not** shadcn/ui / Radix).
+- Package manager: **npm** (`package-lock.json`). Do not assume Bun.
+- Notable libs: `idb` (POS offline), `xlsx` (Excel import/export), Firebase Admin + Expo Push (notifications).
+
+## Key Surfaces & API Groups
+- Web POS: `/pos` · Customer Facing Display: `/pos/customer-display`
+- Admin Dashboard: `/dashboard` (+ extra `/admin/*` tools)
+- Client API groups: `/api/store/*`, `/api/customer/*`, `/api/driver/*`, `/api/mobile-pos/*`, `/api/mobile-admin/[module]`, `/api/pos/*`
+
+## POS Specifics (verified in code)
+- `BroadcastChannel` (`egychina_pos_cfd`) for dual-screen CFD sync (`src/lib/pos/customerDisplaySync.ts`).
+- Hardware barcode scanner listeners on the POS page.
+- Isolated `iframe` thermal receipt printing (`src/lib/pos/printIsolatedReceipt.ts`).
+- Multi-currency checkout helper: invoice stays EGP; WeChat CNY conversion uses live/default rate with a commercial safety margin (~4%).
+- Static QR images: `/uploads/images/wechat-qr.jpg`, `/uploads/images/instapay-qr.jpeg`.
+
+## Strict Cursor Composer & Agent Rules
+1. NO PARTIAL CODE: Never use placeholders like `// ... rest of the code`, `// ... existing code`, or `/* TODO */`. Always write complete, production-ready, fully functional code blocks or files.
+2. PREVENT INFINITE LOOPS: When syncing state between parent and child components (e.g., `POSPage` and `CheckoutDialog`), strictly use `useCallback`, `useRef`, and primitive dependency arrays in `useEffect` with deep/strict value comparison before calling `setState`.
+3. PERFORMANCE & CPU: Avoid unnecessary re-renders in high-frequency screens (POS and Customer Display). Use `useRef` and `requestAnimationFrame` for animations/clocks instead of `useState` intervals.
+4. RTL & MULTILINGUAL UI: Primary interface is Arabic (RTL). Maintain responsive Flexbox/Grid (`min-w-0`, `shrink-0`, `flex-wrap`, `whitespace-nowrap` for currency). Support Arabic, English, and Chinese labels in POS and catalog.
+
+## Mandatory Development Workflow Sequence
+Whenever implementing a new feature or modifying data structures, follow this order:
+1. Database Layer: Update `prisma/schema.prisma` first and align migrations/types (`prisma generate` / `db push` as appropriate). Schema ownership is ERP-only — storefront/mobile must not drive schema changes.
+2. Backend API Layer: Create or update Next.js API routes under `src/app/api/...` for the dashboard and external clients.
+3. Frontend / UI Layer: Update Admin Dashboard or Web POS under `src/app/...` and `src/components/...`.
