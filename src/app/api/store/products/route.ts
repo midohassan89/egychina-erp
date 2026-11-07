@@ -84,14 +84,20 @@ export async function GET(req: NextRequest) {
 
     const products = rows.map((product) => ({
       id: product.id,
+      wcId: product.wcId,
+      sku: product.sku,
+      barcode: product.barcode,
       name: product.name,
       nameEn: product.nameEn,
       nameZh: product.nameZh,
       price: product.price,
+      salePrice: product.salePrice,
       image: product.imageUrl,
       categoryId: product.categoryId,
       stock: product.stockQuantity,
       stockStatus: product.stockStatus,
+      isFavorite: product.isFavorite,
+      isWeighed: product.isWeighed,
       units: productUnits(product.packages),
       packages: product.packages.map((row) => ({
         id: row.id,
@@ -101,6 +107,7 @@ export async function GET(req: NextRequest) {
         barcode: row.barcode,
         price: row.price,
         packSize: row.packSize,
+        isFavorite: row.isFavorite,
       })),
       brand: product.brand
         ? {
