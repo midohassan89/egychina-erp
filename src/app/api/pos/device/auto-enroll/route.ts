@@ -6,9 +6,42 @@ import {
 } from "@/lib/pos/deviceAuth";
 
 /**
+ * Ensures PosDevice exists on older production DBs that never ran db push
+ * after the desktop till model was added.
+ */
+async function ensurePosDeviceTable(): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PosDevice" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "terminalKey" TEXT NOT NULL,
+      "storeCode" TEXT NOT NULL DEFAULT 'OBOUR',
+      "displayName" TEXT NOT NULL,
+      "tokenHash" TEXT NOT NULL,
+      "enrolledByUserId" TEXT NOT NULL,
+      "revokedAt" DATETIME,
+      "lastSeenAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL,
+      CONSTRAINT "PosDevice_enrolledByUserId_fkey"
+        FOREIGN KEY ("enrolledByUserId") REFERENCES "User" ("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "PosDevice_tokenHash_key" ON "PosDevice"("tokenHash")`,
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "PosDevice_storeCode_terminalKey_key" ON "PosDevice"("storeCode", "terminalKey")`,
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "PosDevice_storeCode_revokedAt_idx" ON "PosDevice"("storeCode", "revokedAt")`,
+  );
+}
+
+/**
  * POST /api/pos/device/auto-enroll
  * Silent till bootstrap (no manager PIN). Desktop POS calls this once like a
- * catalog pull — then uses the bearer for checkout + optional protected routes.
+ * catalog pull — then uses the bearer for checkout.
  * Body: { terminalKey, storeCode?, displayName? }
  */
 export async function POST(request: Request) {
@@ -31,6 +64,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    await ensurePosDeviceTable();
 
     const owner = await prisma.user.findFirst({
       where: {
@@ -94,9 +129,10 @@ export async function POST(request: Request) {
       reenrolled: Boolean(existing),
     });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
     console.error("[api/pos/device/auto-enroll]", error);
     return NextResponse.json(
-      { error: "Could not enroll device" },
+      { error: "Could not enroll device", detail },
       { status: 500 },
     );
   }
