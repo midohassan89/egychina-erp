@@ -63,6 +63,7 @@ export async function GET(request: Request) {
     }
     const trash = searchParams.get("trash") === "1";
     const weighed = searchParams.get("weighed") === "1";
+    const suspicious = searchParams.get("suspicious") === "1";
     const categoryId = searchParams.get("categoryId")?.trim() ?? "";
     const brandId = searchParams.get("brandId")?.trim() ?? "";
     const stockStatusFilter = searchParams.get("stockStatus")?.trim() ?? "";
@@ -85,9 +86,17 @@ export async function GET(request: Request) {
       Math.max(1, Number.isFinite(perPageRaw) ? perPageRaw : 20),
     );
 
+    const { suspiciousNamePrismaOr } = await import("@/lib/products/suspiciousName");
+
     const filters: Prisma.ProductWhereInput[] = [
-      weighed ? { isDeleted: false, isWeighed: true } : { isDeleted: trash },
+      weighed || suspicious
+        ? { isDeleted: false, ...(weighed ? { isWeighed: true } : {}) }
+        : { isDeleted: trash },
     ];
+
+    if (suspicious) {
+      filters.push({ OR: suspiciousNamePrismaOr() });
+    }
 
     if (q) {
       filters.push({ OR: productTextSearchOr(q) });

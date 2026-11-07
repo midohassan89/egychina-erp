@@ -46,13 +46,25 @@ function cleanSearchTitle(raw: string): string {
     /\bcarrefour\b/gi,
     /\bamazon\b/gi,
     /\begypt\b/gi,
+    /\bbuycott(?:\.com)?\b/gi,
+    /\bupc\s*lookup\b/gi,
+    /\bean\s*lookup\b/gi,
+    /\bbarcode\s*lookup\b/gi,
+    /\bean\s*harvest(?:\s*foods)?\b/gi,
   ];
   for (const pattern of phrases) title = title.replace(pattern, " ");
   title = title.replace(/(^|[\s|•·/])(?:سعر|نون|مصر)(?=$|[\s|•·/])/g, " ");
   title = title.replace(/[|]/g, " ");
   title = title.replace(/\s+[-–—]\s+/g, " ");
   title = title.replace(/^[-–—\s]+|[-–—\s]+$/g, "");
-  return title.replace(/\s{2,}/g, " ").trim();
+  const cleaned = title.replace(/\s{2,}/g, " ").trim();
+  // Reject leftover scraper chrome that is not a real product title.
+  if (
+    /buycott|upc\s*lookup|ean\s*lookup|barcode\s*lookup|ean\s*harvest/i.test(cleaned)
+  ) {
+    return "";
+  }
+  return cleaned;
 }
 
 async function translateToArabic(text: string): Promise<string> {

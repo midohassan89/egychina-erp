@@ -16,6 +16,7 @@ import {
   Download,
   Loader2,
   Package,
+  AlertTriangle,
   Pencil,
   Plus,
   Scale,
@@ -176,7 +177,7 @@ interface ProductsResponse {
   error?: string;
 }
 
-type ViewMode = "active" | "weighed" | "trash";
+type ViewMode = "active" | "weighed" | "suspicious" | "trash";
 type StockFilter = "all" | "instock" | "outofstock";
 type ProductSort = "desc" | "asc" | "az";
 
@@ -277,6 +278,7 @@ function ProductsManagement() {
         if (q) params.set("q", q);
         if (mode === "trash") params.set("trash", "1");
         if (mode === "weighed") params.set("weighed", "1");
+        if (mode === "suspicious") params.set("suspicious", "1");
         if (mode !== "trash" && category) params.set("categoryId", category);
         if (mode === "active" && brand) params.set("brandId", brand);
         if (stock === "instock" || stock === "outofstock") {
@@ -486,6 +488,7 @@ function ProductsManagement() {
     if (query) params.set("q", query);
     if (view === "trash") params.set("trash", "1");
     if (view === "weighed") params.set("weighed", "1");
+    if (view === "suspicious") params.set("suspicious", "1");
     if (view !== "trash" && categoryId) params.set("categoryId", categoryId);
     if (view === "active" && brandId) params.set("brandId", brandId);
     if (stockFilter === "instock" || stockFilter === "outofstock") {
@@ -939,6 +942,19 @@ function ProductsManagement() {
           >
             <Scale className="h-3.5 w-3.5" />
             منتجات الميزان
+          </button>
+          <button
+            type="button"
+            onClick={() => switchView("suspicious")}
+            className={clsx(
+              "inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold",
+              view === "suspicious"
+                ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+                : "border-transparent bg-slate-50 text-slate-500 hover:text-slate-800 dark:bg-gray-800/60 dark:text-gray-400 dark:hover:text-gray-100",
+            )}
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            أسماء مشبوهة
           </button>
           <button
             type="button"
