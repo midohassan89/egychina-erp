@@ -1,8 +1,9 @@
 /** Digits only. A 12-digit 201… code becomes the local 01… mobile. */
 export function normalizeLoyaltyPhone(raw: string): string {
   let cleanPhone = raw.replace(/\D/g, "");
+  // Country 20 + national 1xxxxxxxxx → local 01xxxxxxxxx (11 digits).
   if (cleanPhone.startsWith("201") && cleanPhone.length === 12) {
-    cleanPhone = cleanPhone.replace(/^2/, "0");
+    cleanPhone = `0${cleanPhone.slice(2)}`;
   }
   return cleanPhone;
 }

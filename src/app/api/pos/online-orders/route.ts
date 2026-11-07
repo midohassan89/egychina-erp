@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { canUsePos } from "@/lib/auth/roles";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/pos/online-orders — recent storefront orders for the cashier desk. */
-export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
+/**
+ * GET /api/pos/online-orders — recent storefront orders for the cashier desk.
+ * Auth: staff session or enrolled desktop device Bearer.
+ */
+export async function GET(request: Request) {
+  const access = await resolvePosAccess(request);
+  if (!access?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!canUsePos(session.user.role)) {
+  if (!canUsePos(access.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { canUsePos, isManagerOrAdmin } from "@/lib/auth/roles";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
 import { normalizeLoyaltyPhone } from "@/lib/pos/loyaltyScan";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/admin/customers/search?phone= — loyalty customer lookup for POS scans. */
+/**
+ * GET /api/admin/customers/search?phone= — loyalty customer lookup for POS scans.
+ * Auth: staff session or enrolled desktop device Bearer.
+ */
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
+  const access = await resolvePosAccess(request);
+  if (!access?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!canUsePos(session.user.role) && !isManagerOrAdmin(session.user.role)) {
+  if (!canUsePos(access.role) && !isManagerOrAdmin(access.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

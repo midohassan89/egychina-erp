@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { canUsePos } from "@/lib/auth/roles";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
 import {
   isQueueTicketCode,
   normalizeQueueCode,
@@ -13,10 +13,11 @@ type RouteContext = { params: Promise<{ code: string }> };
 /**
  * GET /api/pos/queue-tickets/[code]
  * Claim a PENDING ticket (or return CLAIMED) and load items into the main POS.
+ * Auth: staff session or enrolled desktop device Bearer.
  */
-export async function GET(_request: Request, context: RouteContext) {
-  const session = await auth();
-  if (!session?.user?.id || !canUsePos(session.user.role)) {
+export async function GET(request: Request, context: RouteContext) {
+  const access = await resolvePosAccess(request);
+  if (!access?.userId || !canUsePos(access.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -75,7 +76,7 @@ export async function GET(_request: Request, context: RouteContext) {
             where: { id: existing.id },
             data: {
               status: "CLAIMED",
-              claimedById: session.user.id,
+              claimedById: access.userId,
             },
           })
         : existing;
@@ -100,10 +101,11 @@ export async function GET(_request: Request, context: RouteContext) {
 /**
  * PATCH /api/pos/queue-tickets/[code]
  * Mark ticket COMPLETED after main-POS checkout (optional saleId).
+ * Auth: staff session or enrolled desktop device Bearer.
  */
 export async function PATCH(request: Request, context: RouteContext) {
-  const session = await auth();
-  if (!session?.user?.id || !canUsePos(session.user.role)) {
+  const access = await resolvePosAccess(request);
+  if (!access?.userId || !canUsePos(access.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -167,7 +169,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         ...(nextStatus === "COMPLETED"
           ? {
               saleId,
-              claimedById: existing.claimedById ?? session.user.id,
+              claimedById: existing.claimedById ?? access.userId,
             }
           : {}),
       },

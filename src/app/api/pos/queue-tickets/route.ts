@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { canUsePos } from "@/lib/auth/roles";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
 import { serializeQueueTicket } from "@/lib/pos/queueTicket";
 
 /**
  * GET /api/pos/queue-tickets — PENDING + CLAIMED tickets for main cashier.
+ * Auth: staff session or enrolled desktop device Bearer (same as /api/checkout).
  */
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id || !canUsePos(session.user.role)) {
+export async function GET(request: Request) {
+  const access = await resolvePosAccess(request);
+  if (!access?.userId || !canUsePos(access.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
