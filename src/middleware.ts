@@ -46,6 +46,8 @@ export default auth((req) => {
     pathname.startsWith("/api/pos/queue-tickets") ||
     // Desktop till device bearer is validated inside handlers (not NextAuth cookie).
     pathname.startsWith("/api/pos/device") ||
+    pathname.startsWith("/api/pos/staff") ||
+    pathname.startsWith("/api/pos/online-orders") ||
     pathname === "/api/checkout" ||
     (pathname === "/api/products" && req.method === "GET") ||
     (pathname === "/api/settings" && req.method === "GET") ||

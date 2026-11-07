@@ -104,6 +104,11 @@ export async function POST(request: Request) {
       );
     }
     pinCode = pinRaw;
+  } else if (role === "CASHIER") {
+    return NextResponse.json(
+      { error: "Cashier accounts require a 4-digit PIN for POS login" },
+      { status: 400 },
+    );
   }
 
   const existing = await prisma.user.findUnique({ where: { username } });

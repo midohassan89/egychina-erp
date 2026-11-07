@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Shield, ScrollText, Trash2 } from "lucide-react";
+import { Plus, X, Shield, ScrollText, Trash2, Pencil } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { clsx } from "clsx";
 import { ALL_ROLES, navKeysForRole, type NavAccess } from "@/lib/auth/roles";
@@ -45,6 +45,7 @@ export default function UsersPage() {
   } | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<UserRow | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string>("CASHIER");
@@ -90,6 +91,17 @@ export default function UsersPage() {
     setRole("CASHIER");
     setPinCode("");
     setFormError(null);
+    setEditTarget(null);
+  }
+
+  function openEdit(user: UserRow) {
+    setEditTarget(user);
+    setUsername(user.username);
+    setPassword("");
+    setRole(user.role);
+    setPinCode("");
+    setFormError(null);
+    setCreateOpen(false);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -97,6 +109,9 @@ export default function UsersPage() {
     setIsSaving(true);
     setFormError(null);
     try {
+      if (role === "CASHIER" && !/^\d{4}$/.test(pinCode)) {
+        throw new Error("PIN الكاشير إلزامي — 4 أرقام");
+      }
       if (pinCode && !/^\d{4}$/.test(pinCode)) {
         throw new Error("PIN must be exactly 4 digits");
       }
@@ -114,6 +129,47 @@ export default function UsersPage() {
       if (!res.ok) throw new Error(body.error ?? "Could not create user");
       setCreateOpen(false);
       resetForm();
+      await load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      if (pinCode && !/^\d{4}$/.test(pinCode)) {
+        throw new Error("PIN must be exactly 4 digits");
+      }
+      if (role === "CASHIER" && !editTarget.hasPin && !/^\d{4}$/.test(pinCode)) {
+        throw new Error("PIN الكاشير إلزامي — 4 أرقام");
+      }
+      const payload: {
+        username: string;
+        role: string;
+        password?: string;
+        pinCode?: string;
+      } = {
+        username,
+        role,
+      };
+      if (password.trim()) payload.password = password;
+      if (pinCode) payload.pinCode = pinCode;
+
+      const res = await fetch(`/api/users/${editTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Could not update user");
+      resetForm();
+      setToast({ type: "success", message: "تم تحديث بيانات الموظف" });
       await load();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Save failed");
@@ -309,7 +365,16 @@ export default function UsersPage() {
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(u)}
+                          title="تعديل الموظف / PIN"
+                          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-gray-800"
+                          aria-label="Edit user"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button
                           type="button"
                           role="switch"
@@ -440,15 +505,18 @@ export default function UsersPage() {
               </div>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
-                  رمز PIN للكاشير (4 أرقام للمدير/الأدمن)
+                  {role === "CASHIER"
+                    ? "رمز PIN للكاشير (4 أرقام — إلزامي لدخول نقطة البيع)"
+                    : "رمز PIN (4 أرقام — للمرتجع وصلاحيات أعلى على نقطة البيع)"}
                 </span>
                 <input
                   inputMode="numeric"
+                  required={role === "CASHIER"}
                   value={pinCode}
                   onChange={(e) =>
                     setPinCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
                   }
-                  placeholder="اختياري — 4 أرقام"
+                  placeholder={role === "CASHIER" ? "إلزامي — 4 أرقام" : "اختياري — 4 أرقام"}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
                 />
               </label>
@@ -473,6 +541,110 @@ export default function UsersPage() {
                   className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
                 >
                   {isSaving ? "جاري الإنشاء…" : "إضافة جديد"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
+                تعديل الموظف
+              </h2>
+              <button
+                type="button"
+                onClick={() => resetForm()}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:text-gray-500 dark:hover:bg-gray-800"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => void handleEdit(e)}
+              className="space-y-4 px-5 py-5"
+            >
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                  اسم المستخدم
+                </span>
+                <input
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                  كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={4}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                  الدور الوظيفي
+                </span>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                >
+                  {ALL_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABELS[r] ?? r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                  {role === "CASHIER"
+                    ? `رمز PIN للكاشير (4 أرقام${editTarget.hasPin ? " — اتركه فارغاً للإبقاء" : " — إلزامي"})`
+                    : "رمز PIN جديد (4 أرقام — اتركه فارغاً للإبقاء)"}
+                </span>
+                <input
+                  inputMode="numeric"
+                  required={role === "CASHIER" && !editTarget.hasPin}
+                  value={pinCode}
+                  onChange={(e) =>
+                    setPinCode(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
+                  }
+                  placeholder={
+                    editTarget.hasPin ? "••••" : "أدخل PIN من 4 أرقام"
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 tracking-widest focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                />
+              </label>
+              {formError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-300">
+                  {formError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => resetForm()}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:bg-slate-300"
+                >
+                  {isSaving ? "جاري الحفظ…" : "حفظ التعديلات"}
                 </button>
               </div>
             </form>
