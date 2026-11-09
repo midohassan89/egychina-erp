@@ -739,7 +739,7 @@
   max-height: 11.5mm;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.5mm 1.5mm 0 1.5mm;
+  padding: 0.35mm 1.2mm 0 1.2mm;
 }
 
 .thermal-label-preview--side .label-half {
@@ -760,12 +760,12 @@
 
 .label-half-row {
   display: flex;
-  flex: 0 0 3.8mm;
+  flex: 0 0 3mm;
   direction: rtl;
-  height: 3.8mm;
+  height: 3mm;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6mm;
+  gap: 0.5mm;
 }
 
 .label-half-name {
@@ -794,24 +794,30 @@
 
 .label-bars {
   box-sizing: border-box;
-  flex: 1 1 5.2mm;
+  flex: 1 1 6.5mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: 5.2mm;
-  max-height: 5.2mm;
-  min-height: 0;
-  padding: 0 2mm;
+  height: 6.5mm;
+  max-height: 7mm;
+  min-height: 5.5mm;
+  padding: 0 0.8mm;
   line-height: 0;
+  overflow: hidden;
 }
 
 .label-bars--single {
-  height: 7.5mm;
-  padding: 0 2.5mm;
+  height: 9mm;
+  max-height: 9.5mm;
+  padding: 0 1.2mm;
 }
 
 .label-bars svg {
   display: block;
-  width: 100%;
   height: 100%;
+  width: auto;
+  max-width: 100%;
   shape-rendering: crispEdges;
 }
 

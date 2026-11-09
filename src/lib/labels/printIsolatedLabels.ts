@@ -1,4 +1,4 @@
-import { buildCode128Svg } from "@/lib/pos/code128";
+import { buildLabelBarcodeSvg } from "@/lib/labels/labelBarcodeSvg";
 import {
   formatLabelPrice,
   type LabelTemplate,
@@ -19,13 +19,15 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function barsSvg(barcode: string, moduleWidth: number): string {
-  return buildCode128Svg(barcode, {
-    height: 40,
-    moduleWidth,
-    displayValue: false,
-    quietModules: 0,
-  });
+/**
+ * Fit bars to the sticker without zero quiet-zone (scanners need the white margins).
+ * maxWidth ≈ printable mm at ~12 CSS px/mm for the hidden iframe.
+ */
+function barsSvg(
+  barcode: string,
+  opts: { height: number; maxWidth: number; compact?: boolean },
+): string {
+  return buildLabelBarcodeSvg(barcode, opts);
 }
 
 function singleHtml(label: IsolatedLabel): string {
@@ -37,7 +39,7 @@ function singleHtml(label: IsolatedLabel): string {
     <p class="name-ar">${name}</p>
     ${zh ? `<p class="name-zh" lang="zh-CN">${zh}</p>` : ""}
     <p class="price"><span>${price}</span></p>
-    <div class="bars">${barsSvg(label.barcode, 2)}</div>
+    <div class="bars">${barsSvg(label.barcode, { height: 48, maxWidth: 400 })}</div>
     <p class="digits">${code}</p>
   </section>`;
 }
@@ -52,7 +54,11 @@ function splitHalfHtml(label: IsolatedLabel): string {
       <span class="half-name"${lang}>${title}</span>
       <span class="half-price">${price}</span>
     </div>
-    <div class="bars">${barsSvg(label.barcode, 1.5)}</div>
+    <div class="bars">${barsSvg(label.barcode, {
+      height: 42,
+      maxWidth: 380,
+      compact: true,
+    })}</div>
     <p class="digits">${code}</p>
   </div>`;
 }
@@ -100,53 +106,58 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    padding: 0.6mm 1.2mm 0;
+    padding: 0.5mm 1mm 0;
   }
   .name-ar {
     margin: 0;
     color: #000000;
-    font-size: 8pt;
+    font-size: 7.5pt;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.1;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .single .name-zh {
-    margin: 0.5mm 0 0;
+    margin: 0.3mm 0 0;
     color: #000000;
-    font-size: 7.5pt;
+    font-size: 7pt;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.1;
     text-align: center;
     direction: ltr;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .single .price { margin: 1mm auto; text-align: center; }
+  .single .price { margin: 0.6mm auto; text-align: center; }
   .single .price span {
     display: inline-block;
     border: 0;
     border-radius: 2px;
-    padding: 1mm 3mm;
+    padding: 0.6mm 2.5mm;
     background-color: #000000;
     color: #ffffff;
-    font-size: 10.5pt;
+    font-size: 10pt;
     font-weight: 900;
     line-height: 1.1;
     white-space: nowrap;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .single .bars { height: 7.5mm; padding: 0 2.5mm; }
+  .single .bars {
+    flex: 1 1 9mm;
+    height: 9mm;
+    max-height: 9.5mm;
+    padding: 0 1.2mm;
+  }
   .single .digits {
-    margin: 0.3mm 0 0;
+    margin: 0.2mm 0 0;
     color: #000000;
-    font-size: 7.5pt;
+    font-size: 7pt;
     font-weight: 800;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     line-height: 1;
     text-align: center;
   }
@@ -159,29 +170,29 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
     height: 11.5mm;
     max-height: 11.5mm;
     overflow: hidden;
-    padding: 0.5mm 1.5mm 0 1.5mm;
+    padding: 0.35mm 1.2mm 0 1.2mm;
   }
   .split.side .half {
     width: 18mm;
     height: 25mm;
     max-height: 25mm;
-    padding: 0.6mm 0.8mm 0;
+    padding: 0.5mm 0.7mm 0;
   }
   .gap { height: 2mm; width: 100%; }
   .split.side .gap { width: 2mm; height: 25mm; }
   .row {
     display: flex;
-    flex: 0 0 3.8mm;
+    flex: 0 0 3mm;
     direction: rtl;
     justify-content: space-between;
     align-items: center;
-    height: 3.8mm;
-    gap: 0.6mm;
+    height: 3mm;
+    gap: 0.5mm;
   }
   .half-name {
     max-width: 62%;
     color: #000000;
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     font-weight: 800;
     line-height: 1;
     white-space: nowrap;
@@ -192,10 +203,10 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
   .half-price {
     border: 0;
     border-radius: 2px;
-    padding: 0.5mm 1.5mm;
+    padding: 0.3mm 1.2mm;
     background-color: #000000;
     color: #ffffff;
-    font-size: 8pt;
+    font-size: 7pt;
     font-weight: 900;
     line-height: 1.1;
     white-space: nowrap;
@@ -205,25 +216,41 @@ function documentHtml(labels: IsolatedLabel[], template: LabelTemplate): string 
   }
   .bars {
     box-sizing: border-box;
-    flex: 1 1 5.2mm;
+    flex: 1 1 6.5mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    height: 5.2mm;
-    max-height: 5.2mm;
-    min-height: 0;
-    padding: 0 2mm;
+    height: 6.5mm;
+    max-height: 7mm;
+    min-height: 5.5mm;
+    padding: 0 0.8mm;
     line-height: 0;
+    overflow: hidden;
   }
-  .bars svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+  /* Never stretch bars — distortion kills scanner readability. */
+  .bars svg {
+    display: block;
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    shape-rendering: crispEdges;
+  }
   .half .digits {
     flex: 0 0 auto;
-    margin: 0.2mm 0 0;
+    margin: 0.15mm 0 0;
     color: #000000;
-    font-size: 6.5pt;
+    font-size: 6pt;
     font-weight: 800;
     line-height: 1;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
+  }
+  .split.side .bars {
+    height: 12mm;
+    max-height: 14mm;
+    min-height: 10mm;
   }
 </style>
 </head>

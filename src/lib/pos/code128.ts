@@ -1,6 +1,7 @@
 /**
- * Code 128-B barcode → inline SVG (no external deps).
+ * Code 128 barcode → inline SVG (no external deps).
  * Patterns are standard GS1 / ISO 15417 binary module strings.
+ * Pure numeric values use Code Set C (digit pairs) so bars stay wider on tiny labels.
  */
 
 const CODE128_BARS: string[] = [
@@ -29,9 +30,12 @@ const CODE128_BARS: string[] = [
 ];
 
 const START_B = 104;
+const START_C = 105;
 const STOP = 106;
+/** Switch to Code Set C while currently in Set B. */
+const CODE_C_FROM_B = 99;
 
-function encode(text: string): number[] {
+function encodeSetB(text: string): number[] {
   const safe = Array.from(text)
     .map((ch) => {
       const c = ch.charCodeAt(0);
@@ -54,6 +58,61 @@ function encode(text: string): number[] {
   return values;
 }
 
+/**
+ * Encode digits with Code Set C (2 digits / symbol). Odd length: first digit in B, then C.
+ */
+function encodeNumeric(digits: string): number[] {
+  const values: number[] = [];
+  let checksum = 0;
+  let weight = 1;
+  let index = 0;
+
+  const push = (v: number) => {
+    values.push(v);
+    checksum += v * weight;
+    weight += 1;
+  };
+
+  if (digits.length % 2 === 1) {
+    values.push(START_B);
+    checksum = START_B;
+    push(digits.charCodeAt(0) - 32);
+    push(CODE_C_FROM_B);
+    index = 1;
+  } else {
+    values.push(START_C);
+    checksum = START_C;
+  }
+
+  for (; index < digits.length; index += 2) {
+    push(Number(digits.slice(index, index + 2)));
+  }
+
+  values.push(checksum % 103);
+  values.push(STOP);
+  return values;
+}
+
+function encode(text: string): number[] {
+  const raw = (text || "0").slice(0, 40);
+  if (/^\d{4,}$/.test(raw)) return encodeNumeric(raw);
+  return encodeSetB(raw);
+}
+
+/** Approximate rendered module count including quiet zones (for fitting label width). */
+export function estimateCode128Modules(
+  text: string,
+  quietModules = 10,
+): number {
+  const values = encode(text || "0");
+  let modules = quietModules * 2;
+  for (const value of values) {
+    // Stop pattern is 13 modules; all others are 11.
+    modules += value === STOP ? 13 : 11;
+  }
+  return modules;
+}
+
 export function buildCode128Svg(
   text: string,
   options: {
@@ -61,7 +120,7 @@ export function buildCode128Svg(
     moduleWidth?: number;
     /** Human-readable digits under the bars. Labels draw those in HTML instead. */
     displayValue?: boolean;
-    /** Quiet-zone modules on each side. Labels use CSS padding instead. */
+    /** Quiet-zone modules on each side — required for scanners. */
     quietModules?: number;
   } = {},
 ): string {
@@ -76,8 +135,11 @@ export function buildCode128Svg(
 
   for (const value of values) {
     const pattern = CODE128_BARS[value] ?? CODE128_BARS[0]!;
-    for (let i = 0; i < pattern.length; i++) {
-      const bit = pattern[i];
+    // Stop character includes the final 2-module bar (13 modules total).
+    const bits =
+      value === STOP ? `${pattern}11` : pattern;
+    for (let i = 0; i < bits.length; i++) {
+      const bit = bits[i];
       if (bit === "1") {
         rects.push(
           `<rect x="${x.toFixed(2)}" y="0" width="${mw}" height="${height}" fill="#000"/>`,

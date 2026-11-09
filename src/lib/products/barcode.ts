@@ -1,13 +1,16 @@
+import { buildEan13 } from "@/lib/products/ean13";
+
 /**
- * Generate a random 13-digit barcode starting with "99"
- * (avoids scale prefixes 20/21/23).
+ * Generate a random valid EAN-13 starting with "99"
+ * (avoids scale prefixes 20/21/23). Always includes a correct check digit
+ * so retail scanners accept the printed EAN-13 bars.
  */
 export function generateErpBarcode(): string {
-  let digits = "99";
-  for (let i = 0; i < 11; i += 1) {
-    digits += String(Math.floor(Math.random() * 10));
+  let body = "99";
+  for (let i = 0; i < 10; i += 1) {
+    body += String(Math.floor(Math.random() * 10));
   }
-  return digits;
+  return buildEan13(body);
 }
 
 export async function checkBarcodeAvailable(

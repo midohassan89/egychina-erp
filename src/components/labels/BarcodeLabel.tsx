@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { labelBarcodeReactProps } from "@/lib/labels/labelBarcodeSvg";
 import {
   formatLabelPrice,
   type LabelTemplate,
@@ -16,14 +17,15 @@ export type LabelFaceData = {
 };
 
 function Bars({ value, tall }: { value: string; tall?: boolean }) {
+  const props = labelBarcodeReactProps(value);
   return (
     <div className={tall ? "label-bars label-bars--single" : "label-bars"}>
       <Barcode
-        value={value}
-        format="CODE128"
-        width={tall ? 1.6 : 1.4}
-        height={tall ? 28 : 18}
-        margin={0}
+        value={props.value}
+        format={props.format}
+        width={tall ? props.width + 0.15 : props.width}
+        height={tall ? 32 : 22}
+        margin={props.margin}
         displayValue={false}
         background="#ffffff"
         lineColor="#000000"
