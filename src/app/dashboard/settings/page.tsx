@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [storeName, setStoreName] = useState("");
   const [storePhone, setStorePhone] = useState("");
   const [receiptFooter, setReceiptFooter] = useState("");
+  const [wechatEgpPerCny, setWechatEgpPerCny] = useState("7");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,7 @@ export default function SettingsPage() {
         store_name?: string;
         store_phone?: string;
         receipt_footer?: string;
+        wechat_egp_per_cny?: number;
       };
       if (!res.ok) throw new Error(body.error ?? "Failed to load settings");
       setEarnRatio(String(body.points_earn_ratio ?? ""));
@@ -35,6 +37,7 @@ export default function SettingsPage() {
       setStoreName(body.store_name ?? "");
       setStorePhone(body.store_phone ?? "");
       setReceiptFooter(body.receipt_footer ?? "");
+      setWechatEgpPerCny(String(body.wechat_egp_per_cny ?? 7));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -48,16 +51,19 @@ export default function SettingsPage() {
 
   const earn = Number(earnRatio);
   const redeem = Number(redeemValue);
+  const wechatRate = Number(wechatEgpPerCny);
   const previewEarn =
     Number.isFinite(earn) && earn > 0 ? earn : null;
   const previewRedeem =
     Number.isFinite(redeem) && redeem > 0 ? redeem : null;
+  const previewWechatRate =
+    Number.isFinite(wechatRate) && wechatRate > 0 ? wechatRate : null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaved(false);
     setError(null);
-    if (previewEarn == null || previewRedeem == null) {
+    if (previewEarn == null || previewRedeem == null || previewWechatRate == null) {
       setError("أدخل قيماً أكبر من صفر");
       return;
     }
@@ -73,6 +79,7 @@ export default function SettingsPage() {
           store_name: storeName,
           store_phone: storePhone,
           receipt_footer: receiptFooter,
+          wechat_egp_per_cny: previewWechatRate,
         }),
       });
       const body = (await res.json()) as {
@@ -83,6 +90,7 @@ export default function SettingsPage() {
         store_name?: string;
         store_phone?: string;
         receipt_footer?: string;
+        wechat_egp_per_cny?: number;
       };
       if (!res.ok) throw new Error(body.error ?? "Could not save settings");
       setEarnRatio(String(body.points_earn_ratio ?? previewEarn));
@@ -91,6 +99,7 @@ export default function SettingsPage() {
       setStoreName(body.store_name ?? storeName);
       setStorePhone(body.store_phone ?? storePhone);
       setReceiptFooter(body.receipt_footer ?? receiptFooter);
+      setWechatEgpPerCny(String(body.wechat_egp_per_cny ?? previewWechatRate));
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
@@ -210,6 +219,35 @@ export default function SettingsPage() {
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">نص تذييل إيصال الكاشير</span>
               <textarea rows={3} value={receiptFooter} onChange={(e) => { setReceiptFooter(e.target.value); setSaved(false); }} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100" />
             </label>
+
+            <div className="border-t border-slate-200 pt-4 dark:border-gray-800">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">
+                وي شات — سعر الصرف الافتراضي
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
+                القيمة الابتدائية على الكاشير (جنيه لكل يوان) قبل جلب سعر البنك أو التعديل اليدوي.
+              </p>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-gray-200">
+                سعر الصرف الافتراضي (ج.م / يوان)
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={wechatEgpPerCny}
+                onChange={(e) => {
+                  setWechatEgpPerCny(e.target.value);
+                  setSaved(false);
+                }}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-100"
+              />
+              <span className="mt-1 block text-xs text-slate-500 dark:text-gray-400">
+                wechat_egp_per_cny — مثال: 7 يعني 7 ج.م ≈ 1 يوان. الكاشير يستطيع جلب السعر الحي (−4%) أو التعديل يدوياً.
+              </span>
+            </label>
           </>
         )}
 
@@ -220,7 +258,7 @@ export default function SettingsPage() {
         )}
         {saved && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-            تم حفظ إعدادات النقاط
+            تم حفظ الإعدادات
           </p>
         )}
 

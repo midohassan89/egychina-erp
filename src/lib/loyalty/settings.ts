@@ -8,11 +8,15 @@ export const POINTS_REDEEM_STEP_KEY = "points_redeem_step";
 export const STORE_NAME_KEY = "store_name";
 export const STORE_PHONE_KEY = "store_phone";
 export const RECEIPT_FOOTER_KEY = "receipt_footer";
+/** Default WeChat display rate: Egyptian pounds per 1 CNY yuan. */
+export const WECHAT_EGP_PER_CNY_KEY = "wechat_egp_per_cny";
 
 export const DEFAULT_POINTS_EARN_RATIO = 10;
 export const DEFAULT_POINTS_REDEEM_VALUE = 1000;
 /** Smallest online redemption, and the only allowed step after that. */
 export const POINTS_REDEEM_STEP = 10_000;
+/** Fallback when StoreSetting row is missing (matches historical POS default). */
+export const DEFAULT_WECHAT_EGP_PER_CNY = 7;
 
 /** Online orders may redeem 0, or 10000, 20000, 30000… points. */
 export function onlinePointsRedeemError(
@@ -172,4 +176,29 @@ export async function saveStoreProfileSettings(
     }),
   ]);
   return { storeName, storePhone, receiptFooter };
+}
+
+/** Default WeChat CNY helper rate used by web POS and Desktop POS. */
+export async function getWeChatEgpPerCny(): Promise<number> {
+  const row = await prisma.storeSetting.findUnique({
+    where: { key: WECHAT_EGP_PER_CNY_KEY },
+  });
+  return positiveNumber(row?.value, DEFAULT_WECHAT_EGP_PER_CNY);
+}
+
+export async function saveWeChatEgpPerCny(rate: number): Promise<number> {
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error("wechat_egp_per_cny must be greater than 0");
+  }
+  const value = Number(rate.toFixed(4));
+  await prisma.storeSetting.upsert({
+    where: { key: WECHAT_EGP_PER_CNY_KEY },
+    create: {
+      key: WECHAT_EGP_PER_CNY_KEY,
+      value: String(value),
+      description: "Default WeChat display rate: EGP per 1 CNY",
+    },
+    update: { value: String(value) },
+  });
+  return value;
 }

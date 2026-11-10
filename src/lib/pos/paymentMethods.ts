@@ -74,5 +74,8 @@ export function isExactDigitalPayment(method: PaymentMethod | string): boolean {
   return isWeChatPayment(method) || isInstaPayPayment(method);
 }
 
-/** Default EGP per 1 CNY display rate for WeChat checkout helper. */
+/**
+ * Fallback EGP per 1 CNY when StoreSetting `wechat_egp_per_cny` is unavailable.
+ * Live tills prefer GET /api/settings → wechat_egp_per_cny.
+ */
 export const DEFAULT_CNY_EXCHANGE_RATE = 7;

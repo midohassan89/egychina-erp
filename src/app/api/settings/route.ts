@@ -4,9 +4,11 @@ import { isManagerOrAdmin } from "@/lib/auth/roles";
 import {
   getLoyaltySettings,
   getStoreProfileSettings,
+  getWeChatEgpPerCny,
   saveLoyaltySettings,
   savePointsRedeemStep,
   saveStoreProfileSettings,
+  saveWeChatEgpPerCny,
 } from "@/lib/loyalty/settings";
 
 function requireManager(role: string | undefined) {
@@ -20,9 +22,10 @@ const publicHeaders = {
 
 /** GET /api/settings — public loyalty ratios (defaults when rows are missing). */
 export async function GET() {
-  const [loyalty, profile] = await Promise.all([
+  const [loyalty, profile, wechatEgpPerCny] = await Promise.all([
     getLoyaltySettings(),
     getStoreProfileSettings(),
+    getWeChatEgpPerCny(),
   ]);
   return NextResponse.json(
     {
@@ -32,6 +35,7 @@ export async function GET() {
       store_name: profile.storeName,
       store_phone: profile.storePhone,
       receipt_footer: profile.receiptFooter,
+      wechat_egp_per_cny: wechatEgpPerCny,
     },
     { headers: publicHeaders },
   );
@@ -54,6 +58,7 @@ export async function PUT(request: Request) {
     store_name?: unknown;
     store_phone?: unknown;
     receipt_footer?: unknown;
+    wechat_egp_per_cny?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -81,6 +86,10 @@ export async function PUT(request: Request) {
             storePhone: String(body.store_phone ?? ""),
             receiptFooter: String(body.receipt_footer ?? ""),
           });
+    const wechatEgpPerCny =
+      body.wechat_egp_per_cny == null
+        ? await getWeChatEgpPerCny()
+        : await saveWeChatEgpPerCny(Number(body.wechat_egp_per_cny));
     return NextResponse.json({
       ok: true,
       points_earn_ratio: saved.pointsEarnRatio,
@@ -89,6 +98,7 @@ export async function PUT(request: Request) {
       store_name: profile.storeName,
       store_phone: profile.storePhone,
       receipt_footer: profile.receiptFooter,
+      wechat_egp_per_cny: wechatEgpPerCny,
     });
   } catch (error) {
     const message =

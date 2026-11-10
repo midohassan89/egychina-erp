@@ -82,6 +82,9 @@ function CheckoutDialogInner({
   const [employees, setEmployees] = useState<{ id: number; name: string }[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
   const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [defaultExchangeRate, setDefaultExchangeRate] = useState<number>(
+    DEFAULT_CNY_EXCHANGE_RATE,
+  );
   const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_CNY_EXCHANGE_RATE);
   const [exchangeRateInput, setExchangeRateInput] = useState(
     String(DEFAULT_CNY_EXCHANGE_RATE),
@@ -91,12 +94,36 @@ function CheckoutDialogInner({
   const refundAmount = roundMoney(Math.abs(total));
 
   useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        if (!res.ok) return;
+        const body = (await res.json()) as { wechat_egp_per_cny?: number };
+        const rate = Number(body.wechat_egp_per_cny);
+        if (!cancelled && Number.isFinite(rate) && rate > 0) {
+          const rounded = Number(rate.toFixed(4));
+          setDefaultExchangeRate(rounded);
+          setExchangeRate(rounded);
+          setExchangeRateInput(String(rounded));
+        }
+      } catch {
+        /* keep local default */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (open) {
       setPaymentMethod("cash");
       setCustomerId("");
       setEmployeeId("");
-      setExchangeRate(DEFAULT_CNY_EXCHANGE_RATE);
-      setExchangeRateInput(String(DEFAULT_CNY_EXCHANGE_RATE));
+      setExchangeRate(defaultExchangeRate);
+      setExchangeRateInput(String(defaultExchangeRate));
       if (isReturn) {
         setTenderedInput(String(refundAmount));
       } else {
@@ -108,7 +135,7 @@ function CheckoutDialogInner({
         );
       }
     }
-  }, [open, total, isReturn, refundAmount]);
+  }, [open, total, isReturn, refundAmount, defaultExchangeRate]);
 
   // WeChat / InstaPay: exact digital amount — no change for the customer.
   useEffect(() => {
@@ -197,7 +224,7 @@ function CheckoutDialogInner({
   const safeExchangeRate =
     Number.isFinite(exchangeRate) && exchangeRate > 0
       ? exchangeRate
-      : DEFAULT_CNY_EXCHANGE_RATE;
+      : defaultExchangeRate;
   const cnyAmount = wechat ? Math.abs(total) / safeExchangeRate : 0;
   const change = !isReturn && cash ? roundMoney(tendered - total) : 0;
 
