@@ -4,6 +4,7 @@ import {
   CommitPosCheckoutError,
   commitPosCheckout,
 } from "@/lib/pos/commitPosCheckout";
+import { resolveCashierUserId } from "@/lib/pos/resolveCashierUser";
 import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import type { PaymentMethod } from "@/types/woocommerce";
 
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       amount?: number;
       isReturn?: boolean;
       shiftId?: string | number | null;
+      cashierUserId?: string | null;
       localId?: string | null;
       total?: number;
       customerName?: string | null;
@@ -80,8 +82,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const resolvedCashier = await resolveCashierUserId(
+      body.cashierUserId,
+      owner.id,
+    );
+    if (resolvedCashier.error || !resolvedCashier.userId) {
+      return NextResponse.json(
+        { error: resolvedCashier.error ?? "Invalid cashier" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
     const result = await commitPosCheckout({
-      userId: owner.id,
+      userId: resolvedCashier.userId,
       body,
       staffEmployee: null,
     });

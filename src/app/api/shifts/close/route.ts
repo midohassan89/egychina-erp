@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { mapShiftToCashierShift } from "@/lib/shifts/mapShift";
 import { roundMoney } from "@/lib/pos/money";
@@ -8,6 +7,8 @@ import {
   ensureBankAccounts,
   type BankChannelCode,
 } from "@/lib/treasury/bankAccounts";
+import { resolvePosAccess } from "@/lib/pos/deviceAuth";
+import { resolveCashierUserId } from "@/lib/pos/resolveCashierUser";
 
 const CHANNEL_ROUTES: {
   code: BankChannelCode;
@@ -22,14 +23,19 @@ const CHANNEL_ROUTES: {
 /**
  * POST /api/shifts/close
  * Z-Report close: deposit actualCash → Treasury; route digital sales → banks.
+ * Auth: staff session or enrolled desktop device Bearer.
  */
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const access = await resolvePosAccess(request);
+  if (!access) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { actualCash?: number; shiftId?: number | string };
+  let body: {
+    actualCash?: number;
+    shiftId?: number | string;
+    cashierUserId?: string | null;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -44,9 +50,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const resolved = await resolveCashierUserId(
+    body.cashierUserId,
+    access.userId,
+  );
+  if (resolved.error || !resolved.userId) {
+    return NextResponse.json(
+      { error: resolved.error ?? "Invalid cashier" },
+      { status: 400 },
+    );
+  }
+  const cashierUserId = resolved.userId;
+
   const openShift = await prisma.shift.findFirst({
     where: {
-      userId: session.user.id,
+      userId: cashierUserId,
       status: "OPEN",
       ...(body.shiftId != null ? { id: Number(body.shiftId) } : {}),
     },
@@ -61,7 +79,12 @@ export async function POST(request: Request) {
   );
   const variance = roundMoney(actualCash - expectedCash);
   const endTime = new Date();
-  const cashierName = session.user.name ?? "Cashier";
+
+  const cashier = await prisma.user.findUnique({
+    where: { id: cashierUserId },
+    select: { username: true },
+  });
+  const cashierName = cashier?.username ?? access.username ?? "Cashier";
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -142,6 +165,7 @@ export async function POST(request: Request) {
       variance,
       treasuryBalance: result.treasuryBalance,
       bankDeposits: result.bankDeposits,
+      authKind: access.kind,
     });
   } catch (error) {
     console.error("[api/shifts/close]", error);

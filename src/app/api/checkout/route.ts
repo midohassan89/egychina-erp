@@ -5,6 +5,7 @@ import {
   commitPosCheckout,
 } from "@/lib/pos/commitPosCheckout";
 import { resolvePosAccess } from "@/lib/pos/deviceAuth";
+import { resolveCashierUserId } from "@/lib/pos/resolveCashierUser";
 import { isStaffMealPayment } from "@/lib/pos/paymentMethods";
 import type { PaymentMethod } from "@/types/woocommerce";
 
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     amount?: number;
     isReturn?: boolean;
     shiftId?: string | number | null;
+    cashierUserId?: string | null;
     localId?: string | null;
     total?: number;
     customerName?: string | null;
@@ -90,9 +92,20 @@ export async function POST(request: Request) {
     staffEmployee = { id: employee.id, name: employee.name };
   }
 
+  const resolvedCashier = await resolveCashierUserId(
+    body.cashierUserId,
+    access.userId,
+  );
+  if (resolvedCashier.error || !resolvedCashier.userId) {
+    return NextResponse.json(
+      { error: resolvedCashier.error ?? "Invalid cashier" },
+      { status: 400 },
+    );
+  }
+
   try {
     const result = await commitPosCheckout({
-      userId: access.userId,
+      userId: resolvedCashier.userId,
       body,
       staffEmployee,
     });
